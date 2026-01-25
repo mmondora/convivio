@@ -7,9 +7,9 @@
 
   ISTRUZIONI:
   1. Vai su https://console.firebase.google.com
-  2. Seleziona o crea il progetto "Sommelier"
+  2. Seleziona o crea il progetto "Convivio"
   3. Aggiungi app iOS (icona Apple)
-  4. Bundle ID: com.convivio.app
+  4. Bundle ID: it.mikesoft.convivio.app
   5. Scarica GoogleService-Info.plist
   6. Sostituisci QUESTO FILE con quello scaricato
   ============================================================
@@ -27,7 +27,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.convivio.app</string>
+	<string>it.mikesoft.convivio.app</string>
 	<key>PROJECT_ID</key>
 	<string>SOSTITUIRE_CON_VALORE_REALE</string>
 	<key>STORAGE_BUCKET</key>
