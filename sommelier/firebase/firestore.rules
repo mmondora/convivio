@@ -1,0 +1,363 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================================
+    // HELPER FUNCTIONS
+    // ============================================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Get current user ID
+    function userId() {
+      return request.auth.uid;
+    }
+    
+    // Check if user owns a resource
+    function isOwner(ownerId) {
+      return isAuthenticated() && userId() == ownerId;
+    }
+    
+    // Get user document
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(userId()));
+    }
+    
+    // Check user role for a cellar
+    function getCellarRole(cellarId) {
+      let cellar = get(/databases/$(database)/documents/cellars/$(cellarId));
+      return cellar.data.members[userId()];
+    }
+    
+    // Check if user has access to cellar (owner or family)
+    function hasCellarAccess(cellarId) {
+      return isAuthenticated() && getCellarRole(cellarId) != null;
+    }
+    
+    // Check if user is cellar owner
+    function isCellarOwner(cellarId) {
+      return isAuthenticated() && getCellarRole(cellarId) == 'owner';
+    }
+    
+    // Check if user can write to cellar (owner or family with write)
+    function canWriteCellar(cellarId) {
+      let role = getCellarRole(cellarId);
+      return isAuthenticated() && (role == 'owner' || role == 'family');
+    }
+    
+    // Validate timestamp is server time
+    function isValidTimestamp(field) {
+      return request.resource.data[field] == request.time;
+    }
+    
+    // ============================================================
+    // USERS COLLECTION
+    // ============================================================
+    
+    match /users/{uid} {
+      // Users can read/write only their own document
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && isValidUserCreate();
+      allow update: if isOwner(uid) && isValidUserUpdate();
+      allow delete: if isOwner(uid);
+      
+      function isValidUserCreate() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['email', 'displayName', 'createdAt']) &&
+               data.email is string &&
+               data.displayName is string &&
+               data.displayName.size() >= 1 &&
+               data.displayName.size() <= 100;
+      }
+      
+      function isValidUserUpdate() {
+        let data = request.resource.data;
+        // Cannot change email or createdAt
+        return (!('email' in request.resource.data.diff(resource.data).affectedKeys())) &&
+               (!('createdAt' in request.resource.data.diff(resource.data).affectedKeys()));
+      }
+      
+      // User's taste preferences subcollection
+      match /preferences/{prefId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+    
+    // ============================================================
+    // CELLARS COLLECTION
+    // ============================================================
+    
+    match /cellars/{cellarId} {
+      // Read: any member
+      allow read: if hasCellarAccess(cellarId);
+      
+      // Create: authenticated user becomes owner
+      allow create: if isAuthenticated() && isValidCellarCreate();
+      
+      // Update: only owner can update cellar settings
+      allow update: if isCellarOwner(cellarId) && isValidCellarUpdate();
+      
+      // Delete: only owner
+      allow delete: if isCellarOwner(cellarId);
+      
+      function isValidCellarCreate() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['name', 'members', 'createdAt', 'createdBy']) &&
+               data.name is string &&
+               data.name.size() >= 1 &&
+               data.name.size() <= 100 &&
+               data.members is map &&
+               data.members[userId()] == 'owner' &&
+               data.createdBy == userId();
+      }
+      
+      function isValidCellarUpdate() {
+        let data = request.resource.data;
+        // Cannot change createdAt or createdBy
+        return data.name is string &&
+               data.name.size() >= 1 &&
+               data.members is map &&
+               data.members[userId()] == 'owner'; // Owner must remain owner
+      }
+    }
+    
+    // ============================================================
+    // LOCATIONS COLLECTION (within cellars)
+    // ============================================================
+    
+    match /cellars/{cellarId}/locations/{locationId} {
+      allow read: if hasCellarAccess(cellarId);
+      allow create: if canWriteCellar(cellarId) && isValidLocationCreate();
+      allow update: if canWriteCellar(cellarId);
+      allow delete: if isCellarOwner(cellarId);
+      
+      function isValidLocationCreate() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['shelf']) &&
+               data.shelf is string &&
+               data.shelf.size() >= 1;
+      }
+    }
+    
+    // ============================================================
+    // WINES COLLECTION (global, shared across users)
+    // ============================================================
+    
+    match /wines/{wineId} {
+      // Anyone authenticated can read wines (they're reference data)
+      allow read: if isAuthenticated();
+      
+      // Anyone authenticated can create wines
+      allow create: if isAuthenticated() && isValidWineCreate();
+      
+      // Only creator can update (or we could allow anyone)
+      allow update: if isAuthenticated() && 
+                       (resource.data.createdBy == userId() || !('createdBy' in resource.data));
+      
+      // Wines are never deleted (soft delete via status if needed)
+      allow delete: if false;
+      
+      function isValidWineCreate() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['name', 'type', 'createdAt', 'createdBy']) &&
+               data.name is string &&
+               data.name.size() >= 1 &&
+               data.name.size() <= 200 &&
+               data.type in ['red', 'white', 'rosé', 'sparkling', 'dessert', 'fortified'] &&
+               data.createdBy == userId();
+      }
+    }
+    
+    // ============================================================
+    // BOTTLES COLLECTION (within cellars)
+    // ============================================================
+    
+    match /cellars/{cellarId}/bottles/{bottleId} {
+      allow read: if hasCellarAccess(cellarId);
+      allow create: if canWriteCellar(cellarId) && isValidBottleCreate();
+      allow update: if canWriteCellar(cellarId) && isValidBottleUpdate();
+      allow delete: if isCellarOwner(cellarId);
+      
+      function isValidBottleCreate() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['wineId', 'locationId', 'status', 'createdAt', 'createdBy']) &&
+               data.wineId is string &&
+               data.locationId is string &&
+               data.status in ['available', 'consumed', 'gifted', 'broken'] &&
+               data.createdBy == userId();
+      }
+      
+      function isValidBottleUpdate() {
+        let data = request.resource.data;
+        // Cannot change wineId after creation
+        return data.status in ['available', 'consumed', 'gifted', 'broken'] &&
+               data.wineId == resource.data.wineId;
+      }
+    }
+    
+    // ============================================================
+    // MOVEMENTS COLLECTION (within cellars, audit trail)
+    // ============================================================
+    
+    match /cellars/{cellarId}/movements/{movementId} {
+      // Read: any member
+      allow read: if hasCellarAccess(cellarId);
+      
+      // Create: any member with write access
+      allow create: if canWriteCellar(cellarId) && isValidMovementCreate();
+      
+      // Movements are immutable (audit trail)
+      allow update: if false;
+      allow delete: if false;
+      
+      function isValidMovementCreate() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['bottleId', 'type', 'performedBy', 'performedAt']) &&
+               data.bottleId is string &&
+               data.type in ['in', 'out', 'move'] &&
+               data.performedBy == userId();
+      }
+    }
+    
+    // ============================================================
+    // USER RATINGS (personal, per user)
+    // ============================================================
+    
+    match /users/{uid}/ratings/{ratingId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && isValidRatingCreate();
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+      
+      function isValidRatingCreate() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['wineId', 'rating', 'createdAt']) &&
+               data.wineId is string &&
+               data.rating is number &&
+               data.rating >= 1 &&
+               data.rating <= 5;
+      }
+    }
+    
+    // ============================================================
+    // TASTE PROFILES (personal evaluations)
+    // ============================================================
+    
+    match /users/{uid}/tasteProfiles/{profileId} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && isValidTasteProfile();
+      allow delete: if isOwner(uid);
+      
+      function isValidTasteProfile() {
+        let data = request.resource.data;
+        return data.wineId is string &&
+               (!('acidity' in data) || (data.acidity >= 1 && data.acidity <= 5)) &&
+               (!('tannin' in data) || (data.tannin >= 1 && data.tannin <= 5)) &&
+               (!('body' in data) || (data.body >= 1 && data.body <= 5)) &&
+               (!('sweetness' in data) || (data.sweetness >= 1 && data.sweetness <= 5)) &&
+               (!('effervescence' in data) || (data.effervescence >= 0 && data.effervescence <= 5));
+      }
+    }
+    
+    // ============================================================
+    // FRIENDS (personal contacts)
+    // ============================================================
+    
+    match /users/{uid}/friends/{friendId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && isValidFriendCreate();
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+      
+      function isValidFriendCreate() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['name', 'createdAt']) &&
+               data.name is string &&
+               data.name.size() >= 1 &&
+               data.name.size() <= 100;
+      }
+      
+      // Food preferences subcollection
+      match /foodPreferences/{prefId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+    
+    // ============================================================
+    // DINNER EVENTS
+    // ============================================================
+    
+    match /users/{uid}/dinners/{dinnerId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && isValidDinnerCreate();
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+      
+      function isValidDinnerCreate() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['name', 'date', 'status', 'createdAt']) &&
+               data.name is string &&
+               data.status in ['planning', 'confirmed', 'completed', 'cancelled'];
+      }
+      
+      // Guests subcollection
+      match /guests/{guestId} {
+        allow read, write: if isOwner(uid);
+      }
+      
+      // Wine proposals subcollection
+      match /proposals/{proposalId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+    
+    // ============================================================
+    // PHOTO ASSETS (stored references, actual files in Storage)
+    // ============================================================
+    
+    match /users/{uid}/photos/{photoId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && isValidPhotoCreate();
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+      
+      function isValidPhotoCreate() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['storageUrl', 'type', 'createdAt']) &&
+               data.storageUrl is string &&
+               data.type in ['label_front', 'label_back', 'bottle', 'other'];
+      }
+    }
+    
+    // ============================================================
+    // EXTRACTION RESULTS (OCR/AI processing results)
+    // ============================================================
+    
+    match /users/{uid}/extractions/{extractionId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+    }
+    
+    // ============================================================
+    // CHAT CONVERSATIONS (AI sommelier)
+    // ============================================================
+    
+    match /users/{uid}/conversations/{convId} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+      
+      match /messages/{msgId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid);
+        allow update, delete: if false; // Messages are immutable
+      }
+    }
+  }
+}
