@@ -192,6 +192,44 @@ class FirebaseService {
         }
     }
 
+    // MARK: - Taste Profile Operations
+
+    func getTasteProfile(for wineId: String) async throws -> TasteProfile? {
+        guard let userId else { throw FirebaseError.notAuthenticated }
+
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("tasteProfiles")
+            .whereField("wineId", isEqualTo: wineId)
+            .limit(to: 1)
+            .getDocuments()
+
+        return try snapshot.documents.first?.data(as: TasteProfile.self)
+    }
+
+    func setTasteProfile(_ profile: TasteProfile) async throws {
+        guard let userId else { throw FirebaseError.notAuthenticated }
+
+        let profileRef = db.collection("users").document(userId)
+            .collection("tasteProfiles")
+
+        // Check if exists
+        let existing = try await getTasteProfile(for: profile.wineId)
+
+        if let existingId = existing?.id {
+            try await profileRef.document(existingId).updateData([
+                "acidity": profile.acidity,
+                "tannin": profile.tannin,
+                "body": profile.body,
+                "sweetness": profile.sweetness,
+                "effervescence": profile.effervescence,
+                "notes": profile.notes as Any,
+                "tags": profile.tags as Any
+            ])
+        } else {
+            try profileRef.addDocument(from: profile)
+        }
+    }
+
     // MARK: - Friends Operations
 
     func getFriends() async throws -> [Friend] {
@@ -483,6 +521,84 @@ class FirebaseService {
         }
 
         return try parseMenuProposal(data)
+    }
+
+    // MARK: - Sample Data Seeding
+
+    func seedSampleData() async throws {
+        guard let userId else { throw FirebaseError.notAuthenticated }
+
+        // Get or create default cellar
+        let cellar = try await getOrCreateDefaultCellar()
+        guard let cellarId = cellar.id else { throw FirebaseError.invalidResponse }
+
+        // Get default location
+        let locations = try await getLocations(cellarId: cellarId)
+        guard let locationId = locations.first?.id else { throw FirebaseError.invalidResponse }
+
+        // Check if already seeded (check if wines exist)
+        let existingWines = try await getWines()
+        let perlugoExists = existingWines.contains { $0.name == "Perlugo Dosaggio Zero" }
+        let sfursatExists = existingWines.contains { $0.name == "Sfursat 5 Stelle" }
+
+        // Wine 1: Perlugo - Pievalta
+        var perlugoId: String
+        if let existing = existingWines.first(where: { $0.name == "Perlugo Dosaggio Zero" }) {
+            perlugoId = existing.id ?? ""
+        } else {
+            let perlugo = Wine(
+                id: nil,
+                name: "Perlugo Dosaggio Zero",
+                producer: "Pievalta",
+                vintage: 2021,
+                type: .sparkling,
+                region: "Marche",
+                country: "Italia",
+                grapes: ["Verdicchio"],
+                alcoholContent: 12.5,
+                description: "Spumante biologico Metodo Classico Dosaggio Zero. 24 mesi sui lieviti. Colore giallo paglierino brillante, perlage fine e persistente. Note di crosta di pane, erbe aromatiche, elicriso e mallo di mandorla. Sorso sapido, elegante, fresco e persistente.",
+                createdAt: nil,
+                createdBy: userId
+            )
+            perlugoId = try await createWine(perlugo)
+        }
+
+        // Wine 2: Sfursat 5 Stelle - Nino Negri
+        var sfursatId: String
+        if let existing = existingWines.first(where: { $0.name == "Sfursat 5 Stelle" }) {
+            sfursatId = existing.id ?? ""
+        } else {
+            let sfursat = Wine(
+                id: nil,
+                name: "Sfursat 5 Stelle",
+                producer: "Nino Negri",
+                vintage: 2020,
+                type: .red,
+                region: "Valtellina, Lombardia",
+                country: "Italia",
+                grapes: ["Nebbiolo (Chiavennasca)"],
+                alcoholContent: 16.0,
+                description: "Sforzato di Valtellina DOCG. Uve appassite naturalmente per 90 giorni, 16 mesi in barrique di rovere francese. Rosso granato intenso. Note di frutta secca, frutta rossa sotto spirito, vaniglia, mentolo, cacao e liquirizia. Struttura piena e robusta, tannini dolci, finale persistente.",
+                createdAt: nil,
+                createdBy: userId
+            )
+            sfursatId = try await createWine(sfursat)
+        }
+
+        // Add 6 bottles of each wine (only if not already added)
+        let existingBottles = try await getAvailableBottles(cellarId: cellarId)
+        let perlugoBottles = existingBottles.filter { $0.wineId == perlugoId }.count
+        let sfursatBottles = existingBottles.filter { $0.wineId == sfursatId }.count
+
+        // Add missing Perlugo bottles (target: 6)
+        for _ in 0..<max(0, 6 - perlugoBottles) {
+            try await addBottle(to: cellarId, wineId: perlugoId, locationId: locationId, price: 20.0)
+        }
+
+        // Add missing Sfursat bottles (target: 6)
+        for _ in 0..<max(0, 6 - sfursatBottles) {
+            try await addBottle(to: cellarId, wineId: sfursatId, locationId: locationId, price: 55.0)
+        }
     }
 
     // MARK: - GDPR Operations

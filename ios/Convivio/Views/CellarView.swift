@@ -21,7 +21,11 @@ struct CellarView: View {
                 if viewModel.isLoading {
                     ProgressView("Caricamento cantina...")
                 } else if viewModel.inventory.isEmpty {
-                    EmptyCellarView()
+                    EmptyCellarView {
+                        Task {
+                            await viewModel.loadInventory()
+                        }
+                    }
                 } else {
                     wineList
                 }
@@ -180,19 +184,49 @@ struct WineRow: View {
 
 struct EmptyCellarView: View {
     @EnvironmentObject var appState: AppState
-    
+    @State private var isLoadingSample = false
+    var onSampleDataLoaded: (() -> Void)?
+
     var body: some View {
         ContentUnavailableView {
             Label("Cantina vuota", systemImage: "wineglass")
         } description: {
             Text("Inizia ad aggiungere vini scansionando le etichette")
         } actions: {
-            Button {
-                appState.selectedTab = .scan
-            } label: {
-                Label("Aggiungi vino", systemImage: "camera")
+            VStack(spacing: 12) {
+                Button {
+                    appState.selectedTab = .scan
+                } label: {
+                    Label("Aggiungi vino", systemImage: "camera")
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button {
+                    loadSampleData()
+                } label: {
+                    if isLoadingSample {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                    } else {
+                        Label("Carica vini di esempio", systemImage: "wineglass.fill")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(isLoadingSample)
             }
-            .buttonStyle(.borderedProminent)
+        }
+    }
+
+    private func loadSampleData() {
+        isLoadingSample = true
+        Task {
+            do {
+                try await FirebaseService.shared.seedSampleData()
+                onSampleDataLoaded?()
+            } catch {
+                // Ignore errors silently for now
+            }
+            isLoadingSample = false
         }
     }
 }
@@ -383,12 +417,28 @@ class CellarViewModel: ObservableObject {
     }
 }
 
-// MARK: - Wine Detail View (Placeholder)
+// MARK: - Wine Detail View
 
 struct WineDetailView: View {
     let item: WineInventoryItem
     @Environment(\.dismiss) var dismiss
-    
+    @StateObject private var viewModel = WineDetailViewModel()
+
+    // Rating state
+    @State private var showingQuickRating = false
+    @State private var ratingValue: Int = 0
+    @State private var isFavorite = false
+    @State private var ratingNotes = ""
+
+    // Taste profile state
+    @State private var showingTasteProfile = false
+    @State private var acidity: Int = 0
+    @State private var tannin: Int = 0
+    @State private var bodyValue: Int = 0
+    @State private var sweetness: Int = 0
+    @State private var effervescence: Int = 0
+    @State private var tasteNotes = ""
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -402,11 +452,11 @@ struct WineDetailView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
-                        
+
                         Text(item.wine.displayName)
                             .font(.title)
                             .fontWeight(.bold)
-                        
+
                         if let producer = item.wine.producer {
                             Text(producer)
                                 .font(.title3)
@@ -414,51 +464,125 @@ struct WineDetailView: View {
                         }
                     }
                     .padding()
-                    
+
                     Divider()
-                    
+
                     // Info
                     VStack(spacing: 12) {
                         InfoRow(label: "Disponibili", value: "\(item.availableBottles) bottiglie")
-                        
+
                         if let region = item.wine.region {
                             InfoRow(label: "Regione", value: region)
                         }
-                        
+
                         if let country = item.wine.country {
                             InfoRow(label: "Paese", value: country)
                         }
-                        
+
                         if let location = item.primaryLocation {
                             InfoRow(label: "Posizione", value: location.displayPath)
                         }
                     }
                     .padding()
-                    
+
+                    Divider()
+
                     // Rating section
-                    if let rating = item.rating {
-                        Divider()
-                        
-                        VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
                             Text("Il tuo giudizio")
                                 .font(.headline)
-                            
-                            HStack {
+                            Spacer()
+                            Button {
+                                showingQuickRating = true
+                            } label: {
+                                Image(systemName: "pencil.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
+
+                        if ratingValue > 0 {
+                            HStack(spacing: 4) {
                                 ForEach(1...5, id: \.self) { index in
-                                    Image(systemName: index <= rating.rating ? "star.fill" : "star")
-                                        .foregroundStyle(index <= rating.rating ? .yellow : .gray)
+                                    Image(systemName: index <= ratingValue ? "star.fill" : "star")
+                                        .foregroundStyle(index <= ratingValue ? .yellow : .gray)
+                                }
+                                if isFavorite {
+                                    Image(systemName: "heart.fill")
+                                        .foregroundStyle(.red)
+                                        .padding(.leading, 8)
                                 }
                             }
                             .font(.title2)
-                            
-                            if let notes = rating.notes, !notes.isEmpty {
-                                Text(notes)
+
+                            if !ratingNotes.isEmpty {
+                                Text(ratingNotes)
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
+                        } else {
+                            Button {
+                                showingQuickRating = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "star")
+                                    Text("Valuta questo vino")
+                                }
+                                .font(.subheadline)
+                                .foregroundStyle(Color.accentColor)
+                            }
                         }
-                        .padding()
                     }
-                    
+                    .padding()
+
+                    Divider()
+
+                    // Taste profile section
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Profilo sensoriale")
+                                .font(.headline)
+                            Spacer()
+                            Button {
+                                showingTasteProfile = true
+                            } label: {
+                                Image(systemName: "pencil.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
+
+                        if hasTasteProfile {
+                            TasteRadarChart(
+                                acidity: acidity,
+                                tannin: tannin,
+                                wineBody: bodyValue,
+                                sweetness: sweetness,
+                                effervescence: effervescence
+                            )
+                            .frame(height: 180)
+
+                            if !tasteNotes.isEmpty {
+                                Text(tasteNotes)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else {
+                            Button {
+                                showingTasteProfile = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "chart.pie")
+                                    Text("Aggiungi profilo sensoriale")
+                                }
+                                .font(.subheadline)
+                                .foregroundStyle(Color.accentColor)
+                            }
+                        }
+                    }
+                    .padding()
+
                     Spacer()
                 }
             }
@@ -470,14 +594,123 @@ struct WineDetailView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingQuickRating) {
+                QuickRatingSheet(
+                    wine: item.wine,
+                    rating: $ratingValue,
+                    isFavorite: $isFavorite,
+                    notes: $ratingNotes,
+                    onSave: saveRating
+                )
+                .presentationDetents([.medium, .large])
+            }
+            .sheet(isPresented: $showingTasteProfile) {
+                TasteProfileEditor(
+                    wine: item.wine,
+                    acidity: $acidity,
+                    tannin: $tannin,
+                    wineBody: $bodyValue,
+                    sweetness: $sweetness,
+                    effervescence: $effervescence,
+                    notes: $tasteNotes,
+                    onSave: saveTasteProfile
+                )
+            }
+            .task {
+                await loadData()
+            }
         }
     }
+
+    private var hasTasteProfile: Bool {
+        acidity > 0 || tannin > 0 || bodyValue > 0 || sweetness > 0 || effervescence > 0
+    }
+
+    private func loadData() async {
+        guard let wineId = item.wine.id else { return }
+
+        // Load existing rating
+        if let rating = item.rating {
+            ratingValue = rating.rating
+            isFavorite = rating.isFavorite
+            ratingNotes = rating.notes ?? ""
+        }
+
+        // Load existing taste profile
+        if let profile = item.tasteProfile {
+            acidity = profile.acidity
+            tannin = profile.tannin
+            bodyValue = profile.body
+            sweetness = profile.sweetness
+            effervescence = profile.effervescence
+            tasteNotes = profile.notes ?? ""
+        } else {
+            // Try to fetch from Firebase
+            do {
+                if let profile = try await FirebaseService.shared.getTasteProfile(for: wineId) {
+                    acidity = profile.acidity
+                    tannin = profile.tannin
+                    bodyValue = profile.body
+                    sweetness = profile.sweetness
+                    effervescence = profile.effervescence
+                    tasteNotes = profile.notes ?? ""
+                }
+            } catch {
+                // Ignore - no taste profile saved
+            }
+        }
+    }
+
+    private func saveRating() {
+        guard let wineId = item.wine.id else { return }
+        Task {
+            do {
+                try await FirebaseService.shared.setRating(
+                    ratingValue,
+                    isFavorite: isFavorite,
+                    notes: ratingNotes.isEmpty ? nil : ratingNotes,
+                    for: wineId
+                )
+            } catch {
+                // Handle error silently for now
+            }
+        }
+    }
+
+    private func saveTasteProfile() {
+        guard let wineId = item.wine.id else { return }
+        Task {
+            do {
+                let profile = TasteProfile(
+                    id: nil,
+                    wineId: wineId,
+                    acidity: acidity,
+                    tannin: tannin,
+                    body: bodyValue,
+                    sweetness: sweetness,
+                    effervescence: effervescence,
+                    notes: tasteNotes.isEmpty ? nil : tasteNotes,
+                    tags: nil,
+                    createdAt: nil
+                )
+                try await FirebaseService.shared.setTasteProfile(profile)
+            } catch {
+                // Handle error silently for now
+            }
+        }
+    }
+}
+
+@MainActor
+class WineDetailViewModel: ObservableObject {
+    @Published var isLoading = false
+    @Published var error: String?
 }
 
 struct InfoRow: View {
     let label: String
     let value: String
-    
+
     var body: some View {
         HStack {
             Text(label)
@@ -486,6 +719,417 @@ struct InfoRow: View {
             Text(value)
                 .fontWeight(.medium)
         }
+    }
+}
+
+// MARK: - Quick Rating Sheet
+
+struct QuickRatingSheet: View {
+    let wine: Wine
+    @Binding var rating: Int
+    @Binding var isFavorite: Bool
+    @Binding var notes: String
+    let onSave: () -> Void
+
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                // Wine info header
+                VStack(spacing: 8) {
+                    Text(wine.type.icon)
+                        .font(.system(size: 48))
+                    Text(wine.displayName)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                    if let producer = wine.producer {
+                        Text(producer)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.top)
+
+                Divider()
+
+                // Star rating
+                VStack(spacing: 12) {
+                    Text("Il tuo voto")
+                        .font(.headline)
+
+                    HStack(spacing: 16) {
+                        ForEach(1...5, id: \.self) { index in
+                            Button {
+                                withAnimation(.spring(response: 0.3)) {
+                                    rating = index
+                                }
+                            } label: {
+                                Image(systemName: index <= rating ? "star.fill" : "star")
+                                    .font(.system(size: 36))
+                                    .foregroundStyle(index <= rating ? .yellow : .gray.opacity(0.4))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Favorite toggle
+                Button {
+                    withAnimation(.spring(response: 0.3)) {
+                        isFavorite.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: isFavorite ? "heart.fill" : "heart")
+                            .foregroundStyle(isFavorite ? .red : .gray)
+                        Text(isFavorite ? "Tra i preferiti" : "Aggiungi ai preferiti")
+                    }
+                    .font(.subheadline)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(isFavorite ? Color.red.opacity(0.1) : Color.gray.opacity(0.1))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                // Notes
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Note (opzionale)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    TextField("Aggiungi una nota...", text: $notes, axis: .vertical)
+                        .lineLimit(2...4)
+                        .textFieldStyle(.roundedBorder)
+                }
+                .padding(.horizontal)
+
+                Spacer()
+
+                // Save button
+                Button {
+                    onSave()
+                    dismiss()
+                } label: {
+                    Text("Salva")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(rating > 0 ? Color.accentColor : Color.gray)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(rating == 0)
+                .padding(.horizontal)
+                .padding(.bottom)
+            }
+            .navigationTitle("Valuta il vino")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Annulla") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Taste Profile Editor
+
+struct TasteProfileEditor: View {
+    let wine: Wine
+    @Binding var acidity: Int
+    @Binding var tannin: Int
+    @Binding var wineBody: Int
+    @Binding var sweetness: Int
+    @Binding var effervescence: Int
+    @Binding var notes: String
+    let onSave: () -> Void
+
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Wine info header
+                    VStack(spacing: 8) {
+                        Text(wine.type.icon)
+                            .font(.system(size: 40))
+                        Text(wine.displayName)
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top)
+
+                    Divider()
+
+                    // Sliders
+                    VStack(spacing: 20) {
+                        TasteSlider(label: "Acidità", value: $acidity, icon: "drop.fill", color: .green)
+                        TasteSlider(label: "Tannino", value: $tannin, icon: "leaf.fill", color: .brown)
+                        TasteSlider(label: "Corpo", value: $wineBody, icon: "circle.fill", color: .purple)
+                        TasteSlider(label: "Dolcezza", value: $sweetness, icon: "cube.fill", color: .orange)
+                        TasteSlider(label: "Effervescenza", value: $effervescence, icon: "bubbles.and.sparkles.fill", color: .cyan)
+                    }
+                    .padding(.horizontal)
+
+                    Divider()
+
+                    // Notes
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Note di degustazione")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        TextField("Descrivi aromi, sapori...", text: $notes, axis: .vertical)
+                            .lineLimit(3...6)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    .padding(.horizontal)
+
+                    // Radar chart preview
+                    if hasAnyValue {
+                        VStack(spacing: 8) {
+                            Text("Profilo sensoriale")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            TasteRadarChart(
+                                acidity: acidity,
+                                tannin: tannin,
+                                wineBody: wineBody,
+                                sweetness: sweetness,
+                                effervescence: effervescence
+                            )
+                            .frame(height: 200)
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+                .padding(.bottom, 100) // Space for button
+            }
+            .overlay(alignment: .bottom) {
+                // Save button
+                Button {
+                    onSave()
+                    dismiss()
+                } label: {
+                    Text("Salva profilo")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+            }
+            .navigationTitle("Profilo sensoriale")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Annulla") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var hasAnyValue: Bool {
+        acidity > 0 || tannin > 0 || wineBody > 0 || sweetness > 0 || effervescence > 0
+    }
+}
+
+struct TasteSlider: View {
+    let label: String
+    @Binding var value: Int
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundStyle(color)
+                Text(label)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Spacer()
+                Text("\(value)/5")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { index in
+                    Button {
+                        withAnimation(.spring(response: 0.2)) {
+                            value = value == index ? 0 : index
+                        }
+                    } label: {
+                        Circle()
+                            .fill(index <= value ? color : color.opacity(0.2))
+                            .frame(width: 32, height: 32)
+                            .overlay {
+                                Text("\(index)")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(index <= value ? .white : color)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+            }
+        }
+    }
+}
+
+// MARK: - Taste Radar Chart
+
+struct TasteRadarChart: View {
+    let acidity: Int
+    let tannin: Int
+    let wineBody: Int
+    let sweetness: Int
+    let effervescence: Int
+
+    private let labels = ["Acidità", "Tannino", "Corpo", "Dolcezza", "Efferv."]
+    private let maxValue: Double = 5.0
+
+    private var values: [Double] {
+        [Double(acidity), Double(tannin), Double(wineBody), Double(sweetness), Double(effervescence)]
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            let radius = min(geometry.size.width, geometry.size.height) / 2 - 30
+
+            ZStack {
+                // Grid circles
+                ForEach(1...5, id: \.self) { level in
+                    let r = radius * Double(level) / 5.0
+                    RadarPolygon(sides: 5, radius: r, center: center)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                }
+
+                // Axis lines
+                ForEach(0..<5, id: \.self) { index in
+                    let angle = angleForIndex(index)
+                    Path { path in
+                        path.move(to: center)
+                        path.addLine(to: pointOnCircle(center: center, radius: radius, angle: angle))
+                    }
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                }
+
+                // Data polygon
+                RadarDataPolygon(values: values, maxValue: maxValue, radius: radius, center: center)
+                    .fill(Color.accentColor.opacity(0.3))
+
+                RadarDataPolygon(values: values, maxValue: maxValue, radius: radius, center: center)
+                    .stroke(Color.accentColor, lineWidth: 2)
+
+                // Data points
+                ForEach(0..<5, id: \.self) { index in
+                    let normalizedValue = values[index] / maxValue
+                    let angle = angleForIndex(index)
+                    let point = pointOnCircle(center: center, radius: radius * normalizedValue, angle: angle)
+
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 8, height: 8)
+                        .position(point)
+                }
+
+                // Labels
+                ForEach(0..<5, id: \.self) { index in
+                    let angle = angleForIndex(index)
+                    let labelRadius = radius + 20
+                    let point = pointOnCircle(center: center, radius: labelRadius, angle: angle)
+
+                    Text(labels[index])
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .position(point)
+                }
+            }
+        }
+    }
+
+    private func angleForIndex(_ index: Int) -> Double {
+        let angleStep = (2 * .pi) / 5.0
+        return -(.pi / 2) + angleStep * Double(index) // Start from top
+    }
+
+    private func pointOnCircle(center: CGPoint, radius: Double, angle: Double) -> CGPoint {
+        CGPoint(
+            x: center.x + radius * cos(angle),
+            y: center.y + radius * sin(angle)
+        )
+    }
+}
+
+struct RadarPolygon: Shape {
+    let sides: Int
+    let radius: Double
+    let center: CGPoint
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let angleStep = (2 * .pi) / Double(sides)
+
+        for i in 0..<sides {
+            let angle = -(.pi / 2) + angleStep * Double(i)
+            let point = CGPoint(
+                x: center.x + radius * cos(angle),
+                y: center.y + radius * sin(angle)
+            )
+
+            if i == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+struct RadarDataPolygon: Shape {
+    let values: [Double]
+    let maxValue: Double
+    let radius: Double
+    let center: CGPoint
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let angleStep = (2 * .pi) / Double(values.count)
+
+        for (index, value) in values.enumerated() {
+            let normalizedValue = value / maxValue
+            let angle = -(.pi / 2) + angleStep * Double(index)
+            let point = CGPoint(
+                x: center.x + radius * normalizedValue * cos(angle),
+                y: center.y + radius * normalizedValue * sin(angle)
+            )
+
+            if index == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
+        path.closeSubpath()
+        return path
     }
 }
 
