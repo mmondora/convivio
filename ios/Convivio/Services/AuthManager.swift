@@ -25,8 +25,28 @@ class AuthManager: ObservableObject {
     private let db = Firestore.firestore()
     
     init() {
+        #if targetEnvironment(simulator)
+        // Bypass login on simulator for development
+        setupSimulatorBypass()
+        #else
         setupAuthStateListener()
+        #endif
     }
+
+    /// Mock user ID for simulator testing (nil on real devices)
+    var simulatorUserId: String?
+
+    // MARK: - Simulator Bypass
+
+    #if targetEnvironment(simulator)
+    private func setupSimulatorBypass() {
+        // Simulate authenticated state for development
+        self.isAuthenticated = true
+        self.isLoading = false
+        self.simulatorUserId = "simulator-dev-user"
+        print("🍷 Convivio: Running in simulator mode - auth bypassed")
+    }
+    #endif
     
     deinit {
         if let handler = authStateHandler {

@@ -20,7 +20,11 @@ class FirebaseService {
     private let functions = Functions.functions()
 
     private var userId: String? {
-        AuthManager.shared.user?.uid
+        #if targetEnvironment(simulator)
+        return AuthManager.shared.simulatorUserId ?? AuthManager.shared.user?.uid
+        #else
+        return AuthManager.shared.user?.uid
+        #endif
     }
 
     // MARK: - Wine Operations

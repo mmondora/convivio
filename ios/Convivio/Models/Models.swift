@@ -476,3 +476,9 @@ struct CellarStats {
     var vintageRange: ClosedRange<Int>?
     var avgRating: Double?
 }
+
+struct UserStats {
+    var totalBottles: Int = 0
+    var ratedWines: Int = 0
+    var totalDinners: Int = 0
+}
