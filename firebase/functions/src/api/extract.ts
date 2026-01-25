@@ -10,17 +10,16 @@
  */
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import Anthropic from '@anthropic-ai/sdk';
 import { logger } from 'firebase-functions';
 import { z } from 'zod';
-import type { 
-  ExtractWineRequest, 
-  ExtractWineResponse, 
-  ExtractionResult, 
-  Wine,
-  WineType 
+import type {
+  ExtractWineRequest,
+  ExtractWineResponse,
+  ExtractionResult,
+  Wine
 } from '../types';
 
 const db = getFirestore();

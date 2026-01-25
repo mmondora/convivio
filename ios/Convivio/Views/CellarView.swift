@@ -221,10 +221,12 @@ struct EmptyCellarView: View {
         isLoadingSample = true
         Task {
             do {
+                print("🍷 Starting seedSampleData...")
                 try await FirebaseService.shared.seedSampleData()
+                print("🍷 seedSampleData completed!")
                 onSampleDataLoaded?()
             } catch {
-                // Ignore errors silently for now
+                print("🍷 seedSampleData ERROR: \(error)")
             }
             isLoadingSample = false
         }

@@ -329,6 +329,8 @@ class ChatViewModel: ObservableObject {
                 messages.append(uiMessage)
 
             } catch {
+                print("🍷 CHAT ERROR: \(error)")
+                print("🍷 CHAT ERROR (localized): \(error.localizedDescription)")
                 self.error = error.localizedDescription
 
                 // Add error message to UI

@@ -10,23 +10,19 @@
  */
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import Anthropic from '@anthropic-ai/sdk';
 import { logger } from 'firebase-functions';
 import { z } from 'zod';
-import type { 
-  ChatRequest, 
+import type {
+  ChatRequest,
   ChatResponse,
   Wine,
   Rating,
-  Bottle,
-  Location,
-  Cellar,
   Friend,
   FoodPreference,
   Conversation,
-  ChatMessage,
-  WineType
+  ChatMessage
 } from '../types';
 
 const db = getFirestore();
@@ -198,7 +194,7 @@ export const chatWithSommelier = onCall<ChatRequest>(
       throw new HttpsError('invalid-argument', 'Invalid request: ' + validation.error.message);
     }
     
-    const { message, conversationId, userId, context } = validation.data;
+    const { message, conversationId, userId, context: _context } = validation.data;
     
     // Verify authentication
     if (!request.auth) {

@@ -40,11 +40,26 @@ class AuthManager: ObservableObject {
 
     #if targetEnvironment(simulator)
     private func setupSimulatorBypass() {
-        // Simulate authenticated state for development
-        self.isAuthenticated = true
-        self.isLoading = false
-        self.simulatorUserId = "simulator-dev-user"
-        print("🍷 Convivio: Running in simulator mode - auth bypassed")
+        // Use anonymous auth on simulator with emulators
+        print("🍷 AUTH: Starting anonymous auth...")
+        print("🍷 AUTH: Auth emulator should be at 127.0.0.1:9099")
+        Task {
+            do {
+                print("🍷 AUTH: Calling signInAnonymously()...")
+                let result = try await Auth.auth().signInAnonymously()
+                self.user = result.user
+                self.isAuthenticated = true
+                self.simulatorUserId = result.user.uid
+                print("🍷 AUTH: SUCCESS - UID: \(result.user.uid)")
+            } catch {
+                print("🍷 AUTH: FAILED - \(error.localizedDescription)")
+                print("🍷 AUTH: Full error - \(error)")
+                // Fallback to fake ID (won't work with Firestore rules)
+                self.isAuthenticated = true
+                self.simulatorUserId = "simulator-dev-user"
+            }
+            self.isLoading = false
+        }
     }
     #endif
     

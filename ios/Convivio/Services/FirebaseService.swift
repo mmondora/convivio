@@ -17,7 +17,7 @@ class FirebaseService {
 
     private let db = Firestore.firestore()
     private let storage = Storage.storage()
-    private let functions = Functions.functions()
+    private let functions = Functions.functions(region: "europe-west1")
 
     private var userId: String? {
         #if targetEnvironment(simulator)
@@ -489,8 +489,14 @@ class FirebaseService {
     }
 
     func chatWithSommelier(message: String, conversationId: String?, cellarContext: Bool = true) async throws -> ChatResponse {
+        guard let userId else {
+            print("🍷 CHAT: No userId!")
+            throw FirebaseError.notAuthenticated
+        }
+
         var params: [String: Any] = [
             "message": message,
+            "userId": userId,
             "includeCellarContext": cellarContext
         ]
 
@@ -498,48 +504,96 @@ class FirebaseService {
             params["conversationId"] = convId
         }
 
-        let result = try await functions.httpsCallable("chatWithSommelier").call(params)
+        print("🍷 CHAT: Calling chatWithSommelier function...")
+        print("🍷 CHAT: params = \(params)")
 
-        guard let data = result.data as? [String: Any] else {
-            throw FirebaseError.invalidResponse
+        do {
+            let result = try await functions.httpsCallable("chatWithSommelier").call(params)
+            print("🍷 CHAT: Got response")
+
+            guard let data = result.data as? [String: Any] else {
+                print("🍷 CHAT: Invalid response data: \(String(describing: result.data))")
+                throw FirebaseError.invalidResponse
+            }
+
+            print("🍷 CHAT: Response data = \(data)")
+
+            // Map response fields (function returns "response", not "message")
+            let message = data["response"] as? String ?? data["message"] as? String ?? ""
+            let wineIds = data["wineReferences"] as? [String] ?? data["wineIds"] as? [String] ?? []
+
+            return ChatResponse(
+                message: message,
+                conversationId: data["conversationId"] as? String,
+                wineIds: wineIds
+            )
+        } catch {
+            print("🍷 CHAT: Function call FAILED: \(error)")
+            print("🍷 CHAT: Error type: \(type(of: error))")
+            throw error
         }
-
-        return ChatResponse(
-            message: data["message"] as? String ?? "",
-            conversationId: data["conversationId"] as? String,
-            wineIds: data["wineIds"] as? [String] ?? []
-        )
     }
 
     func generateMenuProposal(dinnerId: String) async throws -> MenuProposal {
-        let result = try await functions.httpsCallable("generateMenuProposal").call([
-            "dinnerId": dinnerId
-        ])
-
-        guard let data = result.data as? [String: Any] else {
-            throw FirebaseError.invalidResponse
+        guard let userId else {
+            print("🍷 MENU: No userId!")
+            throw FirebaseError.notAuthenticated
         }
 
-        return try parseMenuProposal(data)
+        print("🍷 MENU: Calling generateMenuProposal for dinner \(dinnerId)...")
+
+        do {
+            let result = try await functions.httpsCallable("proposeDinnerMenu").call([
+                "dinnerId": dinnerId,
+                "userId": userId
+            ])
+
+            print("🍷 MENU: Got response")
+
+            guard let data = result.data as? [String: Any] else {
+                print("🍷 MENU: Invalid response data: \(String(describing: result.data))")
+                throw FirebaseError.invalidResponse
+            }
+
+            print("🍷 MENU: Response data keys = \(data.keys)")
+            return try parseMenuProposal(data)
+        } catch {
+            print("🍷 MENU: Function call FAILED: \(error)")
+            throw error
+        }
     }
 
     // MARK: - Sample Data Seeding
 
     func seedSampleData() async throws {
-        guard let userId else { throw FirebaseError.notAuthenticated }
+        guard let userId else {
+            print("🍷 SEED: No userId!")
+            throw FirebaseError.notAuthenticated
+        }
+        print("🍷 SEED: userId = \(userId)")
 
         // Get or create default cellar
+        print("🍷 SEED: Getting/creating default cellar...")
         let cellar = try await getOrCreateDefaultCellar()
-        guard let cellarId = cellar.id else { throw FirebaseError.invalidResponse }
+        guard let cellarId = cellar.id else {
+            print("🍷 SEED: No cellarId!")
+            throw FirebaseError.invalidResponse
+        }
+        print("🍷 SEED: cellarId = \(cellarId)")
 
         // Get default location
+        print("🍷 SEED: Getting locations...")
         let locations = try await getLocations(cellarId: cellarId)
-        guard let locationId = locations.first?.id else { throw FirebaseError.invalidResponse }
+        guard let locationId = locations.first?.id else {
+            print("🍷 SEED: No locationId! locations count: \(locations.count)")
+            throw FirebaseError.invalidResponse
+        }
+        print("🍷 SEED: locationId = \(locationId)")
 
         // Check if already seeded (check if wines exist)
+        print("🍷 SEED: Getting existing wines...")
         let existingWines = try await getWines()
-        let perlugoExists = existingWines.contains { $0.name == "Perlugo Dosaggio Zero" }
-        let sfursatExists = existingWines.contains { $0.name == "Sfursat 5 Stelle" }
+        print("🍷 SEED: Found \(existingWines.count) existing wines")
 
         // Wine 1: Perlugo - Pievalta
         var perlugoId: String
@@ -560,7 +614,9 @@ class FirebaseService {
                 createdAt: nil,
                 createdBy: userId
             )
+            print("🍷 SEED: Creating Perlugo wine...")
             perlugoId = try await createWine(perlugo)
+            print("🍷 SEED: Perlugo created with ID: \(perlugoId)")
         }
 
         // Wine 2: Sfursat 5 Stelle - Nino Negri
@@ -582,23 +638,34 @@ class FirebaseService {
                 createdAt: nil,
                 createdBy: userId
             )
+            print("🍷 SEED: Creating Sfursat wine...")
             sfursatId = try await createWine(sfursat)
+            print("🍷 SEED: Sfursat created with ID: \(sfursatId)")
         }
 
         // Add 6 bottles of each wine (only if not already added)
+        print("🍷 SEED: Getting existing bottles...")
         let existingBottles = try await getAvailableBottles(cellarId: cellarId)
         let perlugoBottles = existingBottles.filter { $0.wineId == perlugoId }.count
         let sfursatBottles = existingBottles.filter { $0.wineId == sfursatId }.count
+        print("🍷 SEED: Existing bottles - Perlugo: \(perlugoBottles), Sfursat: \(sfursatBottles)")
 
         // Add missing Perlugo bottles (target: 6)
-        for _ in 0..<max(0, 6 - perlugoBottles) {
+        let perlugoToAdd = max(0, 6 - perlugoBottles)
+        print("🍷 SEED: Adding \(perlugoToAdd) Perlugo bottles...")
+        for i in 0..<perlugoToAdd {
             try await addBottle(to: cellarId, wineId: perlugoId, locationId: locationId, price: 20.0)
+            print("🍷 SEED: Added Perlugo bottle \(i+1)/\(perlugoToAdd)")
         }
 
         // Add missing Sfursat bottles (target: 6)
-        for _ in 0..<max(0, 6 - sfursatBottles) {
+        let sfursatToAdd = max(0, 6 - sfursatBottles)
+        print("🍷 SEED: Adding \(sfursatToAdd) Sfursat bottles...")
+        for i in 0..<sfursatToAdd {
             try await addBottle(to: cellarId, wineId: sfursatId, locationId: locationId, price: 55.0)
+            print("🍷 SEED: Added Sfursat bottle \(i+1)/\(sfursatToAdd)")
         }
+        print("🍷 SEED: Complete!")
     }
 
     // MARK: - GDPR Operations

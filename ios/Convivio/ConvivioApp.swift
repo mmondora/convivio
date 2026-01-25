@@ -8,6 +8,9 @@
 import SwiftUI
 import FirebaseCore
 import FirebaseAuth
+import FirebaseFirestore
+import FirebaseStorage
+import FirebaseFunctions
 
 @main
 struct ConvivioApp: App {
@@ -16,6 +19,31 @@ struct ConvivioApp: App {
 
     init() {
         FirebaseApp.configure()
+
+        #if targetEnvironment(simulator)
+        // Use Firebase Emulators on simulator
+        // Start emulators with: cd firebase && firebase emulators:start
+        let localhost = "127.0.0.1"
+
+        print("🔧 Configuring Firebase Emulators...")
+        print("🔧 Auth: \(localhost):9099")
+        print("🔧 Firestore: \(localhost):8080")
+        print("🔧 Storage: \(localhost):9199")
+        print("🔧 Functions: \(localhost):5001")
+
+        Auth.auth().useEmulator(withHost: localhost, port: 9099)
+
+        let settings = Firestore.firestore().settings
+        settings.host = "\(localhost):8080"
+        settings.cacheSettings = MemoryCacheSettings()
+        settings.isSSLEnabled = false
+        Firestore.firestore().settings = settings
+
+        Storage.storage().useEmulator(withHost: localhost, port: 9199)
+        Functions.functions(region: "europe-west1").useEmulator(withHost: localhost, port: 5001)
+
+        print("🔧 Firebase Emulators configured!")
+        #endif
     }
 
     var body: some Scene {

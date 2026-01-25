@@ -14,16 +14,14 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import Anthropic from '@anthropic-ai/sdk';
 import { logger } from 'firebase-functions';
 import { z } from 'zod';
-import type { 
-  ProposeDinnerRequest, 
+import type {
+  ProposeDinnerRequest,
   ProposeDinnerResponse,
   DinnerEvent,
   Friend,
   FoodPreference,
   Wine,
-  WineInventory,
   MenuProposal,
-  MenuCourse,
   WineProposal,
   CourseType,
   Rating,
