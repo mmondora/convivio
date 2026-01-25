@@ -1,4 +1,4 @@
-# 🍷 Sommelier
+# 🍷 Convivio
 
 > Personal wine cellar management app with AI-powered recommendations
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-Sommelier è un'app per la gestione della cantina personale con intelligenza artificiale integrata. Risponde a tre domande fondamentali:
+Convivio è un'app per la gestione della cantina personale con intelligenza artificiale integrata. Risponde a tre domande fondamentali:
 
 1. **Che vino ho?** - Inventario completo con posizione fisica
 2. **Quale servo?** - Suggerimenti AI basati su ospiti e menu
@@ -82,7 +82,7 @@ Sommelier è un'app per la gestione della cantina personale con intelligenza art
 ## Project Structure
 
 ```
-sommelier/
+convivio/
 ├── firebase/
 │   ├── firestore.rules          # Security rules
 │   ├── firestore.indexes.json   # Query indexes
@@ -95,11 +95,11 @@ sommelier/
 │           ├── triggers/        # Firestore triggers
 │           └── types/           # Shared TypeScript types
 ├── ios/
-│   └── Sommelier/
+│   └── Convivio/
 │       ├── Models/              # Data models
 │       ├── Views/               # SwiftUI views
 │       ├── Services/            # Business logic
-│       └── SommelierApp.swift   # Entry point
+│       └── ConvivioApp.swift    # Entry point
 ├── web/                         # Next.js app (Phase 2)
 └── docs/                        # Documentation
 ```
@@ -117,8 +117,8 @@ sommelier/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/sommelier.git
-   cd sommelier
+   git clone https://github.com/mmondora/convivio.git
+   cd convivio
    ```
 
 2. **Configure Firebase**
@@ -146,7 +146,7 @@ sommelier/
    ```
 
 6. **iOS Setup**
-   - Open `ios/Sommelier.xcodeproj` in Xcode
+   - Open `ios/Convivio.xcodeproj` in Xcode
    - Download `GoogleService-Info.plist` from Firebase Console
    - Add to Xcode project
    - Build and run

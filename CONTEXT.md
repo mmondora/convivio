@@ -1,12 +1,12 @@
-# CONTEXT.md — Sommelier Project Handoff
+# CONTEXT.md — Convivio Project Handoff
 
-> Questo file contiene tutto il contesto necessario per continuare lo sviluppo del progetto Sommelier. Generato da una sessione claude.ai il 25 gennaio 2026.
+> Questo file contiene tutto il contesto necessario per continuare lo sviluppo del progetto Convivio. Generato da una sessione claude.ai il 25 gennaio 2026.
 
 ---
 
 ## 🎯 Project Vision
 
-**Sommelier** è un'app personale per la gestione della cantina vini con AI integrata. Risponde a tre domande:
+**Convivio** è un'app personale per la gestione della cantina vini con AI integrata. Risponde a tre domande:
 
 1. **Che vino ho?** → Inventario con posizione fisica (scaffale/riga/slot)
 2. **Quale servo?** → Suggerimenti AI basati su ospiti, menu, preferenze
@@ -55,7 +55,7 @@
 ## 📁 Project Structure
 
 ```
-sommelier/
+convivio/
 ├── firebase/
 │   ├── firebase.json           # Firebase config
 │   ├── firestore.rules         # Security rules (RBAC owner/family)
@@ -77,12 +77,13 @@ sommelier/
 │           └── triggers/
 │               └── users.ts    # onCreate/onDelete triggers
 ├── ios/
-│   └── Sommelier/
-│       ├── SommelierApp.swift  # Entry point, tab navigation
+│   └── Convivio/
+│       ├── ConvivioApp.swift   # Entry point, tab navigation
 │       ├── Models/
 │       │   └── Models.swift    # Data models (mirror Firestore)
 │       ├── Services/
-│       │   └── AuthManager.swift # Firebase Auth wrapper
+│       │   ├── AuthManager.swift    # Firebase Auth wrapper
+│       │   └── FirebaseService.swift # Firestore & Functions API
 │       └── Views/
 │           ├── AuthenticationView.swift
 │           ├── CellarView.swift      # Main inventory
@@ -171,8 +172,9 @@ sommelier/
 
 | View | Status | Notes |
 |------|--------|-------|
-| SommelierApp | ✅ Done | Entry, tabs, auth state |
+| ConvivioApp | ✅ Done | Entry, tabs, auth state |
 | AuthManager | ✅ Done | Firebase Auth, Apple Sign In |
+| FirebaseService | ✅ Done | Centralized Firestore & Functions API |
 | Models | ✅ Done | All entities, Codable |
 | AuthenticationView | ✅ Done | Apple, Email login/signup |
 | CellarView | ✅ Done | List, filter, search, swipe-to-consume |
@@ -185,10 +187,8 @@ sommelier/
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Xcode project file (.xcodeproj) | P0 | Need to create manually in Xcode |
 | GoogleService-Info.plist | P0 | Download from Firebase Console |
 | Firebase project setup | P0 | Create project, enable services |
-| Wire iOS → Cloud Functions | P1 | Replace mock data with real API calls |
 | Location picker in ScanView | P1 | After wine confirmation, select shelf/slot |
 | Rating flow after consume | P1 | Prompt to rate after marking consumed |
 | Web app (Next.js) | P2 | Management interface, not MVP-critical |
@@ -289,15 +289,11 @@ sommelier/
 
 ## ⚠️ Known Issues & Gotchas
 
-1. **iOS Views have mock data**: ViewModels load real data but some flows (scan, chat) have hardcoded mock responses. Need to wire to real APIs.
+1. **Firebase Functions secrets**: ANTHROPIC_API_KEY must be set via `firebase functions:secrets:set` for production.
 
-2. **No Xcode project**: Only Swift files exist. Must create .xcodeproj manually, add Firebase SDK via SPM.
+2. **Firestore indexes**: Some compound queries may need additional indexes not yet defined. Deploy will fail with clear error message → add index.
 
-3. **Firebase Functions secrets**: ANTHROPIC_API_KEY must be set via `firebase functions:secrets:set` for production.
-
-4. **Firestore indexes**: Some compound queries may need additional indexes not yet defined. Deploy will fail with clear error message → add index.
-
-5. **Vision API quota**: Free tier = 1000 units/month. For heavy testing, may need billing.
+3. **Vision API quota**: Free tier = 1000 units/month. For heavy testing, may need billing.
 
 ---
 
@@ -310,18 +306,15 @@ sommelier/
 4. `cd firebase/functions && npm install`
 5. `firebase functions:secrets:set ANTHROPIC_API_KEY`
 6. `cd firebase && firebase deploy`
-7. Create Xcode project, add files, add Firebase SDK (SPM)
-8. Download GoogleService-Info.plist, add to Xcode
-9. Build and run on simulator
+7. Download GoogleService-Info.plist, add to Xcode project
+8. Build and run on simulator
 
-### Then (wire everything)
-1. Replace mock in ScanViewModel with real upload + API call
-2. Replace mock in ChatViewModel with real API call
-3. Add location picker after scan confirmation
-4. Add rating prompt after consume
-5. Test full flow: scan → save → find → consume → rate
+### Then (polish)
+1. Add location picker after scan confirmation
+2. Add rating prompt after consume
+3. Test full flow: scan → save → find → consume → rate
 
-### Later (polish)
+### Later (extend)
 1. Web app for desktop management
 2. Statistics and analytics
 3. Export/import functionality
@@ -336,7 +329,7 @@ Questa sessione ha prodotto:
 - Schema dati Firestore con relationships
 - Security rules production-ready
 - 4 Cloud Functions complete
-- App iOS funzionale (UI complete, wiring parziale)
+- App iOS funzionale con Firebase integration
 - Backlog stimato ~55 giorni di lavoro part-time
 
 Il progetto è strutturato per essere esteso. Le convenzioni sono coerenti. Il data model supporta features future (multi-cellar, family sharing, detailed movements).
@@ -359,7 +352,7 @@ npm run build
 npm run serve  # local with emulators
 
 # iOS
-open ios/Sommelier.xcodeproj  # after creating it
+open ios/Convivio.xcodeproj
 ```
 
 ---
@@ -378,4 +371,4 @@ Se devi fare scelte architetturali significative, documentale come ADR in questo
 
 ---
 
-*Last updated: 2026-01-25 | Session: claude.ai web*
+*Last updated: 2026-01-25 | Session: claude.ai web + Claude Code*
