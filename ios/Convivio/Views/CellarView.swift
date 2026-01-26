@@ -139,13 +139,14 @@ struct CellarView: View {
             items = items.filter { $0.wine.type == filter }
         }
 
-        // Filter by search
+        // Filter by search (name, producer, region, vintage)
         if !searchText.isEmpty {
             let query = searchText.lowercased()
             items = items.filter { item in
                 item.wine.name.lowercased().contains(query) ||
                 item.wine.producer?.lowercased().contains(query) == true ||
-                item.wine.region?.lowercased().contains(query) == true
+                item.wine.region?.lowercased().contains(query) == true ||
+                (item.wine.vintage != nil && String(item.wine.vintage!).contains(query))
             }
         }
 
@@ -189,11 +190,16 @@ struct WineRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 
-                // Location
-                if let location = item.primaryLocation {
+                // Location(s)
+                if !item.locations.isEmpty {
                     HStack(spacing: 2) {
                         Image(systemName: "mappin")
-                        Text(location.shelf)
+                        if item.locations.count == 1, let location = item.primaryLocation {
+                            Text(location.displayPath)
+                        } else {
+                            // Multiple locations: show count and primary
+                            Text("\(item.locations.count) posizioni")
+                        }
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -372,21 +378,25 @@ class CellarViewModel: ObservableObject {
                 
                 for bottleDoc in bottlesSnapshot.documents {
                     let bottle = try bottleDoc.data(as: Bottle.self)
-                    
+
+                    // Load location for this bottle
+                    let locationDoc = try await cellarDoc.reference
+                        .collection("locations")
+                        .document(bottle.locationId)
+                        .getDocument()
+                    let location = try? locationDoc.data(as: Location.self)
+
                     if var existing = wineData[bottle.wineId] {
                         existing.bottles += 1
+                        // Add location if not already present
+                        if let loc = location, !existing.locations.contains(where: { $0.id == loc.id }) {
+                            existing.locations.append(loc)
+                        }
                         wineData[bottle.wineId] = existing
                     } else {
                         // Load wine
                         let wineDoc = try await db.collection("wines").document(bottle.wineId).getDocument()
                         if let wine = try? wineDoc.data(as: Wine.self) {
-                            // Load location
-                            let locationDoc = try await cellarDoc.reference
-                                .collection("locations")
-                                .document(bottle.locationId)
-                                .getDocument()
-                            let location = try? locationDoc.data(as: Location.self)
-                            
                             wineData[bottle.wineId] = (
                                 wine: wine,
                                 bottles: 1,
@@ -532,8 +542,23 @@ struct WineDetailView: View {
                             InfoRow(label: "Paese", value: country)
                         }
 
-                        if let location = item.primaryLocation {
-                            InfoRow(label: "Posizione", value: location.displayPath)
+                        // Show all locations where this wine is stored
+                        if !item.locations.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("Posizione")
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                ForEach(item.locations) { location in
+                                    HStack {
+                                        Image(systemName: "mappin.circle.fill")
+                                            .foregroundStyle(Color.accentColor)
+                                        Text(location.displayPath)
+                                            .fontWeight(.medium)
+                                    }
+                                }
+                            }
                         }
                     }
                     .padding()

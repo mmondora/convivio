@@ -270,7 +270,11 @@ Esempio di output:
 
 async function interpretWithLlm(ocrText: string): Promise<ExtractionResult['extractedFields']> {
   const prompt = EXTRACTION_PROMPT.replace('{ocr_text}', ocrText);
-  
+
+  // Log AI input
+  logger.info('=== AI REQUEST (extractWineFromPhoto) ===');
+  logger.info('PROMPT:', { prompt });
+
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1024,
@@ -278,12 +282,16 @@ async function interpretWithLlm(ocrText: string): Promise<ExtractionResult['extr
       { role: 'user', content: prompt }
     ],
   });
-  
+
   // Extract text from response
   const responseText = response.content
     .filter(block => block.type === 'text')
     .map(block => (block as { type: 'text'; text: string }).text)
     .join('');
+
+  // Log AI output
+  logger.info('=== AI RESPONSE (extractWineFromPhoto) ===');
+  logger.info('RESPONSE:', { responseText });
   
   // Parse JSON response
   try {

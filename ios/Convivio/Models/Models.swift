@@ -348,10 +348,17 @@ enum DinnerStatus: String, Codable {
 struct MenuProposal: Codable {
     var courses: [MenuCourse]
     var reasoning: String
+    var wineStrategy: String?
     var seasonContext: String
     var guestConsiderations: [String]
     var totalPrepTime: Int
     var generatedAt: Timestamp?
+}
+
+struct WinePairing: Codable {
+    var name: String
+    var reasoning: String
+    var details: String?
 }
 
 struct MenuCourse: Codable, Identifiable {
@@ -362,6 +369,8 @@ struct MenuCourse: Codable, Identifiable {
     var dietaryFlags: [String]
     var prepTime: Int
     var notes: String?
+    var cellarWine: WinePairing?
+    var marketWine: WinePairing?
 }
 
 enum CourseType: String, Codable, CaseIterable {

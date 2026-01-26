@@ -260,9 +260,13 @@ struct NewDinnerView: View {
 // MARK: - Dinner Detail View
 
 struct DinnerDetailView: View {
-    let dinner: DinnerEvent
+    @State private var dinner: DinnerEvent
     @Environment(\.dismiss) var dismiss
     @State private var isGeneratingProposal = false
+
+    init(dinner: DinnerEvent) {
+        _dinner = State(initialValue: dinner)
+    }
     
     var body: some View {
         NavigationStack {
@@ -368,7 +372,7 @@ struct DinnerDetailView: View {
                 print("🍷 DINNER: Calling FirebaseService.generateMenuProposal...")
                 let proposal = try await FirebaseService.shared.generateMenuProposal(dinnerId: dinnerId)
                 print("🍷 DINNER: Got proposal: \(proposal)")
-                // Note: The dinner object is immutable here, user needs to refresh to see the result
+                dinner.menuProposal = proposal
             } catch {
                 print("🍷 DINNER ERROR: \(error)")
             }
@@ -377,23 +381,39 @@ struct DinnerDetailView: View {
     }
     
     // MARK: - Menu Section
-    
+
     private func menuSection(_ menu: MenuProposal) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Menu proposto")
                 .font(.headline)
                 .padding(.horizontal)
-            
+
+            // Wine Strategy
+            if let wineStrategy = menu.wineStrategy {
+                HStack(spacing: 8) {
+                    Image(systemName: "wineglass")
+                        .foregroundStyle(.purple)
+                    Text(wineStrategy)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.purple.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(.horizontal)
+            }
+
             ForEach(menu.courses) { course in
                 CourseCard(course: course)
             }
-            
+
             // Reasoning
             VStack(alignment: .leading, spacing: 8) {
                 Text("Perché questa proposta")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                
+
                 Text(menu.reasoning)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -438,7 +458,7 @@ struct InfoCard: View {
 
 struct CourseCard: View {
     let course: MenuCourse
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -446,9 +466,9 @@ struct CourseCard: View {
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
-                
+
                 Spacer()
-                
+
                 ForEach(course.dietaryFlags, id: \.self) { flag in
                     Text(flag)
                         .font(.caption2)
@@ -459,20 +479,69 @@ struct CourseCard: View {
                         .clipShape(Capsule())
                 }
             }
-            
+
             Text(course.name)
                 .font(.headline)
-            
+
             Text(course.description)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            
+
             HStack {
                 Image(systemName: "clock")
                 Text("\(course.prepTime) min")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
+
+            // Wine Pairings
+            if course.cellarWine != nil || course.marketWine != nil {
+                Divider()
+                    .padding(.vertical, 4)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    if let cellarWine = course.cellarWine {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "wineglass.fill")
+                                .foregroundStyle(.purple)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(cellarWine.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text(cellarWine.reasoning)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text("Dalla tua cantina")
+                                    .font(.caption2)
+                                    .foregroundStyle(.purple)
+                            }
+                        }
+                    }
+
+                    if let marketWine = course.marketWine {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "cart.fill")
+                                .foregroundStyle(.orange)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(marketWine.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                if let details = marketWine.details {
+                                    Text(details)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Text(marketWine.reasoning)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text("Da acquistare")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+                }
+            }
         }
         .padding()
         .background(Color(.secondarySystemBackground))
@@ -504,7 +573,18 @@ class DinnerListViewModel: ObservableObject {
 
     func createDinner(_ dinner: DinnerEvent) async {
         do {
-            _ = try await firebase.createDinner(dinner)
+            let dinnerId = try await firebase.createDinner(dinner)
+
+            // Genera automaticamente la proposta menu
+            print("🍷 AUTO-GENERATING menu proposal for dinner \(dinnerId)...")
+            do {
+                let proposal = try await firebase.generateMenuProposal(dinnerId: dinnerId)
+                print("🍷 Menu proposal generated: \(proposal.courses.count) courses")
+            } catch {
+                print("🍷 Menu generation failed (will retry later): \(error)")
+                // Non blocchiamo la creazione se la generazione fallisce
+            }
+
             await loadDinners()
         } catch {
             self.error = error.localizedDescription

@@ -345,6 +345,7 @@ CONTESTO CENA:
 - Stile: {dinner_style}
 - Tempo di preparazione disponibile: {cooking_time}
 - Budget vini: {budget_level}
+{user_notes}
 
 OSPITI ({guest_count} persone):
 {dietary_summary}
@@ -354,17 +355,21 @@ VINI DISPONIBILI IN CANTINA:
 
 ISTRUZIONI:
 1. Proponi un menu completo con: antipasto, primo, secondo, dolce
-2. Considera TUTTE le restrizioni alimentari - nessun piatto deve contenere ingredienti vietati
-3. Adatta la complessità al tempo di preparazione disponibile
-4. Per ogni piatto indica:
+2. IMPORTANTE: Se ci sono "RICHIESTE SPECIFICHE DELL'UTENTE", queste hanno la MASSIMA priorità - segui esattamente le indicazioni dell'utente (es. tipo di cucina, ingredienti specifici, tema della serata)
+3. Considera TUTTE le restrizioni alimentari - nessun piatto deve contenere ingredienti vietati
+4. Adatta la complessità al tempo di preparazione disponibile
+5. Per ogni piatto indica:
    - Nome e breve descrizione
    - Flag dietetici (GF=senza glutine, LF=senza lattosio, V=vegetariano, VG=vegano)
    - Tempo di preparazione stimato
-5. Per i vini:
-   - Proponi SOLO vini dalla lista "DISPONIBILI IN CANTINA" come abbinamenti principali
-   - Puoi suggerire 1-2 vini da acquistare come alternativa/complemento
-   - Spiega brevemente perché ogni vino è adatto
-6. Lo stile del menu deve rispecchiare il tipo di cena (informale/conviviale/elegante)
+6. ABBINAMENTI VINO (IMPORTANTE):
+   - Ogni piatto DEVE avere un vino abbinato
+   - MINIMIZZA il numero di vini diversi e i cambi durante la cena (es. stesso vino per antipasto+primo, stesso vino per secondo)
+   - Per ogni piatto proponi:
+     a) "cellarWine": un vino dalla lista "DISPONIBILI IN CANTINA" (obbligatorio se disponibile)
+     b) "marketWine": un vino da acquistare come alternativa
+   - Se lo stesso vino va bene per più portate, usa lo stesso nome
+7. Lo stile del menu deve rispecchiare il tipo di cena (informale/conviviale/elegante)
 
 FORMATO OUTPUT (JSON):
 {
@@ -376,30 +381,22 @@ FORMATO OUTPUT (JSON):
         "description": "Descrizione",
         "dietaryFlags": ["GF", "LF", "V"],
         "prepTime": 30,
-        "notes": "Note opzionali"
+        "cellarWine": {
+          "name": "Nome esatto del vino dalla cantina",
+          "reasoning": "Perché questo abbinamento"
+        },
+        "marketWine": {
+          "name": "Nome vino da acquistare",
+          "details": "Tipo, regione, produttore consigliato",
+          "reasoning": "Perché questo abbinamento"
+        }
       }
     ],
-    "reasoning": "Spiegazione generale delle scelte",
+    "reasoning": "Spiegazione generale delle scelte di menu e vini",
+    "wineStrategy": "Strategia abbinamenti (es. 'Due vini: un bianco per antipasto e primo, un rosso per il secondo')",
     "seasonContext": "Come la stagione ha influenzato le scelte",
     "guestConsiderations": ["Considerazione 1", "Considerazione 2"],
     "totalPrepTime": 120
-  },
-  "wines": {
-    "available": [
-      {
-        "wineName": "Nome del vino dalla lista",
-        "course": "starter|first|main|dessert|pairing",
-        "reasoning": "Perché questo vino"
-      }
-    ],
-    "suggested": [
-      {
-        "wineName": "Nome vino da acquistare",
-        "wineDetails": "Tipo, regione, caratteristiche",
-        "course": "dessert",
-        "reasoning": "Perché consigliato"
-      }
-    ]
   }
 }
 
@@ -414,6 +411,11 @@ interface GeneratedProposal {
 }
 
 async function generateProposal(context: ProposalContext): Promise<GeneratedProposal> {
+  // Build user notes section
+  const userNotesSection = context.dinner.notes
+    ? `\nRICHIESTE SPECIFICHE DELL'UTENTE:\n${context.dinner.notes}`
+    : '';
+
   const prompt = PROPOSAL_PROMPT
     .replace('{dinner_name}', context.dinner.name)
     .replace('{dinner_date}', context.dinner.date.toDate().toLocaleDateString('it-IT'))
@@ -421,10 +423,18 @@ async function generateProposal(context: ProposalContext): Promise<GeneratedProp
     .replace('{dinner_style}', context.dinner.style)
     .replace('{cooking_time}', context.dinner.cookingTime)
     .replace('{budget_level}', context.dinner.budgetLevel)
+    .replace('{user_notes}', userNotesSection)
     .replace('{guest_count}', context.guests.length.toString())
     .replace('{dietary_summary}', context.dietarySummary.join('\n'))
     .replace('{inventory_summary}', context.inventorySummary || 'Nessun vino in cantina');
-  
+
+  // Log AI input
+  logger.info('=== AI REQUEST (proposeDinnerMenu) ===');
+  logger.info('USER NOTES: ' + (context.dinner.notes || 'NESSUNA'));
+  logger.info('FULL PROMPT START ===');
+  console.log(prompt);
+  logger.info('FULL PROMPT END ===');
+
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 4096,
@@ -432,11 +442,15 @@ async function generateProposal(context: ProposalContext): Promise<GeneratedProp
       { role: 'user', content: prompt }
     ],
   });
-  
+
   const responseText = response.content
     .filter(block => block.type === 'text')
     .map(block => (block as { type: 'text'; text: string }).text)
     .join('');
+
+  // Log AI output
+  logger.info('=== AI RESPONSE (proposeDinnerMenu) ===');
+  console.log('RESPONSE:', responseText);
   
   // Parse JSON
   const jsonText = responseText
@@ -445,8 +459,8 @@ async function generateProposal(context: ProposalContext): Promise<GeneratedProp
     .trim();
   
   const parsed = JSON.parse(jsonText);
-  
-  // Transform to our types
+
+  // Transform to our types - wines are now embedded in each course
   const menu: MenuProposal = {
     courses: parsed.menu.courses.map((c: any) => ({
       course: c.course as CourseType,
@@ -455,47 +469,63 @@ async function generateProposal(context: ProposalContext): Promise<GeneratedProp
       dietaryFlags: c.dietaryFlags || [],
       prepTime: c.prepTime,
       notes: c.notes,
+      cellarWine: c.cellarWine ? {
+        name: c.cellarWine.name,
+        reasoning: c.cellarWine.reasoning,
+      } : undefined,
+      marketWine: c.marketWine ? {
+        name: c.marketWine.name,
+        reasoning: c.marketWine.reasoning,
+        details: c.marketWine.details,
+      } : undefined,
     })),
     reasoning: parsed.menu.reasoning,
+    wineStrategy: parsed.menu.wineStrategy,
     seasonContext: parsed.menu.seasonContext,
     guestConsiderations: parsed.menu.guestConsiderations || [],
     totalPrepTime: parsed.menu.totalPrepTime,
     generatedAt: Timestamp.now(),
   };
-  
-  // Match available wines to inventory
+
+  // Extract wine proposals for backward compatibility and separate storage
   const availableWines: WineProposal[] = [];
-  for (const w of parsed.wines.available || []) {
-    // Find wine in inventory by name (fuzzy)
-    const matchedWine = context.inventory.find(inv => 
-      inv.name.toLowerCase().includes(w.wineName.toLowerCase()) ||
-      w.wineName.toLowerCase().includes(inv.name.toLowerCase())
-    );
-    
-    availableWines.push({
-      id: '', // Will be set when saving
-      dinnerId: context.dinner.id,
-      type: 'available',
-      wineId: matchedWine?.id,
-      course: w.course as CourseType,
-      reasoning: w.reasoning,
-      isSelected: false,
-      createdAt: Timestamp.now(),
-    });
+  const suggestedWines: WineProposal[] = [];
+
+  for (const c of parsed.menu.courses) {
+    if (c.cellarWine) {
+      // Find wine in inventory by name (fuzzy)
+      const matchedWine = context.inventory.find(inv =>
+        inv.name.toLowerCase().includes(c.cellarWine.name.toLowerCase()) ||
+        c.cellarWine.name.toLowerCase().includes(inv.name.toLowerCase())
+      );
+
+      availableWines.push({
+        id: '',
+        dinnerId: context.dinner.id,
+        type: 'available',
+        wineId: matchedWine?.id,
+        course: c.course as CourseType,
+        reasoning: c.cellarWine.reasoning,
+        isSelected: false,
+        createdAt: Timestamp.now(),
+      });
+    }
+
+    if (c.marketWine) {
+      suggestedWines.push({
+        id: '',
+        dinnerId: context.dinner.id,
+        type: 'suggested_purchase',
+        suggestedWineName: c.marketWine.name,
+        suggestedWineDetails: c.marketWine.details,
+        course: c.course as CourseType,
+        reasoning: c.marketWine.reasoning,
+        isSelected: false,
+        createdAt: Timestamp.now(),
+      });
+    }
   }
-  
-  const suggestedWines: WineProposal[] = (parsed.wines.suggested || []).map((w: any) => ({
-    id: '',
-    dinnerId: context.dinner.id,
-    type: 'suggested_purchase' as const,
-    suggestedWineName: w.wineName,
-    suggestedWineDetails: w.wineDetails,
-    course: w.course as CourseType,
-    reasoning: w.reasoning,
-    isSelected: false,
-    createdAt: Timestamp.now(),
-  }));
-  
+
   return {
     menu,
     wines: {

@@ -223,10 +223,16 @@ export const chatWithSommelier = onCall<ChatRequest>(
       
       // Add user's new message
       claudeMessages.push({ role: 'user', content: message });
-      
+
       // Create tool executor bound to this user
       const toolExecutor = createToolExecutor(userId);
-      
+
+      // Log AI input
+      logger.info('=== AI REQUEST (chatWithSommelier) ===');
+      logger.info('SYSTEM PROMPT:', { systemPrompt: SYSTEM_PROMPT });
+      logger.info('MESSAGES:', { messages: JSON.stringify(claudeMessages, null, 2) });
+      logger.info('TOOLS:', { tools: TOOLS.map(t => t.name) });
+
       // Call Claude with tool use
       let response = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
@@ -235,6 +241,11 @@ export const chatWithSommelier = onCall<ChatRequest>(
         tools: TOOLS,
         messages: claudeMessages,
       });
+
+      // Log initial AI response
+      logger.info('=== AI INITIAL RESPONSE (chatWithSommelier) ===');
+      logger.info('STOP REASON:', { stopReason: response.stop_reason });
+      logger.info('CONTENT:', { content: JSON.stringify(response.content, null, 2) });
       
       // Handle tool use loop
       const toolCalls: any[] = [];
@@ -297,6 +308,12 @@ export const chatWithSommelier = onCall<ChatRequest>(
         .filter((block): block is Anthropic.TextBlock => block.type === 'text')
         .map(block => block.text)
         .join('');
+
+      // Log final AI response
+      logger.info('=== AI FINAL RESPONSE (chatWithSommelier) ===');
+      logger.info('RESPONSE TEXT:', { responseText });
+      logger.info('TOOL CALLS:', { toolCalls: JSON.stringify(toolCalls, null, 2) });
+      logger.info('TOOL RESULTS:', { toolResults: JSON.stringify(toolResults, null, 2) });
       
       // Save messages to conversation
       await saveMessages(userId, conversation.id, message, responseText, toolCalls, toolResults);

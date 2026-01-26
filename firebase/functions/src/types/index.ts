@@ -246,6 +246,12 @@ export interface WineProposal {
 // AI-GENERATED CONTENT
 // ============================================================
 
+export interface WinePairing {
+  name: string;
+  reasoning: string;
+  details?: string;  // For market wines: type, region, producer
+}
+
 export interface MenuCourse {
   course: CourseType;
   name: string;
@@ -253,11 +259,14 @@ export interface MenuCourse {
   dietaryFlags: string[];   // "GF", "Vegan", "LF", etc.
   prepTime: number;         // minutes
   notes?: string;
+  cellarWine?: WinePairing;   // Wine from user's cellar
+  marketWine?: WinePairing;   // Wine to purchase
 }
 
 export interface MenuProposal {
   courses: MenuCourse[];
   reasoning: string;
+  wineStrategy?: string;      // Strategy for wine pairings
   seasonContext: string;
   guestConsiderations: string[];
   totalPrepTime: number;
