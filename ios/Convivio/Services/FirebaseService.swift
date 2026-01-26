@@ -723,13 +723,23 @@ class FirebaseService {
     }
 
     private func parseMenuProposal(_ data: [String: Any]) throws -> MenuProposal {
-        let coursesData = data["courses"] as? [[String: Any]] ?? []
+        print("🍷 PARSE MENU: Full data = \(data)")
+
+        // The response has "menu" containing the actual menu data
+        let menuData = data["menu"] as? [String: Any] ?? data
+        print("🍷 PARSE MENU: menuData keys = \(menuData.keys)")
+
+        let coursesData = menuData["courses"] as? [[String: Any]] ?? []
+        print("🍷 PARSE MENU: Found \(coursesData.count) courses")
 
         let courses: [MenuCourse] = coursesData.compactMap { courseData in
+            print("🍷 PARSE MENU: Parsing course: \(courseData)")
+
             guard let courseStr = courseData["course"] as? String,
                   let course = CourseType(rawValue: courseStr),
                   let name = courseData["name"] as? String,
                   let description = courseData["description"] as? String else {
+                print("🍷 PARSE MENU: Failed to parse course - courseStr: \(courseData["course"] ?? "nil")")
                 return nil
             }
 
@@ -743,14 +753,17 @@ class FirebaseService {
             )
         }
 
-        return MenuProposal(
+        let proposal = MenuProposal(
             courses: courses,
-            reasoning: data["reasoning"] as? String ?? "",
-            seasonContext: data["seasonContext"] as? String ?? "",
-            guestConsiderations: data["guestConsiderations"] as? [String] ?? [],
-            totalPrepTime: data["totalPrepTime"] as? Int ?? 0,
+            reasoning: menuData["reasoning"] as? String ?? "",
+            seasonContext: menuData["seasonContext"] as? String ?? "",
+            guestConsiderations: menuData["guestConsiderations"] as? [String] ?? [],
+            totalPrepTime: menuData["totalPrepTime"] as? Int ?? 0,
             generatedAt: nil
         )
+
+        print("🍷 PARSE MENU: Created proposal with \(courses.count) courses")
+        return proposal
     }
 }
 
