@@ -8,10 +8,25 @@
 import SwiftUI
 import FirebaseFirestore
 
+enum WineSortOption: String, CaseIterable {
+    case name = "Nome"
+    case rating = "Valutazione"
+    case quantity = "Quantità"
+
+    var icon: String {
+        switch self {
+        case .name: return "textformat"
+        case .rating: return "star.fill"
+        case .quantity: return "number"
+        }
+    }
+}
+
 struct CellarView: View {
     @StateObject private var viewModel = CellarViewModel()
     @State private var searchText = ""
     @State private var selectedFilter: WineType?
+    @State private var selectedSort: WineSortOption = .name
     @State private var showingFilters = false
     @State private var selectedWine: WineInventoryItem?
     
@@ -33,6 +48,29 @@ struct CellarView: View {
             .navigationTitle("Cantina")
             .searchable(text: $searchText, prompt: "Cerca vino, produttore...")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        ForEach(WineSortOption.allCases, id: \.self) { option in
+                            Button {
+                                selectedSort = option
+                            } label: {
+                                HStack {
+                                    Image(systemName: option.icon)
+                                    Text(option.rawValue)
+                                    if selectedSort == option {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.up.arrow.down")
+                            Text(selectedSort.rawValue)
+                                .font(.caption)
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingFilters.toggle()
@@ -95,12 +133,12 @@ struct CellarView: View {
     
     private var filteredInventory: [WineInventoryItem] {
         var items = viewModel.inventory
-        
+
         // Filter by type
         if let filter = selectedFilter {
             items = items.filter { $0.wine.type == filter }
         }
-        
+
         // Filter by search
         if !searchText.isEmpty {
             let query = searchText.lowercased()
@@ -110,7 +148,17 @@ struct CellarView: View {
                 item.wine.region?.lowercased().contains(query) == true
             }
         }
-        
+
+        // Sort
+        switch selectedSort {
+        case .name:
+            items.sort { $0.wine.name.localizedCompare($1.wine.name) == .orderedAscending }
+        case .rating:
+            items.sort { ($0.rating?.rating ?? 0) > ($1.rating?.rating ?? 0) }
+        case .quantity:
+            items.sort { $0.availableBottles > $1.availableBottles }
+        }
+
         return items
     }
     
@@ -141,31 +189,34 @@ struct WineRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 
-                HStack(spacing: 12) {
-                    // Rating
-                    if let rating = item.rating {
-                        HStack(spacing: 2) {
-                            Image(systemName: "star.fill")
-                                .foregroundStyle(.yellow)
-                            Text(String(format: "%.1f", Double(rating.rating)))
-                        }
-                        .font(.caption)
+                // Location
+                if let location = item.primaryLocation {
+                    HStack(spacing: 2) {
+                        Image(systemName: "mappin")
+                        Text(location.shelf)
                     }
-                    
-                    // Location
-                    if let location = item.primaryLocation {
-                        HStack(spacing: 2) {
-                            Image(systemName: "mappin")
-                            Text(location.shelf)
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
             
             Spacer()
-            
+
+            // Rating badge (more prominent)
+            if let rating = item.rating {
+                HStack(spacing: 2) {
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(.yellow)
+                    Text(String(format: "%.1f", Double(rating.rating)))
+                        .fontWeight(.medium)
+                }
+                .font(.subheadline)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(.tertiarySystemBackground))
+                .clipShape(Capsule())
+            }
+
             // Bottle count
             VStack {
                 Text("\(item.availableBottles)")

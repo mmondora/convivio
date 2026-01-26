@@ -325,18 +325,17 @@ struct DinnerDetailView: View {
             Image(systemName: "sparkles")
                 .font(.system(size: 40))
                 .foregroundStyle(.purple)
-            
+
             Text("Genera proposta AI")
                 .font(.headline)
-            
+
             Text("L'AI creerà un menu personalizzato con abbinamenti vino basati sui tuoi ospiti e sulla tua cantina")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            
+
             Button {
-                isGeneratingProposal = true
-                // TODO: Call /api/propose
+                generateProposal()
             } label: {
                 if isGeneratingProposal {
                     ProgressView()
@@ -353,6 +352,28 @@ struct DinnerDetailView: View {
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
+    }
+
+    private func generateProposal() {
+        guard let dinnerId = dinner.id else {
+            print("🍷 DINNER: No dinner ID!")
+            return
+        }
+
+        print("🍷 DINNER: Button pressed, generating proposal for \(dinnerId)")
+        isGeneratingProposal = true
+
+        Task {
+            do {
+                print("🍷 DINNER: Calling FirebaseService.generateMenuProposal...")
+                let proposal = try await FirebaseService.shared.generateMenuProposal(dinnerId: dinnerId)
+                print("🍷 DINNER: Got proposal: \(proposal)")
+                // Note: The dinner object is immutable here, user needs to refresh to see the result
+            } catch {
+                print("🍷 DINNER ERROR: \(error)")
+            }
+            isGeneratingProposal = false
+        }
     }
     
     // MARK: - Menu Section
@@ -523,14 +544,19 @@ class DinnerDetailViewModel: ObservableObject {
     }
 
     func generateProposal(for dinnerId: String) async -> MenuProposal? {
+        print("🍷 DINNER: generateProposal called for dinner \(dinnerId)")
         isGenerating = true
         defer { isGenerating = false }
 
         do {
+            print("🍷 DINNER: Calling generateMenuProposal...")
             let proposal = try await firebase.generateMenuProposal(dinnerId: dinnerId)
+            print("🍷 DINNER: Got proposal, updating dinner...")
             try await firebase.updateDinner(dinnerId, menuProposal: proposal)
+            print("🍷 DINNER: Complete!")
             return proposal
         } catch {
+            print("🍷 DINNER ERROR: \(error)")
             self.error = error.localizedDescription
             return nil
         }
