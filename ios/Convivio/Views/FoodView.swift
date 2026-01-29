@@ -506,13 +506,9 @@ struct DinnerDetailView: View {
             DisclosureGroup(
                 isExpanded: bindingFor("menu"),
                 content: {
-                    VStack(spacing: 12) {
+                    List {
                         ForEach(menu.menu.allCourses, id: \.name) { course in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(course.name)
-                                    .font(.subheadline.bold())
-                                    .foregroundColor(.purple)
-
+                            Section {
                                 ForEach(Array(course.dishes.enumerated()), id: \.element.id) { index, dish in
                                     EditableDishRow(
                                         dish: dish,
@@ -527,10 +523,16 @@ struct DinnerDetailView: View {
                                         }
                                     )
                                 }
+                            } header: {
+                                Text(course.name)
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.purple)
                             }
                         }
                     }
-                    .padding(.top, 8)
+                    .listStyle(.plain)
+                    .frame(minHeight: CGFloat(menu.menu.allCourses.reduce(0) { $0 + $1.dishes.count }) * 100 + CGFloat(menu.menu.allCourses.count) * 30)
+                    .scrollDisabled(true)
                 },
                 label: {
                     Label("Menu", systemImage: "menucard")
@@ -991,9 +993,7 @@ struct DishRow: View {
             .font(.caption2)
             .foregroundColor(.secondary)
         }
-        .padding()
-        .background(Color(.tertiarySystemBackground))
-        .cornerRadius(8)
+        .padding(.vertical, 4)
         .opacity(isRegenerating ? 0.6 : 1.0)
     }
 }
