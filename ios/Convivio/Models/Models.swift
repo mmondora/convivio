@@ -146,6 +146,9 @@ final class Bottle {
     var locationRack: Int?
     var locationShelf: Int?
     var locationPosition: Int?
+    // New storage system
+    var storageContainer: StorageContainer?
+    var positionInContainer: String?  // Free text: "scaffale 3", "ripiano alto", "slot 12"
     var purchaseDate: Date?
     var purchasePrice: Double?
     var purchaseLocation: String?

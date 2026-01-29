@@ -6,29 +6,30 @@ struct CellarView: View {
     @Query(filter: #Predicate<Bottle> { $0.statusRaw == "available" },
            sort: \Bottle.createdAt, order: .reverse)
     private var bottles: [Bottle]
+    @Query(sort: \StorageArea.sortOrder) private var storageAreas: [StorageArea]
 
     @State private var searchText = ""
     @State private var selectedType: WineType?
-    @State private var sortBy: SortOption = .name
+    @State private var selectedArea: StorageArea?
+    @State private var showLowStock = false
+    @State private var sortBy: CellarSortOption = .quantity
     @State private var showAddBottle = false
-
-    enum SortOption: String, CaseIterable {
-        case name = "Nome"
-        case vintage = "Annata"
-        case type = "Tipo"
-        case quantity = "Quantità"
-    }
+    @State private var showLocationView = false
+    @State private var showStorageConfig = false
 
     var filteredBottles: [Bottle] {
         var result = bottles.filter { $0.quantity > 0 }
 
-        // Filter by search
+        // Filter by search (name, producer, vintage, location)
         if !searchText.isEmpty {
             result = result.filter { bottle in
                 let wine = bottle.wine
+                let searchLower = searchText.lowercased()
                 return wine?.name.localizedCaseInsensitiveContains(searchText) == true ||
                        wine?.producer?.localizedCaseInsensitiveContains(searchText) == true ||
-                       wine?.region?.localizedCaseInsensitiveContains(searchText) == true
+                       wine?.vintage?.localizedCaseInsensitiveContains(searchText) == true ||
+                       bottle.storageContainer?.name.localizedCaseInsensitiveContains(searchText) == true ||
+                       bottle.storageContainer?.area?.name.localizedCaseInsensitiveContains(searchText) == true
             }
         }
 
@@ -37,17 +38,33 @@ struct CellarView: View {
             result = result.filter { $0.wine?.type == type }
         }
 
+        // Filter by storage area
+        if let area = selectedArea {
+            result = result.filter { $0.storageContainer?.area?.name == area.name }
+        }
+
+        // Filter low stock
+        if showLowStock {
+            result = result.filter { $0.quantity <= 2 }
+        }
+
         // Sort
         result.sort { b1, b2 in
             switch sortBy {
+            case .quantity:
+                return b1.quantity > b2.quantity
             case .name:
                 return (b1.wine?.name ?? "") < (b2.wine?.name ?? "")
             case .vintage:
                 return (b1.wine?.vintage ?? "") > (b2.wine?.vintage ?? "")
+            case .location:
+                let loc1 = b1.storageContainer?.fullLocationName ?? "zzz"
+                let loc2 = b2.storageContainer?.fullLocationName ?? "zzz"
+                return loc1 < loc2
             case .type:
                 return (b1.wine?.typeRaw ?? "") < (b2.wine?.typeRaw ?? "")
-            case .quantity:
-                return b1.quantity > b2.quantity
+            case .recentlyAdded:
+                return b1.createdAt > b2.createdAt
             }
         }
 
@@ -72,6 +89,10 @@ struct CellarView: View {
         return (total, value, byType)
     }
 
+    var lowStockCount: Int {
+        bottles.filter { $0.quantity > 0 && $0.quantity <= 2 }.count
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -85,6 +106,15 @@ struct CellarView: View {
                 // Filters
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
+                        // Low stock filter
+                        FilterChip(
+                            title: "⚠️ In esaurimento (\(lowStockCount))",
+                            isSelected: showLowStock
+                        ) {
+                            showLowStock.toggle()
+                        }
+
+                        // Wine type filters
                         ForEach(WineType.allCases, id: \.self) { type in
                             FilterChip(
                                 title: "\(type.icon) \(type.displayName)",
@@ -97,53 +127,92 @@ struct CellarView: View {
                                 }
                             }
                         }
+
+                        // Storage area filters
+                        ForEach(storageAreas) { area in
+                            FilterChip(
+                                title: "📦 \(area.name)",
+                                isSelected: selectedArea?.name == area.name
+                            ) {
+                                if selectedArea?.name == area.name {
+                                    selectedArea = nil
+                                } else {
+                                    selectedArea = area
+                                }
+                            }
+                        }
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 8)
                 }
                 .background(Color(.systemBackground))
 
-                // Wine list
-                List {
-                    ForEach(filteredBottles) { bottle in
-                        NavigationLink {
-                            BottleDetailView(bottle: bottle)
-                        } label: {
-                            BottleRow(bottle: bottle)
-                        }
-                    }
-                    .onDelete(perform: deleteBottles)
+                // View toggle
+                Picker("Vista", selection: $showLocationView) {
+                    Label("Lista", systemImage: "list.bullet").tag(false)
+                    Label("Posizione", systemImage: "archivebox").tag(true)
                 }
-                .listStyle(.plain)
-                .overlay {
-                    if filteredBottles.isEmpty {
-                        ContentUnavailableView(
-                            "Nessuna bottiglia",
-                            systemImage: "wineglass",
-                            description: Text("Aggiungi la tua prima bottiglia scansionando un'etichetta o manualmente")
-                        )
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+
+                // Content
+                if showLocationView {
+                    CellarByLocationView(bottles: filteredBottles, areas: storageAreas)
+                } else {
+                    // Wine list - compact view
+                    List {
+                        ForEach(filteredBottles) { bottle in
+                            NavigationLink {
+                                BottleDetailView(bottle: bottle)
+                            } label: {
+                                CompactBottleRow(bottle: bottle)
+                            }
+                        }
+                        .onDelete(perform: deleteBottles)
+                    }
+                    .listStyle(.plain)
+                    .overlay {
+                        if filteredBottles.isEmpty {
+                            ContentUnavailableView(
+                                "Nessuna bottiglia",
+                                systemImage: "wineglass",
+                                description: Text("Aggiungi la tua prima bottiglia scansionando un'etichetta o manualmente")
+                            )
+                        }
                     }
                 }
             }
             .navigationTitle("Cantina")
-            .searchable(text: $searchText, prompt: "Cerca vini...")
+            .searchable(text: $searchText, prompt: "Cerca vini, produttori, posizioni...")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
-                        ForEach(SortOption.allCases, id: \.self) { option in
-                            Button {
-                                sortBy = option
-                            } label: {
-                                HStack {
-                                    Text(option.rawValue)
-                                    if sortBy == option {
-                                        Image(systemName: "checkmark")
+                        Section("Ordina per") {
+                            ForEach(CellarSortOption.allCases, id: \.self) { option in
+                                Button {
+                                    sortBy = option
+                                } label: {
+                                    HStack {
+                                        Image(systemName: option.icon)
+                                        Text(option.rawValue)
+                                        if sortBy == option {
+                                            Image(systemName: "checkmark")
+                                        }
                                     }
                                 }
                             }
                         }
+
+                        Divider()
+
+                        Button {
+                            showStorageConfig = true
+                        } label: {
+                            Label("Configura Aree", systemImage: "archivebox")
+                        }
                     } label: {
-                        Image(systemName: "arrow.up.arrow.down")
+                        Image(systemName: "line.3.horizontal.decrease.circle")
                     }
                 }
 
@@ -158,6 +227,11 @@ struct CellarView: View {
             .sheet(isPresented: $showAddBottle) {
                 AddBottleView()
             }
+            .sheet(isPresented: $showStorageConfig) {
+                NavigationStack {
+                    StorageConfigurationView()
+                }
+            }
         }
     }
 
@@ -167,6 +241,216 @@ struct CellarView: View {
             modelContext.delete(bottle)
         }
         try? modelContext.save()
+    }
+}
+
+// MARK: - Compact Bottle Row
+
+struct CompactBottleRow: View {
+    let bottle: Bottle
+
+    var isLowStock: Bool { bottle.quantity <= 2 }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // Wine type icon
+            Text(bottle.wine?.type.icon ?? "🍷")
+                .font(.title3)
+
+            // Wine info
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(bottle.wine?.name ?? "Vino sconosciuto")
+                        .font(.subheadline.bold())
+                        .lineLimit(1)
+
+                    if let vintage = bottle.wine?.vintage {
+                        Text(vintage)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    if let producer = bottle.wine?.producer {
+                        Text(producer)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    if let location = bottle.shortLocation {
+                        Text("• \(location)")
+                            .font(.caption)
+                            .foregroundColor(.purple)
+                            .lineLimit(1)
+                    }
+                }
+            }
+
+            Spacer()
+
+            // Quantity badge
+            Text("\(bottle.quantity)")
+                .font(.subheadline.bold())
+                .foregroundColor(.white)
+                .frame(width: 28, height: 28)
+                .background(isLowStock ? Color.orange : Color.purple)
+                .clipShape(Circle())
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+// MARK: - Cellar By Location View
+
+struct CellarByLocationView: View {
+    let bottles: [Bottle]
+    let areas: [StorageArea]
+
+    var bottlesByContainer: [StorageContainer: [Bottle]] {
+        var result: [StorageContainer: [Bottle]] = [:]
+        for bottle in bottles {
+            if let container = bottle.storageContainer {
+                result[container, default: []].append(bottle)
+            }
+        }
+        return result
+    }
+
+    var unassignedBottles: [Bottle] {
+        bottles.filter { $0.storageContainer == nil }
+    }
+
+    var body: some View {
+        List {
+            // Bottles by area/container
+            ForEach(areas) { area in
+                if let containers = area.containers, !containers.isEmpty {
+                    let areaContainers = containers.filter { container in
+                        bottlesByContainer[container] != nil
+                    }
+
+                    if !areaContainers.isEmpty {
+                        Section {
+                            ForEach(areaContainers.sorted(by: { $0.sortOrder < $1.sortOrder })) { container in
+                                DisclosureGroup {
+                                    if let containerBottles = bottlesByContainer[container] {
+                                        ForEach(containerBottles) { bottle in
+                                            NavigationLink {
+                                                BottleDetailView(bottle: bottle)
+                                            } label: {
+                                                LocationBottleRow(bottle: bottle)
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    ContainerHeaderRow(container: container)
+                                }
+                            }
+                        } header: {
+                            Text(area.name)
+                                .font(.headline)
+                        }
+                    }
+                }
+            }
+
+            // Unassigned bottles
+            if !unassignedBottles.isEmpty {
+                Section {
+                    ForEach(unassignedBottles) { bottle in
+                        NavigationLink {
+                            BottleDetailView(bottle: bottle)
+                        } label: {
+                            LocationBottleRow(bottle: bottle)
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("Senza posizione")
+                            .font(.headline)
+                        Spacer()
+                        Text("\(unassignedBottles.count) bottiglie")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+        .overlay {
+            if bottles.isEmpty {
+                ContentUnavailableView(
+                    "Nessuna bottiglia",
+                    systemImage: "wineglass",
+                    description: Text("Nessun vino corrisponde ai filtri selezionati")
+                )
+            }
+        }
+    }
+}
+
+struct ContainerHeaderRow: View {
+    let container: StorageContainer
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(container.name)
+                    .font(.subheadline.bold())
+
+                if let notes = container.notes {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            if let usage = container.capacityUsage {
+                Text(usage)
+                    .font(.caption.bold())
+                    .foregroundColor(container.isNearCapacity ? .orange : .secondary)
+            } else {
+                Text("\(container.currentBottleCount)")
+                    .font(.caption.bold())
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+struct LocationBottleRow: View {
+    let bottle: Bottle
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(bottle.wine?.type.icon ?? "🍷")
+                .font(.caption)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(bottle.wine?.name ?? "Vino")
+                    .font(.caption)
+                    .lineLimit(1)
+
+                if let position = bottle.positionInContainer {
+                    Text(position)
+                        .font(.caption2)
+                        .foregroundColor(.purple)
+                }
+            }
+
+            Spacer()
+
+            Text("\(bottle.quantity)")
+                .font(.caption.bold())
+                .foregroundColor(.white)
+                .frame(width: 22, height: 22)
+                .background(bottle.quantity <= 2 ? Color.orange : Color.purple)
+                .clipShape(Circle())
+        }
     }
 }
 
@@ -460,9 +744,30 @@ struct BottleDetailView: View {
                         DetailRow(label: "Prezzo acquisto", value: String(format: "€%.2f", price))
                     }
 
-                    if let location = bottle.location {
-                        DetailRow(label: "Posizione", value: location)
+                    // Location section
+                    Divider()
+
+                    NavigationLink {
+                        BottleLocationPicker(bottle: bottle)
+                    } label: {
+                        HStack {
+                            Text("Posizione")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            if let location = bottle.fullLocationDescription {
+                                Text(location)
+                                    .foregroundColor(.purple)
+                                    .lineLimit(1)
+                            } else {
+                                Text("Non assegnata")
+                                    .foregroundColor(.secondary)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
                 .padding()
                 .background(Color(.secondarySystemBackground))
@@ -739,6 +1044,7 @@ struct DetailRow: View {
 struct AddBottleView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \StorageArea.sortOrder) private var storageAreas: [StorageArea]
 
     @State private var name = ""
     @State private var producer = ""
@@ -748,6 +1054,8 @@ struct AddBottleView: View {
     @State private var country = "Italia"
     @State private var quantity = 1
     @State private var price = ""
+    @State private var selectedContainer: StorageContainer?
+    @State private var positionInContainer = ""
     @State private var isLoading = false
 
     var body: some View {
@@ -769,6 +1077,33 @@ struct AddBottleView: View {
                 Section("Origine") {
                     TextField("Regione", text: $region)
                     TextField("Paese", text: $country)
+                }
+
+                Section("Posizione in cantina") {
+                    if storageAreas.isEmpty {
+                        HStack {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.blue)
+                            Text("Configura le aree di stoccaggio nelle impostazioni")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        Picker("Contenitore", selection: $selectedContainer) {
+                            Text("Non assegnato").tag(nil as StorageContainer?)
+                            ForEach(storageAreas) { area in
+                                if let containers = area.containers {
+                                    ForEach(containers.sorted(by: { $0.sortOrder < $1.sortOrder })) { container in
+                                        Text("\(area.name) › \(container.name)").tag(container as StorageContainer?)
+                                    }
+                                }
+                            }
+                        }
+
+                        if selectedContainer != nil {
+                            TextField("Posizione (es: scaffale 3, slot 12)", text: $positionInContainer)
+                        }
+                    }
                 }
 
                 Section("Dettagli Acquisto") {
@@ -815,10 +1150,140 @@ struct AddBottleView: View {
             purchaseDate: Date()
         )
 
+        // Set location
+        bottle.storageContainer = selectedContainer
+        bottle.positionInContainer = positionInContainer.isEmpty ? nil : positionInContainer
+
         modelContext.insert(wine)
         modelContext.insert(bottle)
         try? modelContext.save()
 
+        dismiss()
+    }
+}
+
+// MARK: - Bottle Location Picker
+
+struct BottleLocationPicker: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \StorageArea.sortOrder) private var storageAreas: [StorageArea]
+
+    @Bindable var bottle: Bottle
+
+    @State private var selectedContainer: StorageContainer?
+    @State private var positionInContainer: String = ""
+
+    var body: some View {
+        Form {
+            Section("Contenitore") {
+                if storageAreas.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.blue)
+                            Text("Nessuna area configurata")
+                                .font(.subheadline)
+                        }
+
+                        Text("Configura le aree di stoccaggio dal menu della cantina")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                } else {
+                    Picker("Seleziona contenitore", selection: $selectedContainer) {
+                        Text("Nessuno").tag(nil as StorageContainer?)
+
+                        ForEach(storageAreas) { area in
+                            if let containers = area.containers, !containers.isEmpty {
+                                Section(area.name) {
+                                    ForEach(containers.sorted(by: { $0.sortOrder < $1.sortOrder })) { container in
+                                        HStack {
+                                            Text(container.name)
+                                            Spacer()
+                                            if let usage = container.capacityUsage {
+                                                Text(usage)
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                        .tag(container as StorageContainer?)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .pickerStyle(.inline)
+                }
+            }
+
+            if selectedContainer != nil {
+                Section("Posizione nel contenitore") {
+                    TextField("Es: scaffale 3, ripiano alto, slot 12", text: $positionInContainer)
+
+                    Text("Opzionale: indica dove si trova esattamente nel contenitore")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if let container = selectedContainer {
+                Section("Informazioni contenitore") {
+                    HStack {
+                        Text("Area")
+                        Spacer()
+                        Text(container.area?.name ?? "-")
+                            .foregroundColor(.secondary)
+                    }
+
+                    HStack {
+                        Text("Bottiglie presenti")
+                        Spacer()
+                        Text("\(container.currentBottleCount)")
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let capacity = container.capacity {
+                        HStack {
+                            Text("Capacità")
+                            Spacer()
+                            Text("\(container.currentBottleCount)/\(capacity)")
+                                .foregroundColor(container.isNearCapacity ? .orange : .secondary)
+                        }
+                    }
+
+                    if let notes = container.notes {
+                        HStack {
+                            Text("Note")
+                            Spacer()
+                            Text(notes)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Posizione")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Salva") {
+                    saveLocation()
+                }
+            }
+        }
+        .onAppear {
+            selectedContainer = bottle.storageContainer
+            positionInContainer = bottle.positionInContainer ?? ""
+        }
+    }
+
+    private func saveLocation() {
+        bottle.storageContainer = selectedContainer
+        bottle.positionInContainer = positionInContainer.isEmpty ? nil : positionInContainer
+        bottle.updatedAt = Date()
+        try? modelContext.save()
         dismiss()
     }
 }

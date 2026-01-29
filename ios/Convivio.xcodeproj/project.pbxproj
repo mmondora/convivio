@@ -35,6 +35,8 @@
 		F000000000000033 /* InviteGeneratorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000033 /* InviteGeneratorView.swift */; };
 		F000000000000034 /* BottleUnloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000034 /* BottleUnloadView.swift */; };
 		F000000000000035 /* WineMatchingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000035 /* WineMatchingService.swift */; };
+		F000000000000036 /* StorageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000036 /* StorageModels.swift */; };
+		F000000000000037 /* StorageConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000037 /* StorageConfigurationView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -69,6 +71,8 @@
 		F100000000000033 /* InviteGeneratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteGeneratorView.swift; sourceTree = "<group>"; };
 		F100000000000034 /* BottleUnloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottleUnloadView.swift; sourceTree = "<group>"; };
 		F100000000000035 /* WineMatchingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineMatchingService.swift; sourceTree = "<group>"; };
+		F100000000000036 /* StorageModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageModels.swift; sourceTree = "<group>"; };
+		F100000000000037 /* StorageConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageConfigurationView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,6 +117,7 @@
 				F10000000000000F /* MenuModels.swift */,
 				F100000000000020 /* WineRatingModels.swift */,
 				F100000000000030 /* WineConfirmationModels.swift */,
+				F100000000000036 /* StorageModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -129,6 +134,7 @@
 				F100000000000032 /* WineConfirmationView.swift */,
 				F100000000000033 /* InviteGeneratorView.swift */,
 				F100000000000034 /* BottleUnloadView.swift */,
+				F100000000000037 /* StorageConfigurationView.swift */,
 				F400000000000007 /* Components */,
 				F400000000000008 /* Ratings */,
 			);
@@ -280,6 +286,8 @@
 				F000000000000033 /* InviteGeneratorView.swift in Sources */,
 				F000000000000034 /* BottleUnloadView.swift in Sources */,
 				F000000000000035 /* WineMatchingService.swift in Sources */,
+				F000000000000036 /* StorageModels.swift in Sources */,
+				F000000000000037 /* StorageConfigurationView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

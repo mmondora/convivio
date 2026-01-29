@@ -94,6 +94,27 @@ struct ProfileView: View {
                     }
                 }
 
+                // Storage Configuration
+                Section("Gestione Cantina") {
+                    NavigationLink {
+                        StorageConfigurationView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "archivebox.fill")
+                                .foregroundColor(.purple)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading) {
+                                Text("Aree di stoccaggio")
+                                    .font(.subheadline)
+                                Text("Configura dove conservi i tuoi vini")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
                 // Taste Preferences
                 Section("Preferenze Gusto") {
                     NavigationLink {
