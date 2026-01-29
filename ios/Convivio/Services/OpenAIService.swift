@@ -279,6 +279,21 @@ actor OpenAIService {
         - Aiutare a organizzare la cantina
         - Rispondere a domande sul vino in generale
 
+        FORMATO RISPOSTA:
+        Quando suggerisci vini specifici nella tua risposta, DEVI includere alla fine del messaggio un blocco JSON con i dettagli dei vini suggeriti.
+        Usa questo formato esatto:
+
+        [Il tuo messaggio normale in italiano qui...]
+
+        [WINE_SUGGESTIONS]{"suggestions":[{"wine_name":"Nome del vino","producer":"Produttore (se noto)","wine_type":"red|white|rosé|sparkling|dessert|fortified","region":"Regione (se nota)","grapes":["vitigno1","vitigno2"],"reason":"Breve motivazione dell'abbinamento"}]}[/WINE_SUGGESTIONS]
+
+        IMPORTANTE:
+        - Includi il blocco [WINE_SUGGESTIONS] SOLO se stai suggerendo vini specifici
+        - NON includere il blocco se stai solo rispondendo a domande generali
+        - Se suggerisci vini dalla cantina dell'utente, usa i nomi ESATTI come appaiono nella lista sopra
+        - Se suggerisci vini da acquistare, includi comunque i dettagli completi
+        - Il campo "reason" deve spiegare perché questo vino è adatto (abbinamento, occasione, etc.)
+
         Rispondi sempre in italiano, in modo cordiale e competente.
         """
 

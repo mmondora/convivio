@@ -164,7 +164,7 @@ struct NewDinnerView: View {
 
                     Stepper("Ospiti: \(guestCount)", value: $guestCount, in: 1...20)
 
-                    TextField("Occasione (es: Compleanno, Anniversario...)", text: $occasion)
+                    OccasionPicker(occasion: $occasion)
                 }
 
                 Section("Particolarità alimentari") {
@@ -1440,7 +1440,7 @@ struct EditDinnerView: View {
                     TextField("Titolo", text: $title)
                     DatePicker("Data e ora", selection: $date)
                     Stepper("Ospiti: \(guestCount)", value: $guestCount, in: 1...20)
-                    TextField("Occasione", text: $occasion)
+                    OccasionPicker(occasion: $occasion)
 
                     Picker("Stato", selection: $status) {
                         ForEach(DinnerStatus.allCases, id: \.self) { s in
@@ -1487,6 +1487,47 @@ struct EditDinnerView: View {
         dinner.updatedAt = Date()
         try? modelContext.save()
         dismiss()
+    }
+}
+
+// MARK: - Occasion Picker
+
+struct OccasionPicker: View {
+    @Binding var occasion: String
+
+    private let commonOccasions = [
+        "Compleanno",
+        "Anniversario",
+        "Cena romantica",
+        "Cena di lavoro",
+        "Festa",
+        "Cena tra amici"
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TextField("Occasione", text: $occasion)
+
+            // Quick selection chips
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(commonOccasions, id: \.self) { occ in
+                        Button {
+                            occasion = occ
+                        } label: {
+                            Text(occ)
+                                .font(.caption)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(occasion == occ ? Color.purple : Color(.tertiarySystemBackground))
+                                .foregroundColor(occasion == occ ? .white : .primary)
+                                .cornerRadius(16)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
     }
 }
 
