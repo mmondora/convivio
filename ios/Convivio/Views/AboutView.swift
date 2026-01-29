@@ -23,6 +23,9 @@ struct AboutView: View {
                 // Story Section
                 storySection
 
+                // Contact Section
+                contactSection
+
                 // Privacy Section
                 privacySection
 
@@ -133,22 +136,60 @@ struct AboutView: View {
         .cornerRadius(12)
     }
 
+    // MARK: - Contact Section
+
+    private var contactSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "envelope.fill")
+                    .font(.title3)
+                    .foregroundColor(Color(hex: "722F37"))
+
+                Text("Contatti")
+                    .font(.headline)
+            }
+
+            Link(destination: URL(string: "mailto:michele@mondora.com")!) {
+                HStack {
+                    Text("📧")
+                    Text("michele@mondora.com")
+                        .font(.subheadline)
+                    Spacer()
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption)
+                }
+                .foregroundColor(.primary)
+                .padding()
+                .background(Color(.tertiarySystemGroupedBackground))
+                .cornerRadius(8)
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(12)
+    }
+
     // MARK: - Privacy Section
 
     private var privacySection: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "lock.shield.fill")
-                .font(.title3)
-                .foregroundColor(.green)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "lock.shield.fill")
+                    .font(.title3)
+                    .foregroundColor(.green)
 
-            VStack(alignment: .leading, spacing: 4) {
                 Text("Privacy")
                     .font(.headline)
-
-                Text("Questa app non raccoglie dati personali. Tutti i dati della cantina restano sul tuo dispositivo.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
             }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Convivio utilizza OpenAI per le funzionalità di sommelier AI e generazione menu. I dati vengono inviati ai server OpenAI tramite la tua API key personale, sulla tua sottoscrizione.")
+
+                Text("Nessun dato transita su server dello sviluppatore. Tutti i dati della cantina restano sul tuo dispositivo.")
+            }
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+            .lineSpacing(4)
         }
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
@@ -166,7 +207,7 @@ struct AboutView: View {
                 Text("🇮🇹")
             }
 
-            Text("Versione \(appVersion) • 2025")
+            Text("Versione \(appVersion) • 2026")
                 .font(.caption)
                 .foregroundColor(Color.secondary.opacity(0.7))
 
