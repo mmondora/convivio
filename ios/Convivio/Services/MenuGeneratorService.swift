@@ -607,6 +607,259 @@ extension MenuGeneratorService {
     }
 }
 
+// MARK: - Wine Editing Methods
+
+extension MenuGeneratorService {
+    /// Regenerate a single wine pairing while maintaining menu coherence
+    func regenerateWine(
+        wineType: String, // "cellar" or "purchase"
+        wineIndex: Int,
+        currentMenu: MenuResponse,
+        dinner: DinnerEvent,
+        wines: [Wine],
+        bottles: [Bottle],
+        tastePreferences: TastePreferences?
+    ) async throws -> MenuResponse {
+        let wineInventory = buildWineInventory(bottles: bottles.filter { $0.quantity > 0 })
+        let tastePrefsString = buildTastePreferences(tastePreferences)
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .full
+        dateFormatter.locale = Locale(identifier: "it_IT")
+
+        // Get current wine info for context
+        var currentWineName = ""
+        var portata = ""
+
+        if wineType == "cellar" {
+            let cellarWines = currentMenu.abbinamenti.filter { $0.vino.provenienza == .cantina }
+            if wineIndex < cellarWines.count {
+                currentWineName = "\(cellarWines[wineIndex].vino.produttore) \(cellarWines[wineIndex].vino.nome)"
+                portata = cellarWines[wineIndex].portata
+            }
+        } else {
+            if wineIndex < currentMenu.suggerimentiAcquisto.count {
+                let suggestion = currentMenu.suggerimentiAcquisto[wineIndex]
+                currentWineName = "\(suggestion.produttore) \(suggestion.vino)"
+                portata = suggestion.abbinamentoIdeale
+            }
+        }
+
+        // Build menu context
+        let menuContext = currentMenu.menu.allCourses.map { course in
+            "\(course.name): \(course.dishes.map { $0.nome }.joined(separator: ", "))"
+        }.joined(separator: "\n")
+
+        // Build existing wines context (exclude the one being replaced)
+        var existingWines: [String] = []
+        for pairing in currentMenu.abbinamenti {
+            if wineType == "cellar" && pairing.vino.provenienza == .cantina {
+                let cellarIdx = currentMenu.abbinamenti.filter { $0.vino.provenienza == .cantina }.firstIndex { $0.id == pairing.id } ?? -1
+                if cellarIdx == wineIndex { continue }
+            }
+            existingWines.append("\(pairing.vino.produttore) \(pairing.vino.nome) - \(pairing.portata)")
+        }
+        for (idx, suggestion) in currentMenu.suggerimentiAcquisto.enumerated() {
+            if wineType == "purchase" && idx == wineIndex { continue }
+            existingWines.append("\(suggestion.produttore) \(suggestion.vino) (da acquistare) - \(suggestion.abbinamentoIdeale)")
+        }
+
+        let isCellar = wineType == "cellar"
+        let prompt = """
+        Sei un sommelier professionista italiano.
+        Devi suggerire UN SOLO vino alternativo per sostituire "\(currentWineName)".
+
+        TIPO DI SUGGERIMENTO RICHIESTO: \(isCellar ? "VINO DALLA CANTINA" : "VINO DA ACQUISTARE")
+
+        CONTESTO DELLA CENA:
+        - Titolo: \(dinner.title)
+        - Data: \(dateFormatter.string(from: dinner.date))
+        - Persone: \(dinner.guestCount)
+        - Occasione: \(dinner.occasion ?? "Convivio")
+        \(dinner.notes.map { "- Note: \($0)" } ?? "")
+
+        MENU DELLA CENA:
+        \(menuContext)
+
+        VINI GIÀ SELEZIONATI (evita duplicati):
+        \(existingWines.isEmpty ? "Nessun altro vino" : existingWines.joined(separator: "\n"))
+
+        PREFERENZE GUSTO:
+        \(tastePrefsString)
+
+        \(isCellar ? """
+        CANTINA DISPONIBILE (SCEGLI SOLO DA QUI):
+        \(wineInventory)
+        """ : """
+        Suggerisci un vino di qualità da acquistare, indicando produttore specifico e annata consigliata.
+        """)
+
+        IMPORTANTE:
+        - Il vino deve essere DIVERSO da "\(currentWineName)"
+        - Deve abbinarsi bene con \(portata.isEmpty ? "il menu" : portata)
+        - Valuta la compatibilità con le preferenze gusto
+
+        Rispondi SOLO con JSON valido:
+        \(isCellar ? """
+        {
+          "portata": "\(portata.isEmpty ? "primi" : portata)",
+          "vino": {
+            "nome": "string",
+            "produttore": "string",
+            "annata": "string o null",
+            "provenienza": "cantina",
+            "quantita_necessaria": number,
+            "motivazione": "string",
+            "compatibilita": {
+              "punteggio": number (1-100),
+              "motivazione": "string",
+              "punti_forza": ["string"],
+              "punti_deboli": ["string"]
+            }
+          }
+        }
+        """ : """
+        {
+          "vino": "string",
+          "produttore": "string",
+          "annata": "string o null",
+          "perche": "string",
+          "abbinamento_ideale": "string",
+          "compatibilita": {
+            "punteggio": number (1-100),
+            "motivazione": "string",
+            "punti_forza": ["string"],
+            "punti_deboli": ["string"]
+          }
+        }
+        """)
+        """
+
+        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: prompt)
+
+        if isCellar {
+            let newPairing = try parseSingleWinePairing(responseText)
+            return replaceWinePairingInMenu(currentMenu, wineIndex: wineIndex, newPairing: newPairing)
+        } else {
+            let newSuggestion = try parseSingleWineSuggestion(responseText)
+            return replaceWineSuggestionInMenu(currentMenu, suggestionIndex: wineIndex, newSuggestion: newSuggestion)
+        }
+    }
+
+    /// Delete a wine from the menu
+    nonisolated func deleteWine(
+        wineType: String, // "cellar" or "purchase"
+        wineIndex: Int,
+        from currentMenu: MenuResponse
+    ) -> MenuResponse {
+        if wineType == "cellar" {
+            let cellarWines = currentMenu.abbinamenti.filter { $0.vino.provenienza == .cantina }
+            guard wineIndex < cellarWines.count else { return currentMenu }
+
+            let wineToRemove = cellarWines[wineIndex]
+            let updatedAbbinamenti = currentMenu.abbinamenti.filter { $0.id != wineToRemove.id }
+
+            return MenuResponse(
+                menu: currentMenu.menu,
+                abbinamenti: updatedAbbinamenti,
+                suggerimentiAcquisto: currentMenu.suggerimentiAcquisto,
+                noteServizio: currentMenu.noteServizio,
+                galateo: currentMenu.galateo
+            )
+        } else {
+            var updatedSuggestions = currentMenu.suggerimentiAcquisto
+            guard wineIndex < updatedSuggestions.count else { return currentMenu }
+
+            updatedSuggestions.remove(at: wineIndex)
+
+            return MenuResponse(
+                menu: currentMenu.menu,
+                abbinamenti: currentMenu.abbinamenti,
+                suggerimentiAcquisto: updatedSuggestions,
+                noteServizio: currentMenu.noteServizio,
+                galateo: currentMenu.galateo
+            )
+        }
+    }
+
+    // MARK: - Wine Parsing Helpers
+
+    private func parseSingleWinePairing(_ text: String) throws -> MenuWinePairing {
+        var cleanJson = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if cleanJson.hasPrefix("```json") {
+            cleanJson = String(cleanJson.dropFirst(7))
+        } else if cleanJson.hasPrefix("```") {
+            cleanJson = String(cleanJson.dropFirst(3))
+        }
+        if cleanJson.hasSuffix("```") {
+            cleanJson = String(cleanJson.dropLast(3))
+        }
+        cleanJson = cleanJson.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let data = cleanJson.data(using: .utf8) else {
+            throw OpenAIError.parseError
+        }
+
+        return try JSONDecoder().decode(MenuWinePairing.self, from: data)
+    }
+
+    private func parseSingleWineSuggestion(_ text: String) throws -> WineSuggestion {
+        var cleanJson = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if cleanJson.hasPrefix("```json") {
+            cleanJson = String(cleanJson.dropFirst(7))
+        } else if cleanJson.hasPrefix("```") {
+            cleanJson = String(cleanJson.dropFirst(3))
+        }
+        if cleanJson.hasSuffix("```") {
+            cleanJson = String(cleanJson.dropLast(3))
+        }
+        cleanJson = cleanJson.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let data = cleanJson.data(using: .utf8) else {
+            throw OpenAIError.parseError
+        }
+
+        return try JSONDecoder().decode(WineSuggestion.self, from: data)
+    }
+
+    private func replaceWinePairingInMenu(_ menu: MenuResponse, wineIndex: Int, newPairing: MenuWinePairing) -> MenuResponse {
+        let cellarWines = menu.abbinamenti.filter { $0.vino.provenienza == .cantina }
+        guard wineIndex < cellarWines.count else { return menu }
+
+        let wineToReplace = cellarWines[wineIndex]
+        var updatedAbbinamenti = menu.abbinamenti
+
+        if let idx = updatedAbbinamenti.firstIndex(where: { $0.id == wineToReplace.id }) {
+            updatedAbbinamenti[idx] = newPairing
+        }
+
+        return MenuResponse(
+            menu: menu.menu,
+            abbinamenti: updatedAbbinamenti,
+            suggerimentiAcquisto: menu.suggerimentiAcquisto,
+            noteServizio: menu.noteServizio,
+            galateo: menu.galateo
+        )
+    }
+
+    private func replaceWineSuggestionInMenu(_ menu: MenuResponse, suggestionIndex: Int, newSuggestion: WineSuggestion) -> MenuResponse {
+        var updatedSuggestions = menu.suggerimentiAcquisto
+        guard suggestionIndex < updatedSuggestions.count else { return menu }
+
+        updatedSuggestions[suggestionIndex] = newSuggestion
+
+        return MenuResponse(
+            menu: menu.menu,
+            abbinamenti: menu.abbinamenti,
+            suggerimentiAcquisto: updatedSuggestions,
+            noteServizio: menu.noteServizio,
+            galateo: menu.galateo
+        )
+    }
+}
+
 // MARK: - Invite Generation
 
 extension MenuGeneratorService {

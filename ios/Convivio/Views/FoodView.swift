@@ -310,6 +310,9 @@ struct DinnerDetailView: View {
     @State private var regeneratingDish: (course: String, index: Int)?
     @State private var showDeleteConfirmation = false
     @State private var dishToDelete: (course: String, index: Int)?
+    @State private var regeneratingWine: String? // Wine ID being regenerated
+    @State private var showDeleteWineConfirmation = false
+    @State private var wineToDelete: (type: String, index: Int)? // "cellar" or "purchase", index
 
     private var settings: AppSettings? { appSettings.first }
 
@@ -367,6 +370,16 @@ struct DinnerDetailView: View {
             }
         } message: {
             Text("Vuoi eliminare questo piatto dal menu?")
+        }
+        .alert("Elimina vino", isPresented: $showDeleteWineConfirmation) {
+            Button("Annulla", role: .cancel) {}
+            Button("Elimina", role: .destructive) {
+                if let toDelete = wineToDelete {
+                    deleteWine(type: toDelete.type, index: toDelete.index)
+                }
+            }
+        } message: {
+            Text("Vuoi eliminare questo vino dagli abbinamenti?")
         }
     }
 
@@ -544,64 +557,7 @@ struct DinnerDetailView: View {
             .cornerRadius(12)
 
             // Wine pairings - compact view
-            DisclosureGroup(
-                isExpanded: bindingFor("vini"),
-                content: {
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Wines from cellar
-                        let cellarWines = menu.abbinamenti.filter { $0.vino.provenienza == .cantina }
-                        if !cellarWines.isEmpty {
-                            ForEach(cellarWines) { pairing in
-                                Button {
-                                    selectedWinePairing = pairing
-                                } label: {
-                                    CompactWineRow(
-                                        label: "Cantina",
-                                        wine: "\(pairing.vino.quantitaNecessaria) bott. \(pairing.vino.produttore) \(pairing.vino.nome)",
-                                        vintage: pairing.vino.annata,
-                                        compatibility: pairing.vino.compatibilita?.punteggio
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-
-                        // Purchase suggestions
-                        if !menu.suggerimentiAcquisto.isEmpty {
-                            ForEach(menu.suggerimentiAcquisto) { suggestion in
-                                CompactWineRow(
-                                    label: "Acquisto",
-                                    wine: "\(suggestion.produttore) \(suggestion.vino)",
-                                    vintage: suggestion.annata,
-                                    compatibility: suggestion.compatibilita?.punteggio
-                                )
-                            }
-                        }
-
-                        // Service notes
-                        if !menu.noteServizio.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Note di servizio")
-                                    .font(.caption.bold())
-                                Text(menu.noteServizio)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding()
-                            .background(Color(.tertiarySystemBackground))
-                            .cornerRadius(8)
-                        }
-                    }
-                    .padding(.top, 8)
-                },
-                label: {
-                    Label("Vini", systemImage: "wineglass")
-                        .font(.headline)
-                }
-            )
-            .padding()
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(12)
+            wineSection(for: menu)
 
             // Galateo section
             DisclosureGroup(
@@ -800,6 +756,112 @@ struct DinnerDetailView: View {
         )
     }
 
+    // MARK: - Wine Section
+
+    @ViewBuilder
+    private func wineSection(for menu: MenuResponse) -> some View {
+        let cellarWines = menu.abbinamenti.filter { $0.vino.provenienza == .cantina }
+        let wineCount = cellarWines.count + menu.suggerimentiAcquisto.count
+
+        DisclosureGroup(
+            isExpanded: bindingFor("vini"),
+            content: {
+                VStack(spacing: 0) {
+                    wineListSection(cellarWines: cellarWines, purchaseSuggestions: menu.suggerimentiAcquisto, wineCount: wineCount)
+
+                    // Service notes
+                    if !menu.noteServizio.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Note di servizio")
+                                .font(.caption.bold())
+                            Text(menu.noteServizio)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(Color(.tertiarySystemBackground))
+                        .cornerRadius(8)
+                    }
+                }
+            },
+            label: {
+                Label("Vini", systemImage: "wineglass")
+                    .font(.headline)
+            }
+        )
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    @ViewBuilder
+    private func wineListSection(cellarWines: [MenuWinePairing], purchaseSuggestions: [WineSuggestion], wineCount: Int) -> some View {
+        List {
+            // Wines from cellar
+            if !cellarWines.isEmpty {
+                Section {
+                    ForEach(Array(cellarWines.enumerated()), id: \.element.id) { index, pairing in
+                        cellarWineRow(pairing: pairing, index: index)
+                    }
+                } header: {
+                    Text("Dalla Cantina")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.green)
+                }
+            }
+
+            // Purchase suggestions
+            if !purchaseSuggestions.isEmpty {
+                Section {
+                    ForEach(Array(purchaseSuggestions.enumerated()), id: \.element.id) { index, suggestion in
+                        purchaseWineRow(suggestion: suggestion, index: index)
+                    }
+                } header: {
+                    Text("Da Acquistare")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .listStyle(.plain)
+        .frame(minHeight: CGFloat(wineCount) * 80 + (cellarWines.isEmpty || purchaseSuggestions.isEmpty ? 30 : 60))
+        .scrollDisabled(true)
+    }
+
+    @ViewBuilder
+    private func cellarWineRow(pairing: MenuWinePairing, index: Int) -> some View {
+        EditableWineRow(
+            label: "Cantina",
+            wine: "\(pairing.vino.quantitaNecessaria) bott. \(pairing.vino.produttore) \(pairing.vino.nome)",
+            vintage: pairing.vino.annata,
+            compatibility: pairing.vino.compatibilita?.punteggio,
+            isRegenerating: regeneratingWine == pairing.id,
+            onTap: { selectedWinePairing = pairing },
+            onRegenerate: { regenerateWine(type: "cellar", index: index) },
+            onDelete: {
+                wineToDelete = ("cellar", index)
+                showDeleteWineConfirmation = true
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func purchaseWineRow(suggestion: WineSuggestion, index: Int) -> some View {
+        EditableWineRow(
+            label: "Acquisto",
+            wine: "\(suggestion.produttore) \(suggestion.vino)",
+            vintage: suggestion.annata,
+            compatibility: suggestion.compatibilita?.punteggio,
+            isRegenerating: regeneratingWine == suggestion.id,
+            onTap: { },
+            onRegenerate: { regenerateWine(type: "purchase", index: index) },
+            onDelete: {
+                wineToDelete = ("purchase", index)
+                showDeleteWineConfirmation = true
+            }
+        )
+    }
+
     // MARK: - Dish Editing Actions
 
     private func regenerateDish(course: String, index: Int) {
@@ -851,6 +913,69 @@ struct DinnerDetailView: View {
         dinner.updatedAt = Date()
         try? modelContext.save()
         dishToDelete = nil
+    }
+
+    // MARK: - Wine Editing Actions
+
+    private func regenerateWine(type: String, index: Int) {
+        guard let currentMenu = dinner.menuResponse else { return }
+
+        // Set the regenerating wine ID
+        if type == "cellar" {
+            let cellarWines = currentMenu.abbinamenti.filter { $0.vino.provenienza == .cantina }
+            if index < cellarWines.count {
+                regeneratingWine = cellarWines[index].id
+            }
+        } else {
+            if index < currentMenu.suggerimentiAcquisto.count {
+                regeneratingWine = currentMenu.suggerimentiAcquisto[index].id
+            }
+        }
+
+        Task {
+            do {
+                let updatedMenu = try await MenuGeneratorService.shared.regenerateWine(
+                    wineType: type,
+                    wineIndex: index,
+                    currentMenu: currentMenu,
+                    dinner: dinner,
+                    wines: wines,
+                    bottles: bottles,
+                    tastePreferences: settings?.tastePreferences
+                )
+
+                await MainActor.run {
+                    if let jsonData = try? JSONEncoder().encode(updatedMenu) {
+                        dinner.menuData = jsonData
+                    }
+                    dinner.updatedAt = Date()
+                    try? modelContext.save()
+                    regeneratingWine = nil
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Errore: \(error.localizedDescription)"
+                    regeneratingWine = nil
+                }
+            }
+        }
+    }
+
+    private func deleteWine(type: String, index: Int) {
+        guard let currentMenu = dinner.menuResponse else { return }
+
+        let updatedMenu = MenuGeneratorService.shared.deleteWine(
+            wineType: type,
+            wineIndex: index,
+            from: currentMenu
+        )
+
+        if let jsonData = try? JSONEncoder().encode(updatedMenu) {
+            dinner.menuData = jsonData
+        }
+        dinner.updatedAt = Date()
+        try? modelContext.save()
+        wineToDelete = nil
     }
 
     // MARK: - Menu Actions
@@ -956,6 +1081,89 @@ struct EditableDishRow: View {
                 Label("Rigenera", systemImage: "arrow.clockwise")
             }
             .tint(.purple)
+        }
+    }
+}
+
+// MARK: - Editable Wine Row
+
+struct EditableWineRow: View {
+    let label: String
+    let wine: String
+    let vintage: String?
+    let compatibility: Int?
+    var isRegenerating: Bool = false
+    let onTap: () -> Void
+    let onRegenerate: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack {
+                Text(label)
+                    .font(.caption.bold())
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(label == "Cantina" ? Color.green.opacity(0.2) : Color.blue.opacity(0.2))
+                    .foregroundColor(label == "Cantina" ? .green : .blue)
+                    .cornerRadius(4)
+
+                VStack(alignment: .leading) {
+                    Text(wine)
+                        .font(.subheadline)
+                    if let vintage = vintage {
+                        Text(vintage)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if isRegenerating {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                } else {
+                    if let score = compatibility {
+                        CompatibilityBadge(score: score)
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+            .opacity(isRegenerating ? 0.6 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                onRegenerate()
+            } label: {
+                Label("Rigenera vino", systemImage: "arrow.clockwise")
+            }
+
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Elimina vino", systemImage: "trash")
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Elimina", systemImage: "trash")
+            }
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                onRegenerate()
+            } label: {
+                Label("Rigenera", systemImage: "arrow.clockwise")
+            }
+            .tint(.orange)
         }
     }
 }
