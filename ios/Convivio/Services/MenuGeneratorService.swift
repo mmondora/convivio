@@ -604,32 +604,74 @@ extension MenuGeneratorService {
             menuPreview = courses.joined(separator: "\n")
         }
 
+        let occasion = dinner.occasion ?? "Cena informale"
+        let toneDescription = getInviteTone(for: occasion)
+
         let prompt = """
-        Sei un esperto di galateo italiano. Genera un messaggio di invito elegante per questa cena:
+        Genera un messaggio di invito per questa cena.
 
         DETTAGLI CENA:
-        - Titolo: \(dinner.title)
         - Data: \(dateFormatter.string(from: dinner.date))
         - Ora: \(timeFormatter.string(from: dinner.date))
-        - Occasione: \(dinner.occasion ?? "Cena conviviale")
+        - Occasione: \(occasion)
         \(dinner.notes.map { "- Note: \($0)" } ?? "")
 
-        \(menuPreview.isEmpty ? "" : "ANTEPRIMA MENU:\n\(menuPreview)")
+        \(menuPreview.isEmpty ? "" : "ANTEPRIMA MENU (solo per contesto, NON elencare i piatti):\n\(menuPreview)")
 
-        REQUISITI:
-        - Il messaggio deve essere elegante ma non formale
-        - Includi data, ora e occasione
-        - Se c'è un menu, accennalo brevemente (senza elencare tutto)
-        - Tono appropriato all'occasione
+        STILE RICHIESTO: \(toneDescription)
+
+        REQUISITI OBBLIGATORI:
+        - NON includere nomi di persone (né mittente né destinatario)
+        - NON includere firma finale
+        - NON elencare i nomi dei piatti del menu
+        - Se c'è un menu, puoi solo accennare genericamente al tipo di cucina
+        - Includi data e ora
         - Chiedi conferma di partecipazione
-        - Lunghezza: 3-5 frasi
-        - NON includere emoji o formattazione markdown
+        - Lunghezza: 2-4 frasi
+        - NON usare emoji o formattazione markdown
+        - Scrivi SOLO il testo del messaggio, nient'altro
 
-        Rispondi SOLO con il testo del messaggio di invito, senza altro.
+        Rispondi SOLO con il testo del messaggio.
         """
 
         let response = try await OpenAIService.shared.generateMenuWithGPT(prompt: prompt)
         return response.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Determines the appropriate tone for the invite based on the occasion
+    private func getInviteTone(for occasion: String) -> String {
+        let occasionLower = occasion.lowercased()
+
+        // Formal occasions
+        if occasionLower.contains("matrimonio") ||
+           occasionLower.contains("anniversario") ||
+           occasionLower.contains("laurea") ||
+           occasionLower.contains("battesimo") ||
+           occasionLower.contains("comunione") ||
+           occasionLower.contains("cresima") ||
+           occasionLower.contains("gala") ||
+           occasionLower.contains("formale") {
+            return "Tono formale ed elegante, linguaggio ricercato"
+        }
+
+        // Semi-formal occasions
+        if occasionLower.contains("compleanno") ||
+           occasionLower.contains("promozione") ||
+           occasionLower.contains("pensionamento") ||
+           occasionLower.contains("fidanzamento") {
+            return "Tono semi-formale, cordiale ma curato"
+        }
+
+        // Business occasions
+        if occasionLower.contains("lavoro") ||
+           occasionLower.contains("business") ||
+           occasionLower.contains("colleghi") ||
+           occasionLower.contains("aziendale") {
+            return "Tono professionale ma cordiale"
+        }
+
+        // Default: informal
+        return "Tono informale e amichevole, come tra amici"
     }
 }
 
