@@ -11,6 +11,7 @@ final class QuickRating {
     var rating: Double // 1.0 - 5.0, step 0.5
     var note: String?
     var occasione: String?
+    var luogoDegustazione: String? // Dove è stato bevuto (ristorante, casa, enoteca, etc.)
     var loRicomprerei: Bool?
     var createdAt: Date
     var updatedAt: Date
@@ -22,6 +23,7 @@ final class QuickRating {
         rating: Double,
         note: String? = nil,
         occasione: String? = nil,
+        luogoDegustazione: String? = nil,
         loRicomprerei: Bool? = nil
     ) {
         self.id = id
@@ -30,6 +32,7 @@ final class QuickRating {
         self.rating = rating
         self.note = note
         self.occasione = occasione
+        self.luogoDegustazione = luogoDegustazione
         self.loRicomprerei = loRicomprerei
         self.createdAt = Date()
         self.updatedAt = Date()

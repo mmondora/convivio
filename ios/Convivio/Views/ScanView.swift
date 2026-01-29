@@ -12,6 +12,7 @@ struct ScanView: View {
     @State private var extractionResult: ExtractionResult?
     @State private var errorMessage: String?
     @State private var showCamera = false
+    @State private var showEditView = false
 
     var body: some View {
         NavigationStack {
@@ -23,7 +24,7 @@ struct ScanView: View {
                         extractionResult: extractionResult,
                         isProcessing: isProcessing,
                         errorMessage: errorMessage,
-                        onSave: saveWine,
+                        onContinue: { showEditView = true },
                         onRetry: { selectedImage = nil; extractionResult = nil; errorMessage = nil }
                     )
                 } else {
@@ -50,6 +51,20 @@ struct ScanView: View {
                     Task { await processImage(image) }
                 }
             }
+            .sheet(isPresented: $showEditView) {
+                if let image = selectedImage, let result = extractionResult {
+                    EditScannedWineView(
+                        image: image,
+                        extractionResult: result,
+                        onSave: {
+                            // Reset state after save
+                            selectedImage = nil
+                            selectedItem = nil
+                            extractionResult = nil
+                        }
+                    )
+                }
+            }
         }
     }
 
@@ -66,42 +81,6 @@ struct ScanView: View {
         isProcessing = false
     }
 
-    private func saveWine() {
-        guard let result = extractionResult else { return }
-
-        let wineType: WineType
-        if let typeStr = result.type {
-            wineType = WineType(rawValue: typeStr) ?? .red
-        } else {
-            wineType = .red
-        }
-
-        let wine = Wine(
-            name: result.name ?? "Vino sconosciuto",
-            producer: result.producer,
-            vintage: result.vintage,
-            type: wineType,
-            region: result.region,
-            country: result.country ?? "Italia",
-            grapes: result.grapes ?? [],
-            alcohol: result.alcohol
-        )
-
-        let bottle = Bottle(
-            wine: wine,
-            quantity: 1,
-            purchaseDate: Date()
-        )
-
-        modelContext.insert(wine)
-        modelContext.insert(bottle)
-        try? modelContext.save()
-
-        // Reset state
-        selectedImage = nil
-        selectedItem = nil
-        extractionResult = nil
-    }
 }
 
 struct ScanOptionsView: View {
@@ -160,7 +139,7 @@ struct ImagePreviewView: View {
     let extractionResult: ExtractionResult?
     let isProcessing: Bool
     let errorMessage: String?
-    let onSave: () -> Void
+    let onContinue: () -> Void
     let onRetry: () -> Void
 
     var body: some View {
@@ -248,14 +227,17 @@ struct ImagePreviewView: View {
                         }
 
                         Button {
-                            onSave()
+                            onContinue()
                         } label: {
-                            Text("Aggiungi alla Cantina")
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.purple)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
+                            HStack {
+                                Image(systemName: "pencil")
+                                Text("Modifica e Salva")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.purple)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
                         }
                     }
                     .padding(.horizontal)

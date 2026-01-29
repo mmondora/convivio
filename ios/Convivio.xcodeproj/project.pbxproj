@@ -28,6 +28,7 @@
 		F000000000000025 /* WineRatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000025 /* WineRatingView.swift */; };
 		F000000000000026 /* WineRatingsHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000026 /* WineRatingsHistoryView.swift */; };
 		F000000000000027 /* WineRatingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000027 /* WineRatingService.swift */; };
+		F000000000000028 /* EditScannedWineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000028 /* EditScannedWineView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +56,7 @@
 		F100000000000025 /* WineRatingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineRatingView.swift; sourceTree = "<group>"; };
 		F100000000000026 /* WineRatingsHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineRatingsHistoryView.swift; sourceTree = "<group>"; };
 		F100000000000027 /* WineRatingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineRatingService.swift; sourceTree = "<group>"; };
+		F100000000000028 /* EditScannedWineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditScannedWineView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -107,6 +109,7 @@
 			children = (
 				F100000000000004 /* CellarView.swift */,
 				F100000000000005 /* ScanView.swift */,
+				F100000000000028 /* EditScannedWineView.swift */,
 				F100000000000006 /* ProfileView.swift */,
 				F100000000000009 /* ChatView.swift */,
 				F100000000000014 /* FoodView.swift */,
@@ -252,6 +255,7 @@
 				F000000000000025 /* WineRatingView.swift in Sources */,
 				F000000000000026 /* WineRatingsHistoryView.swift in Sources */,
 				F000000000000027 /* WineRatingService.swift in Sources */,
+				F000000000000028 /* EditScannedWineView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
