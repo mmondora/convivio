@@ -488,7 +488,10 @@ final class AppSettings {
     }
 
     init() {
-        self.preferredLanguage = "it"
+        // Default to device language if supported, otherwise English
+        let deviceLanguage = String(Locale.preferredLanguages.first?.prefix(2) ?? "en")
+        let supportedLanguages = ["it", "en", "de", "fr"]
+        self.preferredLanguage = supportedLanguages.contains(deviceLanguage) ? deviceLanguage : "en"
         self.createdAt = Date()
         self.updatedAt = Date()
     }

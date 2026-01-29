@@ -6,6 +6,7 @@ struct ProfileView: View {
     @Query private var settings: [AppSettings]
     @Query private var bottles: [Bottle]
     @Query private var wines: [Wine]
+    @ObservedObject private var languageManager = LanguageManager.shared
 
     @State private var showApiKeySheet = false
     @State private var showLogsSheet = false
@@ -33,6 +34,15 @@ struct ProfileView: View {
         return (total, value, byType)
     }
 
+    private var localDataText: String {
+        switch languageManager.currentLanguage {
+        case .italian: return "Dati salvati localmente"
+        case .english: return "Data saved locally"
+        case .german: return "Lokal gespeicherte Daten"
+        case .french: return "Données enregistrées localement"
+        }
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -44,9 +54,9 @@ struct ProfileView: View {
                             .foregroundColor(.purple)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("La mia cantina")
+                            Text(L10n.myCellar)
                                 .font(.headline)
-                            Text("Dati salvati localmente")
+                            Text(localDataText)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -137,8 +147,34 @@ struct ProfileView: View {
                     }
                 }
 
+                // Language
+                Section(L10n.language) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Button {
+                            languageManager.setLanguage(language)
+                            if let settings = currentSettings {
+                                settings.preferredLanguage = language.rawValue
+                                settings.updatedAt = Date()
+                                try? modelContext.save()
+                            }
+                        } label: {
+                            HStack {
+                                Text(language.flag)
+                                    .font(.title2)
+                                Text(language.displayName)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                if languageManager.currentLanguage == language {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.purple)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // AI Configuration
-                Section("Intelligenza Artificiale") {
+                Section(L10n.apiKey) {
                     Button {
                         showApiKeySheet = true
                     } label: {
@@ -239,7 +275,7 @@ struct ProfileView: View {
                 }
                 #endif
             }
-            .navigationTitle("Profilo")
+            .navigationTitle(L10n.profile)
             .sheet(isPresented: $showApiKeySheet) {
                 ApiKeyConfigView(settings: currentSettings ?? createSettings())
             }

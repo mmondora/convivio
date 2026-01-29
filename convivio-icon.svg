@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Gradient sfondo -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#722F37"/>
+      <stop offset="50%" style="stop-color:#5C252B"/>
+      <stop offset="100%" style="stop-color:#4A1E23"/>
+    </linearGradient>
+    
+    <!-- Gradient vino nel calice -->
+    <linearGradient id="wineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#9B2335"/>
+      <stop offset="100%" style="stop-color:#6B1C24"/>
+    </linearGradient>
+    
+    <!-- Gradient vetro calice -->
+    <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.25)"/>
+      <stop offset="50%" style="stop-color:rgba(255,255,255,0.4)"/>
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0.2)"/>
+    </linearGradient>
+    
+    <!-- Riflesso calice -->
+    <linearGradient id="reflectGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.5)"/>
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0)"/>
+    </linearGradient>
+    
+    <!-- Glow centrale -->
+    <radialGradient id="glowGradient" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" style="stop-color:rgba(255,215,180,0.15)"/>
+      <stop offset="100%" style="stop-color:rgba(255,215,180,0)"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Sfondo -->
+  <rect width="512" height="512" fill="url(#bgGradient)"/>
+  
+  <!-- Glow atmosferico -->
+  <ellipse cx="256" cy="200" rx="180" ry="150" fill="url(#glowGradient)"/>
+  
+  <!-- Tavola stilizzata -->
+  <ellipse cx="256" cy="420" rx="200" ry="35" fill="#3D1A1E" opacity="0.6"/>
+  <ellipse cx="256" cy="415" rx="180" ry="25" fill="#4D2228" opacity="0.8"/>
+  
+  <!-- Calice sinistro (inclinato verso destra per brindisi) -->
+  <g transform="translate(256, 280) rotate(-12) translate(-256, -280)">
+    <!-- Stelo e base -->
+    <path d="M175 340 L175 380 Q175 390 165 390 L135 390 Q125 390 125 385 L125 382 Q125 377 135 377 L155 377 L155 340 Z" 
+          fill="url(#glassGradient)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    
+    <!-- Coppa -->
+    <path d="M115 200 Q115 290 155 320 L155 340 L175 340 L175 320 Q215 290 215 200 Q215 170 165 170 Q115 170 115 200 Z" 
+          fill="url(#glassGradient)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+    
+    <!-- Vino -->
+    <path d="M125 210 Q125 275 155 305 L155 305 L175 305 L175 305 Q205 275 205 210 Q205 190 165 190 Q125 190 125 210 Z" 
+          fill="url(#wineGradient)" opacity="0.9"/>
+    
+    <!-- Riflesso vetro -->
+    <path d="M130 200 Q130 220 135 240 L140 240 Q135 220 135 200 Q135 185 150 182 L148 178 Q130 182 130 200 Z" 
+          fill="url(#reflectGradient)"/>
+  </g>
+  
+  <!-- Calice destro (inclinato verso sinistra per brindisi) -->
+  <g transform="translate(256, 280) rotate(12) translate(-256, -280)">
+    <!-- Stelo e base -->
+    <path d="M337 340 L337 380 Q337 390 347 390 L377 390 Q387 390 387 385 L387 382 Q387 377 377 377 L357 377 L357 340 Z" 
+          fill="url(#glassGradient)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    
+    <!-- Coppa -->
+    <path d="M297 200 Q297 290 337 320 L337 340 L357 340 L357 320 Q397 290 397 200 Q397 170 347 170 Q297 170 297 200 Z" 
+          fill="url(#glassGradient)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+    
+    <!-- Vino -->
+    <path d="M307 210 Q307 275 337 305 L337 305 L357 305 L357 305 Q387 275 387 210 Q387 190 347 190 Q307 190 307 210 Z" 
+          fill="url(#wineGradient)" opacity="0.9"/>
+    
+    <!-- Riflesso vetro -->
+    <path d="M370 200 Q370 220 365 240 L360 240 Q365 220 365 200 Q365 185 350 182 L352 178 Q370 182 370 200 Z" 
+          fill="url(#reflectGradient)"/>
+  </g>
+  
+  <!-- Scintille brindisi -->
+  <g fill="#FFD7B4" opacity="0.9">
+    <circle cx="256" cy="155" r="4"/>
+    <circle cx="248" cy="140" r="2.5"/>
+    <circle cx="268" cy="142" r="2.5"/>
+    <circle cx="256" cy="128" r="2"/>
+    <circle cx="240" cy="152" r="2"/>
+    <circle cx="272" cy="150" r="2"/>
+    <circle cx="245" cy="165" r="1.5"/>
+    <circle cx="267" cy="163" r="1.5"/>
+  </g>
+  
+  <!-- Linee dinamiche brindisi -->
+  <g stroke="#FFD7B4" stroke-width="2" stroke-linecap="round" opacity="0.6">
+    <line x1="256" y1="120" x2="256" y2="108"/>
+    <line x1="232" y1="130" x2="222" y2="120"/>
+    <line x1="280" y1="130" x2="290" y2="120"/>
+  </g>
+  
+</svg>

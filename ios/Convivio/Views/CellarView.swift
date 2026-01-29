@@ -183,8 +183,8 @@ struct CellarView: View {
                     }
                 }
             }
-            .navigationTitle("Cantina")
-            .searchable(text: $searchText, prompt: "Cerca vini, produttori, posizioni...")
+            .navigationTitle(L10n.cellar)
+            .searchable(text: $searchText, prompt: L10n.search)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {

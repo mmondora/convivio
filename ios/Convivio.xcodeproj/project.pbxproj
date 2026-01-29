@@ -37,6 +37,8 @@
 		F000000000000035 /* WineMatchingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000035 /* WineMatchingService.swift */; };
 		F000000000000036 /* StorageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000036 /* StorageModels.swift */; };
 		F000000000000037 /* StorageConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000037 /* StorageConfigurationView.swift */; };
+		F000000000000038 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000038 /* LanguageManager.swift */; };
+		F000000000000039 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000039 /* OnboardingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -73,6 +75,8 @@
 		F100000000000035 /* WineMatchingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineMatchingService.swift; sourceTree = "<group>"; };
 		F100000000000036 /* StorageModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageModels.swift; sourceTree = "<group>"; };
 		F100000000000037 /* StorageConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageConfigurationView.swift; sourceTree = "<group>"; };
+		F100000000000038 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
+		F100000000000039 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -135,6 +139,7 @@
 				F100000000000033 /* InviteGeneratorView.swift */,
 				F100000000000034 /* BottleUnloadView.swift */,
 				F100000000000037 /* StorageConfigurationView.swift */,
+				F100000000000039 /* OnboardingView.swift */,
 				F400000000000007 /* Components */,
 				F400000000000008 /* Ratings */,
 			);
@@ -149,6 +154,7 @@
 				F100000000000027 /* WineRatingService.swift */,
 				F100000000000031 /* NotificationService.swift */,
 				F100000000000035 /* WineMatchingService.swift */,
+				F100000000000038 /* LanguageManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -288,6 +294,8 @@
 				F000000000000035 /* WineMatchingService.swift in Sources */,
 				F000000000000036 /* StorageModels.swift in Sources */,
 				F000000000000037 /* StorageConfigurationView.swift in Sources */,
+				F000000000000038 /* LanguageManager.swift in Sources */,
+				F000000000000039 /* OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

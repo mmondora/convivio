@@ -98,7 +98,7 @@ struct ChatView: View {
                 .padding()
                 .background(Color(.systemBackground))
             }
-            .navigationTitle("Sommelier AI")
+            .navigationTitle(L10n.sommelier)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

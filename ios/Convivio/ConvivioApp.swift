@@ -40,12 +40,31 @@ struct ConvivioApp: App {
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var settings: [AppSettings]
+    @StateObject private var languageManager = LanguageManager.shared
+
+    @State private var showOnboarding = false
+    @State private var isReady = false
 
     var body: some View {
-        MainTabView()
-            .task {
-                await setupApp()
+        Group {
+            if !isReady {
+                // Loading state
+                ProgressView()
+            } else if showOnboarding, let appSettings = settings.first {
+                OnboardingView(settings: appSettings) {
+                    withAnimation {
+                        showOnboarding = false
+                    }
+                }
+                .environmentObject(languageManager)
+            } else {
+                MainTabView()
+                    .environmentObject(languageManager)
             }
+        }
+        .task {
+            await setupApp()
+        }
     }
 
     private func setupApp() async {
@@ -56,39 +75,56 @@ struct ContentView: View {
             try? modelContext.save()
         }
 
-        // Load API key if it exists
-        if let openAIKey = settings.first?.openAIApiKey {
-            await OpenAIService.shared.setApiKey(openAIKey)
+        // Small delay to ensure settings are loaded
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        // Sync language manager with saved settings
+        if let savedLanguage = settings.first?.preferredLanguage,
+           let language = AppLanguage(rawValue: savedLanguage) {
+            languageManager.setLanguage(language)
         }
+
+        // Load API key if it exists
+        if let openAIKey = settings.first?.openAIApiKey, !openAIKey.isEmpty {
+            await OpenAIService.shared.setApiKey(openAIKey)
+            showOnboarding = false
+        } else {
+            // Show onboarding if no API key
+            showOnboarding = true
+        }
+
+        isReady = true
     }
 }
 
 struct MainTabView: View {
+    @EnvironmentObject var languageManager: LanguageManager
+
     var body: some View {
         TabView {
             CellarView()
                 .tabItem {
-                    Label("Cantina", systemImage: "wineglass")
+                    Label(L10n.cellar, systemImage: "wineglass")
                 }
 
             ScanView()
                 .tabItem {
-                    Label("Scansiona", systemImage: "camera")
+                    Label(L10n.scan, systemImage: "camera")
                 }
 
             FoodView()
                 .tabItem {
-                    Label("Convivio", systemImage: "fork.knife")
+                    Label(L10n.convivio, systemImage: "fork.knife")
                 }
 
             ChatView()
                 .tabItem {
-                    Label("Sommelier", systemImage: "bubble.left.and.bubble.right")
+                    Label(L10n.sommelier, systemImage: "bubble.left.and.bubble.right")
                 }
 
             ProfileView()
                 .tabItem {
-                    Label("Profilo", systemImage: "person.circle")
+                    Label(L10n.profile, systemImage: "person.circle")
                 }
         }
         .tint(.purple)
