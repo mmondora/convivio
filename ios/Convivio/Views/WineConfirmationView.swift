@@ -27,8 +27,8 @@ struct WineConfirmationView: View {
                         wineListSection
                     }
 
-                    // Schedule summary
-                    if !confirmedWines.isEmpty {
+                    // Schedule summary (only for wines with quantity > 0)
+                    if activeWinesCount > 0 {
                         scheduleSummarySection
                     }
 
@@ -134,31 +134,35 @@ struct WineConfirmationView: View {
 
     // MARK: - Wine List Section
 
+    private var activeWinesCount: Int {
+        confirmedWines.filter { $0.quantity > 0 }.count
+    }
+
     private var wineListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Vini Selezionati")
+                Text("Vini dal Menu")
                     .font(.headline)
                 Spacer()
-                Text("\(confirmedWines.count) vini")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(activeWinesCount) di \(confirmedWines.count) selezionati")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if activeWinesCount < confirmedWines.count {
+                        Text("Usa +/- per regolare le quantità")
+                            .font(.caption2)
+                            .foregroundColor(.purple)
+                    }
+                }
             }
 
             ForEach(confirmedWines.indices, id: \.self) { index in
                 WineConfirmationRow(
                     wine: $confirmedWines[index],
-                    onDelete: {
-                        removeWine(at: index)
-                    }
+                    onDelete: nil // No delete button, use quantity 0 instead
                 )
             }
         }
-    }
-
-    private func removeWine(at index: Int) {
-        guard index < confirmedWines.count else { return }
-        confirmedWines.remove(at: index)
     }
 
     // MARK: - Schedule Summary Section
@@ -168,7 +172,9 @@ struct WineConfirmationView: View {
             Label("Programma Notifiche", systemImage: "bell")
                 .font(.headline)
 
-            let summary = WineConfirmationSummary(confirmedWines: confirmedWines, dinnerDate: dinner.date)
+            // Only include wines with quantity > 0
+            let activeWines = confirmedWines.filter { $0.quantity > 0 }
+            let summary = WineConfirmationSummary(confirmedWines: activeWines, dinnerDate: dinner.date)
             let schedule = summary.fridgeSchedule()
 
             if schedule.isEmpty {
@@ -242,11 +248,24 @@ struct WineConfirmationView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(confirmedWines.isEmpty || isScheduling ? Color.gray : Color.purple)
+                .background(activeWinesCount == 0 || isScheduling ? Color.gray : Color.purple)
                 .foregroundColor(.white)
                 .cornerRadius(12)
             }
-            .disabled(confirmedWines.isEmpty || isScheduling)
+            .disabled(activeWinesCount == 0 || isScheduling)
+
+            if activeWinesCount == 0 && !confirmedWines.isEmpty {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundColor(.orange)
+                    Text("Aumenta la quantità di almeno un vino per confermare")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+            }
 
             if dinner.notificationsScheduled {
                 Button(role: .destructive) {
@@ -332,6 +351,17 @@ struct WineConfirmationView: View {
         errorMessage = nil
         showSuccessMessage = false
 
+        // Filter wines with quantity > 0
+        let activeWines = confirmedWines.filter { $0.quantity > 0 }
+
+        guard !activeWines.isEmpty else {
+            await MainActor.run {
+                errorMessage = "Seleziona almeno un vino con quantità > 0"
+                isScheduling = false
+            }
+            return
+        }
+
         // Request permission
         let granted = await NotificationService.shared.requestPermission()
         if !granted {
@@ -343,15 +373,23 @@ struct WineConfirmationView: View {
         }
 
         do {
-            // Schedule notifications
+            // Schedule notifications only for active wines
             let result = try await NotificationService.shared.scheduleWineNotifications(
                 for: dinner,
-                wines: confirmedWines
+                wines: activeWines
             )
 
             await MainActor.run {
-                confirmedWines = result.wines
-                dinner.confirmedWines = result.wines
+                // Update confirmed wines with notification IDs
+                // Keep all wines but only the active ones have notifications
+                var updatedWines = confirmedWines
+                for resultWine in result.wines {
+                    if let index = updatedWines.firstIndex(where: { $0.id == resultWine.id }) {
+                        updatedWines[index] = resultWine
+                    }
+                }
+                confirmedWines = updatedWines
+                dinner.confirmedWines = updatedWines.filter { $0.quantity > 0 } // Only save active wines
                 dinner.postDinnerNotificationId = result.postDinnerNotificationId
                 dinner.notificationsScheduled = true
                 dinner.updatedAt = Date()
@@ -410,7 +448,7 @@ struct WineConfirmationRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Wine info
+            // Wine info header
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
@@ -429,55 +467,92 @@ struct WineConfirmationRow: View {
 
                     Text(wine.displayName)
                         .font(.subheadline.bold())
-
-                    Text("\(wine.quantity) bottigli\(wine.quantity == 1 ? "a" : "e")")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
 
                 Spacer()
-
-                // Delete button
-                if let onDelete = onDelete {
-                    Button(role: .destructive) {
-                        onDelete()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.red.opacity(0.7))
-                    }
-                }
 
                 Image(systemName: wine.temperatureCategory.icon)
                     .font(.title2)
                     .foregroundColor(.purple)
             }
 
-            // Temperature picker
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Temperatura di servizio")
-                    .font(.caption.bold())
+            // Quantity stepper
+            HStack {
+                Text("Bottiglie")
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
 
-                Picker("Temperatura", selection: $wine.temperatureCategory) {
-                    ForEach(WineTemperatureCategory.allCases) { category in
-                        HStack {
-                            Text(category.displayName)
-                            Text(category.servingTemperature)
-                                .foregroundColor(.secondary)
+                Spacer()
+
+                HStack(spacing: 0) {
+                    Button {
+                        if wine.quantity > 0 {
+                            wine.quantity -= 1
                         }
-                        .tag(category)
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(wine.quantity > 0 ? .purple : .gray)
+                    }
+                    .disabled(wine.quantity <= 0)
+
+                    Text("\(wine.quantity)")
+                        .font(.title2.bold())
+                        .frame(minWidth: 44)
+                        .foregroundColor(wine.quantity == 0 ? .secondary : .primary)
+
+                    Button {
+                        wine.quantity += 1
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.purple)
                     }
                 }
-                .pickerStyle(.menu)
-                .tint(.purple)
+            }
+            .padding(.vertical, 4)
 
-                Text(wine.temperatureCategory.servingInstructions)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(8)
-                    .background(Color(.tertiarySystemBackground))
-                    .cornerRadius(6)
+            // Zero quantity warning
+            if wine.quantity == 0 {
+                HStack {
+                    Image(systemName: "info.circle")
+                        .foregroundColor(.orange)
+                    Text("Questo vino verrà escluso dalla conferma")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+                .padding(8)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(6)
+            }
+
+            // Temperature picker (only if quantity > 0)
+            if wine.quantity > 0 {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Temperatura di servizio")
+                        .font(.caption.bold())
+                        .foregroundColor(.secondary)
+
+                    Picker("Temperatura", selection: $wine.temperatureCategory) {
+                        ForEach(WineTemperatureCategory.allCases) { category in
+                            HStack {
+                                Text(category.displayName)
+                                Text(category.servingTemperature)
+                                    .foregroundColor(.secondary)
+                            }
+                            .tag(category)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(.purple)
+
+                    Text(wine.temperatureCategory.servingInstructions)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(8)
+                        .background(Color(.tertiarySystemBackground))
+                        .cornerRadius(6)
+                }
             }
 
             // Notification status
@@ -492,7 +567,8 @@ struct WineConfirmationRow: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(wine.quantity == 0 ? Color(.secondarySystemBackground).opacity(0.5) : Color(.secondarySystemBackground))
         .cornerRadius(12)
+        .opacity(wine.quantity == 0 ? 0.7 : 1.0)
     }
 }
