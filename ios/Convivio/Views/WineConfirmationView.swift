@@ -395,7 +395,9 @@ struct WineConfirmationView: View {
                 dinner.updatedAt = Date()
                 try? modelContext.save()
                 isScheduling = false
-                showSuccessMessage = true
+
+                // Dismiss and return to menu
+                dismiss()
             }
         } catch {
             await MainActor.run {
