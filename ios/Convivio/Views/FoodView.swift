@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 struct FoodView: View {
     @Environment(\.modelContext) private var modelContext
@@ -618,8 +619,8 @@ struct DinnerDetailView: View {
 
             // Action buttons
             VStack(spacing: 12) {
-                // Bottle unload button for past dinners
-                if dinner.isPast && dinner.status != .completed && !dinner.confirmedWines.isEmpty {
+                // Bottle unload button for past dinners or debug
+                if dinner.status != .completed && !dinner.confirmedWines.isEmpty {
                     Button {
                         showBottleUnload = true
                     } label: {
@@ -635,8 +636,8 @@ struct DinnerDetailView: View {
                     }
                 }
 
-                // Wine confirmation button (only for future dinners)
-                if !dinner.isPast && !menu.abbinamenti.isEmpty {
+                // Wine confirmation button
+                if !menu.abbinamenti.isEmpty {
                     Button {
                         showWineConfirmation = true
                     } label: {
@@ -652,43 +653,46 @@ struct DinnerDetailView: View {
                     }
                 }
 
-                // Invite generator button (only for future dinners)
-                if !dinner.isPast {
-                    Button {
-                        showInviteGenerator = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "envelope")
-                            Text("Genera Invito")
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue.opacity(0.15))
-                        .foregroundColor(.blue)
-                        .cornerRadius(12)
+                // Invite generator button
+                Button {
+                    showInviteGenerator = true
+                } label: {
+                    HStack {
+                        Image(systemName: "envelope")
+                        Text("Genera Invito")
                     }
-
-                    // Regenerate button
-                    Button {
-                        Task { await regenerateMenu() }
-                    } label: {
-                        HStack {
-                            if isGenerating {
-                                ProgressView()
-                                    .tint(.purple)
-                            } else {
-                                Image(systemName: "arrow.clockwise")
-                            }
-                            Text(isGenerating ? "Rigenerazione..." : "Rigenera Menu")
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.purple.opacity(0.15))
-                        .foregroundColor(.purple)
-                        .cornerRadius(12)
-                    }
-                    .disabled(isGenerating || settings?.openAIApiKey == nil)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue.opacity(0.15))
+                    .foregroundColor(.blue)
+                    .cornerRadius(12)
                 }
+
+                // Regenerate button
+                Button {
+                    Task { await regenerateMenu() }
+                } label: {
+                    HStack {
+                        if isGenerating {
+                            ProgressView()
+                                .tint(.purple)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        Text(isGenerating ? "Rigenerazione..." : "Rigenera Menu")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.purple.opacity(0.15))
+                    .foregroundColor(.purple)
+                    .cornerRadius(12)
+                }
+                .disabled(isGenerating || settings?.openAIApiKey == nil)
+
+                #if DEBUG
+                // Debug section
+                debugButtonsSection
+                #endif
 
                 // Completed dinner indicator
                 if dinner.status == .completed {
@@ -707,6 +711,79 @@ struct DinnerDetailView: View {
             }
         }
     }
+
+    // MARK: - Debug Section
+
+    #if DEBUG
+    private var debugButtonsSection: some View {
+        VStack(spacing: 8) {
+            Divider()
+
+            Text("DEBUG")
+                .font(.caption.bold())
+                .foregroundColor(.red)
+
+            // Simulate post-dinner notification
+            Button {
+                simulatePostDinnerNotification()
+            } label: {
+                HStack {
+                    Image(systemName: "bell.badge")
+                    Text("Simula Notifica Scarico")
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.red.opacity(0.15))
+                .foregroundColor(.red)
+                .cornerRadius(12)
+            }
+
+            // Show bottle unload directly
+            Button {
+                showBottleUnload = true
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.down.circle")
+                    Text("Apri Scarico Bottiglie")
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.red.opacity(0.15))
+                .foregroundColor(.red)
+                .cornerRadius(12)
+            }
+        }
+    }
+
+    private func simulatePostDinnerNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Com'è andata la cena?"
+        content.body = "Conferma le bottiglie consumate per aggiornare la cantina"
+        content.sound = .default
+        content.categoryIdentifier = "BOTTLE_UNLOAD"
+        content.userInfo = [
+            "dinnerTitle": dinner.title,
+            "action": "unloadBottles"
+        ]
+
+        // Fire in 3 seconds
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)
+
+        let request = UNNotificationRequest(
+            identifier: "debug-postDinner-\(UUID().uuidString)",
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Error scheduling debug notification: \(error)")
+            } else {
+                print("Debug notification scheduled - will fire in 3 seconds")
+            }
+        }
+    }
+    #endif
 
     private func bindingFor(_ section: String) -> Binding<Bool> {
         Binding(
