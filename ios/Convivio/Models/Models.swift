@@ -1,330 +1,173 @@
-//
-//  Models.swift
-//  Convivio
-//
-//  Data models che rispecchiano lo schema Firestore
-//
-
 import Foundation
 import FirebaseFirestore
 
-// MARK: - Wine Type
+// MARK: - User
 
-enum WineType: String, Codable, CaseIterable, Identifiable {
+struct AppUser: Codable, Identifiable {
+    @DocumentID var id: String?
+    var email: String
+    var displayName: String
+    var photoURL: String?
+    var createdAt: Timestamp
+    var updatedAt: Timestamp
+    var preferences: UserPreferences
+}
+
+struct UserPreferences: Codable {
+    var language: String
+    var notifications: Bool
+    var dietaryRestrictions: [String]?
+    var favoriteRegions: [String]?
+}
+
+// MARK: - Cellar
+
+struct Cellar: Codable, Identifiable {
+    @DocumentID var id: String?
+    var name: String
+    var description: String?
+    var ownerId: String
+    var members: [String: CellarMember]
+    var stats: CellarStats
+    var createdAt: Timestamp
+    var updatedAt: Timestamp
+}
+
+struct CellarMember: Codable {
+    var role: String
+    var joinedAt: Timestamp
+}
+
+struct CellarStats: Codable {
+    var totalBottles: Int
+    var totalValue: Double
+    var wineTypes: [String: Int]
+}
+
+// MARK: - Wine
+
+struct Wine: Codable, Identifiable {
+    @DocumentID var id: String?
+    var name: String
+    var producer: String?
+    var vintage: String?
+    var type: WineType
+    var region: String?
+    var country: String
+    var grapes: [String]?
+    var alcohol: Double?
+    var description: String?
+    var tastingNotes: TastingNotes?
+    var pairings: [String]?
+    var averagePrice: Double?
+    var createdAt: Timestamp
+    var updatedAt: Timestamp
+}
+
+enum WineType: String, Codable, CaseIterable {
     case red
     case white
-    case rosé
+    case rose = "rosé"
     case sparkling
     case dessert
     case fortified
-    
-    var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
         case .red: return "Rosso"
         case .white: return "Bianco"
-        case .rosé: return "Rosé"
+        case .rose: return "Rosato"
         case .sparkling: return "Spumante"
-        case .dessert: return "Passito"
+        case .dessert: return "Dolce"
         case .fortified: return "Fortificato"
         }
     }
-    
+
     var icon: String {
         switch self {
         case .red: return "🍷"
         case .white: return "🥂"
-        case .rosé: return "🌸"
+        case .rose: return "🌸"
         case .sparkling: return "🍾"
         case .dessert: return "🍯"
         case .fortified: return "🥃"
         }
     }
-    
-    var color: String {
-        switch self {
-        case .red: return "WineRed"
-        case .white: return "WineWhite"
-        case .rosé: return "WineRose"
-        case .sparkling: return "WineSparkling"
-        case .dessert: return "WineDessert"
-        case .fortified: return "WineFortified"
-        }
-    }
 }
 
-// MARK: - Bottle Status
-
-enum BottleStatus: String, Codable, CaseIterable {
-    case available
-    case consumed
-    case gifted
-    case broken
-    
-    var displayName: String {
-        switch self {
-        case .available: return "Disponibile"
-        case .consumed: return "Consumato"
-        case .gifted: return "Regalato"
-        case .broken: return "Rotto"
-        }
-    }
-}
-
-// MARK: - User Role
-
-enum UserRole: String, Codable {
-    case owner
-    case family
-}
-
-// MARK: - Wine
-
-struct Wine: Identifiable, Codable, Hashable {
-    @DocumentID var id: String?
-    var name: String
-    var producer: String?
-    var vintage: Int?
-    var type: WineType
-    var region: String?
-    var country: String?
-    var grapes: [String]?
-    var alcoholContent: Double?
-    var description: String?
-    @ServerTimestamp var createdAt: Timestamp?
-    var createdBy: String
-    
-    var displayName: String {
-        var parts = [name]
-        if let vintage = vintage {
-            parts.append(String(vintage))
-        }
-        return parts.joined(separator: " ")
-    }
-    
-    var subtitle: String {
-        var parts: [String] = []
-        if let producer = producer {
-            parts.append(producer)
-        }
-        if let region = region {
-            parts.append(region)
-        }
-        return parts.joined(separator: " · ")
-    }
+struct TastingNotes: Codable {
+    var appearance: String?
+    var nose: [String]?
+    var palate: [String]?
+    var finish: String?
+    var rating: Int?
 }
 
 // MARK: - Bottle
 
-struct Bottle: Identifiable, Codable {
+struct Bottle: Codable, Identifiable {
     @DocumentID var id: String?
     var wineId: String
-    var locationId: String
+    var cellarId: String
+    var location: BottleLocation?
+    var purchaseDate: Timestamp?
+    var purchasePrice: Double?
+    var purchaseLocation: String?
+    var quantity: Int
+    var drinkWindow: DrinkWindow?
+    var notes: String?
     var status: BottleStatus
-    var acquiredAt: Timestamp?
-    var acquiredPrice: Double?
-    var consumedAt: Timestamp?
-    var notes: String?
-    @ServerTimestamp var createdAt: Timestamp?
-    var createdBy: String
+    var createdAt: Timestamp
+    var updatedAt: Timestamp
+
+    // Joined data
+    var wine: Wine?
 }
 
-// MARK: - Cellar
-
-struct Cellar: Identifiable, Codable {
-    @DocumentID var id: String?
-    var name: String
-    var description: String?
-    var members: [String: UserRole]
-    @ServerTimestamp var createdAt: Timestamp?
-    var createdBy: String
-    
-    func role(for userId: String) -> UserRole? {
-        members[userId]
-    }
+struct BottleLocation: Codable {
+    var zone: String?
+    var rack: Int?
+    var shelf: Int?
+    var position: Int?
 }
 
-// MARK: - Location
-
-struct Location: Identifiable, Codable, Hashable {
-    @DocumentID var id: String?
-    var cellarId: String?
-    var shelf: String
-    var row: Int?
-    var slot: Int?
-    var description: String?
-    var capacity: Int?
-    
-    var displayPath: String {
-        var parts = ["Scaffale \(shelf)"]
-        if let row = row {
-            parts.append("Riga \(row)")
-        }
-        if let slot = slot {
-            parts.append("Slot \(slot)")
-        }
-        return parts.joined(separator: ", ")
-    }
+struct DrinkWindow: Codable {
+    var from: String?
+    var to: String?
+    var peak: String?
 }
 
-// MARK: - Rating
-
-struct Rating: Identifiable, Codable {
-    @DocumentID var id: String?
-    var wineId: String
-    var rating: Int // 1-5
-    var isFavorite: Bool
-    var notes: String?
-    @ServerTimestamp var createdAt: Timestamp?
-    @ServerTimestamp var updatedAt: Timestamp?
-}
-
-// MARK: - Taste Profile
-
-struct TasteProfile: Identifiable, Codable {
-    @DocumentID var id: String?
-    var wineId: String
-    var acidity: Int      // 1-5
-    var tannin: Int       // 1-5
-    var body: Int         // 1-5
-    var sweetness: Int    // 1-5
-    var effervescence: Int // 0-5
-    var notes: String?
-    var tags: [String]?
-    @ServerTimestamp var createdAt: Timestamp?
-}
-
-// MARK: - Friend
-
-struct Friend: Identifiable, Codable {
-    @DocumentID var id: String?
-    var name: String
-    var email: String?
-    var phone: String?
-    var foodieLevel: FoodieLevel
-    var notes: String?
-    @ServerTimestamp var createdAt: Timestamp?
-}
-
-enum FoodieLevel: String, Codable, CaseIterable {
-    case simple
-    case curious
-    case demanding
-    
-    var displayName: String {
-        switch self {
-        case .simple: return "Semplice"
-        case .curious: return "Curioso"
-        case .demanding: return "Esigente"
-        }
-    }
-}
-
-// MARK: - Food Preference
-
-struct FoodPreference: Identifiable, Codable {
-    @DocumentID var id: String?
-    var friendId: String?
-    var type: FoodPrefType
-    var category: String
-    var description: String?
-    var severity: FoodPrefSeverity?
-}
-
-enum FoodPrefType: String, Codable, CaseIterable {
-    case allergy
-    case intolerance
-    case dislike
-    case preference
-    case diet
-    
-    var displayName: String {
-        switch self {
-        case .allergy: return "Allergia"
-        case .intolerance: return "Intolleranza"
-        case .dislike: return "Non gradisce"
-        case .preference: return "Preferenza"
-        case .diet: return "Dieta"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .allergy: return "exclamationmark.triangle.fill"
-        case .intolerance: return "exclamationmark.circle.fill"
-        case .dislike: return "hand.thumbsdown.fill"
-        case .preference: return "heart.fill"
-        case .diet: return "leaf.fill"
-        }
-    }
-}
-
-enum FoodPrefSeverity: String, Codable {
-    case mild
-    case moderate
-    case severe
+enum BottleStatus: String, Codable {
+    case available
+    case reserved
+    case consumed
+    case gifted
 }
 
 // MARK: - Dinner Event
 
-struct DinnerEvent: Identifiable, Codable {
+struct DinnerEvent: Codable, Identifiable {
     @DocumentID var id: String?
-    var name: String
+    var hostId: String
+    var cellarId: String
+    var title: String
     var date: Timestamp
-    var time: String?
-    var style: DinnerStyle
-    var cookingTime: CookingTime
-    var budgetLevel: BudgetLevel
+    var guestCount: Int
+    var guests: [Guest]?
+    var occasion: String?
     var notes: String?
+    var menu: MenuProposal?
     var status: DinnerStatus
-    var menuProposal: MenuProposal?
-    @ServerTimestamp var createdAt: Timestamp?
-    @ServerTimestamp var updatedAt: Timestamp?
+    var createdAt: Timestamp
+    var updatedAt: Timestamp
 }
 
-enum DinnerStyle: String, Codable, CaseIterable {
-    case informal
-    case convivial
-    case elegant
-    
-    var displayName: String {
-        switch self {
-        case .informal: return "Informale"
-        case .convivial: return "Conviviale"
-        case .elegant: return "Elegante"
-        }
-    }
-}
-
-enum CookingTime: String, Codable, CaseIterable {
-    case thirtyMin = "30min"
-    case oneHour = "1h"
-    case twoHours = "2h"
-    case threeHoursPlus = "3h+"
-    
-    var displayName: String {
-        switch self {
-        case .thirtyMin: return "30 min"
-        case .oneHour: return "1 ora"
-        case .twoHours: return "2 ore"
-        case .threeHoursPlus: return "3+ ore"
-        }
-    }
-}
-
-enum BudgetLevel: String, Codable, CaseIterable {
-    case economy
-    case standard
-    case premium
-    
-    var displayName: String {
-        switch self {
-        case .economy: return "Economico"
-        case .standard: return "Standard"
-        case .premium: return "Premium"
-        }
-    }
+struct Guest: Codable, Identifiable {
+    var id: String { oderId ?? UUID().uuidString }
+    var oderId: String?
+    var name: String
+    var dietaryRestrictions: [String]?
+    var preferences: String?
 }
 
 enum DinnerStatus: String, Codable {
@@ -332,27 +175,27 @@ enum DinnerStatus: String, Codable {
     case confirmed
     case completed
     case cancelled
-    
-    var displayName: String {
-        switch self {
-        case .planning: return "In pianificazione"
-        case .confirmed: return "Confermata"
-        case .completed: return "Completata"
-        case .cancelled: return "Annullata"
-        }
-    }
 }
 
-// MARK: - Menu Proposal
+// MARK: - Menu
 
 struct MenuProposal: Codable {
     var courses: [MenuCourse]
-    var reasoning: String
     var wineStrategy: String?
-    var seasonContext: String
-    var guestConsiderations: [String]
-    var totalPrepTime: Int
     var generatedAt: Timestamp?
+    var aiNotes: String?
+}
+
+struct MenuCourse: Codable, Identifiable {
+    var id: String { "\(course.rawValue)-\(name)" }
+    var course: CourseType
+    var name: String
+    var description: String
+    var dietaryFlags: [String]?
+    var prepTime: Int?
+    var notes: String?
+    var cellarWine: WinePairing?
+    var marketWine: WinePairing?
 }
 
 struct WinePairing: Codable {
@@ -361,72 +204,50 @@ struct WinePairing: Codable {
     var details: String?
 }
 
-struct MenuCourse: Codable, Identifiable {
-    var id: String { course.rawValue }
-    var course: CourseType
-    var name: String
-    var description: String
-    var dietaryFlags: [String]
-    var prepTime: Int
-    var notes: String?
-    var cellarWine: WinePairing?
-    var marketWine: WinePairing?
-}
-
 enum CourseType: String, Codable, CaseIterable {
-    case aperitif
-    case starter
-    case first
-    case main
-    case dessert
-    case pairing
-    
+    case aperitivo
+    case antipasto
+    case primo
+    case secondo
+    case contorno
+    case dolce
+    case digestivo
+
     var displayName: String {
         switch self {
-        case .aperitif: return "Aperitivo"
-        case .starter: return "Antipasto"
-        case .first: return "Primo"
-        case .main: return "Secondo"
-        case .dessert: return "Dolce"
-        case .pairing: return "Abbinamento"
+        case .aperitivo: return "Aperitivo"
+        case .antipasto: return "Antipasto"
+        case .primo: return "Primo"
+        case .secondo: return "Secondo"
+        case .contorno: return "Contorno"
+        case .dolce: return "Dolce"
+        case .digestivo: return "Digestivo"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .aperitivo: return "🥂"
+        case .antipasto: return "🥗"
+        case .primo: return "🍝"
+        case .secondo: return "🥩"
+        case .contorno: return "🥬"
+        case .dolce: return "🍰"
+        case .digestivo: return "☕️"
         }
     }
 }
 
-// MARK: - Wine Proposal
-
-struct WineProposal: Identifiable, Codable {
-    @DocumentID var id: String?
-    var dinnerId: String?
-    var type: ProposalType
-    var wineId: String?
-    var suggestedWineName: String?
-    var suggestedWineDetails: String?
-    var course: CourseType
-    var reasoning: String
-    var isSelected: Bool
-    @ServerTimestamp var createdAt: Timestamp?
-}
-
-enum ProposalType: String, Codable {
-    case available
-    case suggestedPurchase = "suggested_purchase"
-}
-
 // MARK: - Chat
 
-struct Conversation: Identifiable, Codable {
+struct ChatMessage: Codable, Identifiable {
     @DocumentID var id: String?
-    var title: String?
-    @ServerTimestamp var createdAt: Timestamp?
-    @ServerTimestamp var updatedAt: Timestamp?
-}
-
-struct ChatMessage: Identifiable, Codable {
-    @DocumentID var id: String?
+    var userId: String
+    var cellarId: String
     var role: MessageRole
     var content: String
-    @ServerTimestamp var createdAt: Timestamp?
+    var metadata: MessageMetadata?
+    var createdAt: Timestamp
 }
 
 enum MessageRole: String, Codable {
@@ -434,60 +255,59 @@ enum MessageRole: String, Codable {
     case assistant
 }
 
-// MARK: - Extraction
+struct MessageMetadata: Codable {
+    var wineIds: [String]?
+    var bottleIds: [String]?
+    var toolCalls: [String]?
+}
 
-struct ExtractionResult: Identifiable, Codable {
-    @DocumentID var id: String?
-    var photoAssetId: String
-    var rawOcrText: String
+// MARK: - Extraction Result
+
+struct ExtractionResult: Codable {
+    var ocrText: String
     var extractedFields: ExtractedFields
     var overallConfidence: Double
-    var wasManuallyEdited: Bool
-    var finalWineId: String?
-    @ServerTimestamp var createdAt: Timestamp?
 }
 
 struct ExtractedFields: Codable {
-    var name: ExtractedField?
-    var producer: ExtractedField?
-    var vintage: ExtractedField?
-    var type: ExtractedField?
-    var region: ExtractedField?
-    var country: ExtractedField?
-    var alcoholContent: ExtractedField?
-    var grapes: ExtractedField?
+    var name: ExtractedValue<String>?
+    var producer: ExtractedValue<String>?
+    var vintage: ExtractedValue<String>?
+    var type: ExtractedValue<String>?
+    var region: ExtractedValue<String>?
+    var country: ExtractedValue<String>?
+    var grapes: ExtractedValue<[String]>?
+    var alcohol: ExtractedValue<Double>?
 }
 
-struct ExtractedField: Codable {
-    var value: String
+struct ExtractedValue<T: Codable>: Codable {
+    var value: T
     var confidence: Double
 }
 
-// MARK: - Aggregated Types
+// MARK: - API Responses
 
-struct WineInventoryItem: Identifiable {
-    var id: String { wine.id ?? UUID().uuidString }
-    var wine: Wine
-    var availableBottles: Int
-    var locations: [Location]
-    var rating: Rating?
-    var tasteProfile: TasteProfile?
-    
-    var primaryLocation: Location? {
-        locations.first
-    }
+struct ExtractWineResponse: Codable {
+    var success: Bool
+    var error: String?
+    var extraction: ExtractionResult?
+    var suggestedMatches: [Wine]?
 }
 
-struct CellarStats {
-    var totalBottles: Int
-    var availableBottles: Int
-    var byType: [WineType: Int]
-    var vintageRange: ClosedRange<Int>?
-    var avgRating: Double?
+struct ProposeDinnerResponse: Codable {
+    var success: Bool
+    var error: String?
+    var menu: MenuProposal?
 }
 
-struct UserStats {
-    var totalBottles: Int = 0
-    var ratedWines: Int = 0
-    var totalDinners: Int = 0
+struct ChatResponse: Codable {
+    var success: Bool
+    var error: String?
+    var message: ChatMessage?
+}
+
+struct HealthResponse: Codable {
+    var status: String
+    var timestamp: String
+    var version: String
 }

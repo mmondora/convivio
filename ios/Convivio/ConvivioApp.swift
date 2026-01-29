@@ -1,182 +1,107 @@
-//
-//  ConvivioApp.swift
-//  Convivio
-//
-//  App entry point con Firebase initialization e navigation setup
-//
-
 import SwiftUI
 import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
-import FirebaseStorage
 import FirebaseFunctions
 
 @main
 struct ConvivioApp: App {
     @StateObject private var authManager = AuthManager.shared
-    @StateObject private var appState = AppState.shared
+    @StateObject private var firebaseService = FirebaseService.shared
 
     init() {
         FirebaseApp.configure()
 
         #if targetEnvironment(simulator)
-        // Use Firebase Emulators on simulator
-        // Start emulators with: cd firebase && firebase emulators:start
-        let localhost = "127.0.0.1"
-
-        print("🔧 Configuring Firebase Emulators...")
-        print("🔧 Auth: \(localhost):9099")
-        print("🔧 Firestore: \(localhost):8080")
-        print("🔧 Storage: \(localhost):9199")
-        print("🔧 Functions: \(localhost):5001")
-
-        Auth.auth().useEmulator(withHost: localhost, port: 9099)
-
+        // Always connect to emulators in simulator
         let settings = Firestore.firestore().settings
-        settings.host = "\(localhost):8080"
+        settings.host = "127.0.0.1:8080"
         settings.cacheSettings = MemoryCacheSettings()
         settings.isSSLEnabled = false
         Firestore.firestore().settings = settings
 
-        Storage.storage().useEmulator(withHost: localhost, port: 9199)
-        Functions.functions(region: "europe-west1").useEmulator(withHost: localhost, port: 5001)
+        Auth.auth().useEmulator(withHost: "127.0.0.1", port: 9099)
+        Functions.functions(region: "europe-west1").useEmulator(withHost: "127.0.0.1", port: 5001)
 
-        print("🔧 Firebase Emulators configured!")
+        print("🔧 Firebase Emulators configured: Auth=9099, Firestore=8080, Functions=5001")
         #endif
     }
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if authManager.isLoading {
-                    SplashView()
-                } else if authManager.isAuthenticated {
-                    MainTabView()
-                        .environmentObject(authManager)
-                        .environmentObject(appState)
-                } else {
-                    AuthenticationView()
-                        .environmentObject(authManager)
-                }
-            }
-            .animation(.easeInOut, value: authManager.isAuthenticated)
+            ContentView()
+                .environmentObject(authManager)
+                .environmentObject(firebaseService)
         }
     }
 }
 
-// MARK: - App State
+struct ContentView: View {
+    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var firebaseService: FirebaseService
 
-@MainActor
-class AppState: ObservableObject {
-    static let shared = AppState()
-    
-    @Published var selectedTab: Tab = .cellar
-    @Published var showingScanner = false
-    @Published var currentCellarId: String?
-    
-    enum Tab: Int, CaseIterable {
-        case cellar = 0
-        case scan = 1
-        case dinner = 2
-        case ai = 3
-        case profile = 4
-        
-        var title: String {
-            switch self {
-            case .cellar: return "Cantina"
-            case .scan: return "Scan"
-            case .dinner: return "Cena"
-            case .ai: return "AI"
-            case .profile: return "Profilo"
-            }
-        }
-        
-        var icon: String {
-            switch self {
-            case .cellar: return "wineglass"
-            case .scan: return "camera"
-            case .dinner: return "fork.knife"
-            case .ai: return "sparkles"
-            case .profile: return "person.circle"
-            }
-        }
-    }
-}
-
-// MARK: - Splash View
-
-struct SplashView: View {
     var body: some View {
-        ZStack {
-            Color("Background")
-                .ignoresSafeArea()
-
-            VStack(spacing: 20) {
-                Image(systemName: "wineglass.fill")
-                    .font(.system(size: 80))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.purple, .red],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-
-                Text("Convivio")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-
-                ProgressView()
-                    .tint(.primary)
+        Group {
+            if authManager.isLoading {
+                LoadingView()
+            } else if authManager.isAuthenticated {
+                MainTabView()
+                    .onAppear {
+                        if let userId = authManager.currentUser?.uid {
+                            firebaseService.loadCellars(for: userId)
+                        }
+                    }
+            } else {
+                LoadingView()
+                    .task {
+                        try? await authManager.signInAnonymously()
+                    }
             }
         }
     }
 }
 
-// MARK: - Main Tab View
+struct LoadingView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            ProgressView()
+                .scaleEffect(1.5)
+            Text("Caricamento...")
+                .foregroundColor(.secondary)
+        }
+    }
+}
 
 struct MainTabView: View {
-    @EnvironmentObject var appState: AppState
-    
+    @EnvironmentObject var firebaseService: FirebaseService
+
     var body: some View {
-        TabView(selection: $appState.selectedTab) {
+        TabView {
             CellarView()
                 .tabItem {
-                    Label(AppState.Tab.cellar.title, systemImage: AppState.Tab.cellar.icon)
+                    Label("Cantina", systemImage: "wineglass")
                 }
-                .tag(AppState.Tab.cellar)
-            
+
             ScanView()
                 .tabItem {
-                    Label(AppState.Tab.scan.title, systemImage: AppState.Tab.scan.icon)
+                    Label("Scansiona", systemImage: "camera")
                 }
-                .tag(AppState.Tab.scan)
-            
+
             DinnerListView()
                 .tabItem {
-                    Label(AppState.Tab.dinner.title, systemImage: AppState.Tab.dinner.icon)
+                    Label("Cene", systemImage: "fork.knife")
                 }
-                .tag(AppState.Tab.dinner)
-            
+
             ChatView()
                 .tabItem {
-                    Label(AppState.Tab.ai.title, systemImage: AppState.Tab.ai.icon)
+                    Label("Sommelier", systemImage: "bubble.left.and.bubble.right")
                 }
-                .tag(AppState.Tab.ai)
-            
+
             ProfileView()
                 .tabItem {
-                    Label(AppState.Tab.profile.title, systemImage: AppState.Tab.profile.icon)
+                    Label("Profilo", systemImage: "person.circle")
                 }
-                .tag(AppState.Tab.profile)
         }
-        .tint(.primary)
+        .tint(.purple)
     }
-}
-
-#Preview {
-    MainTabView()
-        .environmentObject(AppState.shared)
-        .environmentObject(AuthManager.shared)
 }

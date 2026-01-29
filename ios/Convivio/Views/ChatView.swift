@@ -1,378 +1,235 @@
-//
-//  ChatView.swift
-//  Convivio
-//
-//  Chat conversazionale con AI Sommelier
-//
-
 import SwiftUI
 
 struct ChatView: View {
-    @StateObject private var viewModel = ChatViewModel()
-    @FocusState private var isInputFocused: Bool
-    
+    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var firebaseService: FirebaseService
+
+    @State private var messages: [ChatMessage] = []
+    @State private var inputText = ""
+    @State private var isLoading = false
+    @State private var scrollToBottom = false
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Messages
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(spacing: 16) {
-                            ForEach(viewModel.messages) { message in
+                        LazyVStack(spacing: 12) {
+                            // Welcome message
+                            if messages.isEmpty && !isLoading {
+                                WelcomeMessage()
+                            }
+
+                            ForEach(messages) { message in
                                 MessageBubble(message: message)
                                     .id(message.id)
                             }
-                            
-                            if viewModel.isLoading {
-                                TypingIndicator()
+
+                            if isLoading {
+                                HStack {
+                                    TypingIndicator()
+                                    Spacer()
+                                }
+                                .padding(.horizontal)
+                                .id("typing")
                             }
                         }
                         .padding()
                     }
-                    .onChange(of: viewModel.messages.count) { _, _ in
-                        if let lastMessage = viewModel.messages.last {
+                    .onChange(of: messages.count) { _, _ in
+                        withAnimation {
+                            proxy.scrollTo(messages.last?.id ?? "typing", anchor: .bottom)
+                        }
+                    }
+                    .onChange(of: isLoading) { _, loading in
+                        if loading {
                             withAnimation {
-                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                                proxy.scrollTo("typing", anchor: .bottom)
                             }
                         }
                     }
                 }
-                
+
                 Divider()
-                
-                // Quick suggestions
-                if viewModel.messages.isEmpty {
-                    quickSuggestions
+
+                // Input bar
+                HStack(spacing: 12) {
+                    TextField("Chiedi al sommelier...", text: $inputText, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(1...4)
+
+                    Button {
+                        Task { await sendMessage() }
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title)
+                            .foregroundColor(inputText.isEmpty ? .gray : .purple)
+                    }
+                    .disabled(inputText.isEmpty || isLoading)
                 }
-                
-                // Input
-                inputBar
+                .padding()
+                .background(Color(.systemBackground))
             }
-            .navigationTitle("AI Sommelier")
+            .navigationTitle("Sommelier AI")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        viewModel.startNewConversation()
+                        messages = []
                     } label: {
-                        Image(systemName: "plus.message")
+                        Image(systemName: "trash")
                     }
+                    .disabled(messages.isEmpty)
                 }
             }
         }
     }
-    
-    // MARK: - Quick Suggestions
-    
-    private var quickSuggestions: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                SuggestionChip(text: "Cosa ho in cantina?") {
-                    viewModel.sendMessage("Cosa ho in cantina?")
-                }
-                
-                SuggestionChip(text: "Consiglia un rosso per stasera") {
-                    viewModel.sendMessage("Consiglia un rosso per stasera")
-                }
-                
-                SuggestionChip(text: "Dove trovo il Barolo?") {
-                    viewModel.sendMessage("Dove trovo il Barolo?")
-                }
-                
-                SuggestionChip(text: "Abbinamento per pesce") {
-                    viewModel.sendMessage("Che vino abbino al pesce?")
-                }
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
+
+    private func sendMessage() async {
+        guard let userId = authManager.currentUser?.uid,
+              let cellarId = firebaseService.currentCellar?.id else { return }
+
+        let userMessage = ChatMessage(
+            userId: userId,
+            cellarId: cellarId,
+            role: .user,
+            content: inputText,
+            createdAt: .init(date: Date())
+        )
+
+        messages.append(userMessage)
+        let messageText = inputText
+        inputText = ""
+        isLoading = true
+
+        do {
+            let response = try await firebaseService.chatWithSommelier(
+                message: messageText,
+                userId: userId,
+                cellarId: cellarId
+            )
+            messages.append(response)
+        } catch {
+            let errorMessage = ChatMessage(
+                userId: "system",
+                cellarId: cellarId,
+                role: .assistant,
+                content: "Mi dispiace, si è verificato un errore. Riprova.",
+                createdAt: .init(date: Date())
+            )
+            messages.append(errorMessage)
         }
-        .background(Color(.secondarySystemBackground))
-    }
-    
-    // MARK: - Input Bar
-    
-    private var inputBar: some View {
-        HStack(spacing: 12) {
-            TextField("Chiedi al sommelier...", text: $viewModel.inputText, axis: .vertical)
-                .textFieldStyle(.plain)
-                .lineLimit(1...5)
-                .focused($isInputFocused)
-            
-            Button {
-                viewModel.sendMessage(viewModel.inputText)
-                viewModel.inputText = ""
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.title2)
-            }
-            .disabled(viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading)
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 12)
-        .background(Color(.systemBackground))
+
+        isLoading = false
     }
 }
 
-// MARK: - Message Bubble
-
-struct MessageBubble: View {
-    let message: ChatMessageUI
-    
+struct WelcomeMessage: View {
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            if message.isUser {
-                Spacer(minLength: 60)
-            } else {
-                // AI avatar
-                Image(systemName: "sparkles")
-                    .font(.caption)
-                    .foregroundStyle(.purple)
-                    .frame(width: 28, height: 28)
-                    .background(Color.purple.opacity(0.1))
-                    .clipShape(Circle())
-            }
-            
-            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
-                Text(message.content)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(message.isUser ? Color.accentColor : Color(.secondarySystemBackground))
-                    .foregroundStyle(message.isUser ? .white : .primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                
-                // Wine references
-                if !message.wineReferences.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(message.wineReferences) { wine in
-                            WineReferenceChip(wine: wine)
-                        }
-                    }
-                }
-            }
-            
-            if !message.isUser {
-                Spacer(minLength: 60)
+        VStack(spacing: 16) {
+            Image(systemName: "wineglass.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(.purple.gradient)
+
+            Text("Ciao! Sono il tuo sommelier AI")
+                .font(.title2.bold())
+
+            Text("Posso aiutarti a scoprire i vini nella tua cantina, suggerirti abbinamenti, e rispondere alle tue domande sul vino.")
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                SuggestionChip(text: "Quali vini ho in cantina?")
+                SuggestionChip(text: "Cosa abbino a una bistecca?")
+                SuggestionChip(text: "Consiglia un vino per stasera")
             }
         }
+        .padding()
     }
 }
-
-// MARK: - Wine Reference Chip
-
-struct WineReferenceChip: View {
-    let wine: Wine
-    
-    var body: some View {
-        HStack(spacing: 6) {
-            Text(wine.type.icon)
-            Text(wine.displayName)
-                .font(.caption)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color(.tertiarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-// MARK: - Suggestion Chip
 
 struct SuggestionChip: View {
     let text: String
-    let action: () -> Void
-    
+
     var body: some View {
-        Button(action: action) {
+        HStack {
+            Image(systemName: "lightbulb")
+                .foregroundColor(.orange)
             Text(text)
                 .font(.subheadline)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color(.tertiarySystemBackground))
-                .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(.tertiarySystemBackground))
+        .cornerRadius(20)
     }
 }
 
-// MARK: - Typing Indicator
+struct MessageBubble: View {
+    let message: ChatMessage
+
+    var isUser: Bool {
+        message.role == .user
+    }
+
+    var body: some View {
+        HStack {
+            if isUser { Spacer(minLength: 60) }
+
+            VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
+                Text(message.content)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(isUser ? Color.purple : Color(.secondarySystemBackground))
+                    .foregroundColor(isUser ? .white : .primary)
+                    .cornerRadius(20)
+
+                Text(formatTime(message.createdAt.dateValue()))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+
+            if !isUser { Spacer(minLength: 60) }
+        }
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
 
 struct TypingIndicator: View {
-    @State private var animating = false
-    
+    @State private var animationPhase = 0
+
     var body: some View {
         HStack(spacing: 4) {
             ForEach(0..<3) { index in
                 Circle()
-                    .fill(Color.secondary)
+                    .fill(Color.gray)
                     .frame(width: 8, height: 8)
-                    .scaleEffect(animating ? 1.0 : 0.5)
+                    .scaleEffect(animationPhase == index ? 1.2 : 0.8)
                     .animation(
-                        .easeInOut(duration: 0.6)
-                        .repeatForever()
-                        .delay(Double(index) * 0.2),
-                        value: animating
+                        .easeInOut(duration: 0.4)
+                            .repeatForever()
+                            .delay(Double(index) * 0.15),
+                        value: animationPhase
                     )
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .onAppear { animating = true }
-    }
-}
-
-// MARK: - UI Models
-
-struct ChatMessageUI: Identifiable {
-    let id: String
-    let content: String
-    let isUser: Bool
-    let wineReferences: [Wine]
-    let timestamp: Date
-}
-
-// MARK: - View Model
-
-@MainActor
-class ChatViewModel: ObservableObject {
-    @Published var messages: [ChatMessageUI] = []
-    @Published var inputText = ""
-    @Published var isLoading = false
-    @Published var conversationId: String?
-    @Published var error: String?
-
-    private let firebase = FirebaseService.shared
-    private var wineCache: [String: Wine] = [:]
-
-    func sendMessage(_ text: String) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-
-        // Add user message
-        let userMessage = ChatMessageUI(
-            id: UUID().uuidString,
-            content: trimmed,
-            isUser: true,
-            wineReferences: [],
-            timestamp: Date()
-        )
-        messages.append(userMessage)
-
-        isLoading = true
-
-        Task {
-            do {
-                // Create conversation if needed
-                if conversationId == nil {
-                    conversationId = try await firebase.createConversation()
-                }
-
-                // Save user message to Firestore
-                if let convId = conversationId {
-                    let chatMessage = ChatMessage(
-                        id: nil,
-                        role: .user,
-                        content: trimmed,
-                        createdAt: nil
-                    )
-                    try await firebase.addMessage(chatMessage, to: convId)
-                }
-
-                // Call Cloud Function
-                let response = try await firebase.chatWithSommelier(
-                    message: trimmed,
-                    conversationId: conversationId,
-                    cellarContext: true
-                )
-
-                // Update conversation ID if new
-                if let newConvId = response.conversationId {
-                    conversationId = newConvId
-                }
-
-                // Fetch referenced wines
-                var wines: [Wine] = []
-                for wineId in response.wineIds {
-                    if let cachedWine = wineCache[wineId] {
-                        wines.append(cachedWine)
-                    } else {
-                        // Fetch wine from Firestore
-                        let allWines = try await firebase.getWines()
-                        if let wine = allWines.first(where: { $0.id == wineId }) {
-                            wineCache[wineId] = wine
-                            wines.append(wine)
-                        }
-                    }
-                }
-
-                // Save assistant message
-                if let convId = conversationId {
-                    let assistantMessage = ChatMessage(
-                        id: nil,
-                        role: .assistant,
-                        content: response.message,
-                        createdAt: nil
-                    )
-                    try await firebase.addMessage(assistantMessage, to: convId)
-                }
-
-                // Add to UI
-                let uiMessage = ChatMessageUI(
-                    id: UUID().uuidString,
-                    content: response.message,
-                    isUser: false,
-                    wineReferences: wines,
-                    timestamp: Date()
-                )
-                messages.append(uiMessage)
-
-            } catch {
-                print("🍷 CHAT ERROR: \(error)")
-                print("🍷 CHAT ERROR (localized): \(error.localizedDescription)")
-                self.error = error.localizedDescription
-
-                // Add error message to UI
-                let errorMessage = ChatMessageUI(
-                    id: UUID().uuidString,
-                    content: "Mi dispiace, c'è stato un errore. Riprova.",
-                    isUser: false,
-                    wineReferences: [],
-                    timestamp: Date()
-                )
-                messages.append(errorMessage)
-            }
-
-            isLoading = false
-        }
-    }
-
-    func startNewConversation() {
-        messages = []
-        conversationId = nil
-    }
-
-    func loadConversation(_ convId: String) async {
-        do {
-            conversationId = convId
-            let chatMessages = try await firebase.getMessages(conversationId: convId)
-
-            messages = chatMessages.map { msg in
-                ChatMessageUI(
-                    id: msg.id ?? UUID().uuidString,
-                    content: msg.content,
-                    isUser: msg.role == .user,
-                    wineReferences: [],
-                    timestamp: msg.createdAt?.dateValue() ?? Date()
-                )
-            }
-        } catch {
-            self.error = error.localizedDescription
+        .cornerRadius(20)
+        .onAppear {
+            animationPhase = 2
         }
     }
 }
 
 #Preview {
     ChatView()
+        .environmentObject(AuthManager.shared)
+        .environmentObject(FirebaseService.shared)
 }

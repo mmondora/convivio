@@ -1,8 +1,8 @@
 /**
- * Sommelier App - Shared Types
- * 
- * Questo file definisce il data model completo dell'applicazione.
- * Usato sia dalle Cloud Functions che dai client (iOS/Web).
+ * Convivio Type Definitions
+ *
+ * Shared TypeScript interfaces for Firebase Functions.
+ * Mirror the iOS Swift models for consistency.
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
@@ -12,86 +12,68 @@ import { Timestamp } from 'firebase-admin/firestore';
 // ============================================================
 
 export type WineType = 'red' | 'white' | 'rosé' | 'sparkling' | 'dessert' | 'fortified';
-
-export type BottleStatus = 'available' | 'consumed' | 'gifted' | 'broken';
-
+export type BottleStatus = 'available' | 'reserved' | 'consumed' | 'gifted';
+export type UserRole = 'owner' | 'family' | 'guest';
 export type MovementType = 'in' | 'out' | 'move';
-
-export type UserRole = 'owner' | 'family';
-
-export type FoodieLevel = 'simple' | 'curious' | 'demanding';
-
+export type FoodieLevel = 'casual' | 'enthusiast' | 'expert';
+export type PreferenceType = 'allergy' | 'intolerance' | 'diet' | 'dislike' | 'preference';
 export type DinnerStyle = 'informal' | 'convivial' | 'elegant';
-
-export type CookingTime = '30min' | '1h' | '2h' | '3h+';
-
-export type BudgetLevel = 'economy' | 'standard' | 'premium';
-
+export type CookingTime = 'quick' | 'oneHour' | 'twoHours' | 'unlimited';
+export type BudgetLevel = 'economic' | 'standard' | 'premium' | 'luxury';
 export type DinnerStatus = 'planning' | 'confirmed' | 'completed' | 'cancelled';
-
-export type FoodPrefType = 'allergy' | 'intolerance' | 'dislike' | 'preference' | 'diet';
-
-export type FoodPrefSeverity = 'mild' | 'moderate' | 'severe';
-
-export type PhotoType = 'label_front' | 'label_back' | 'bottle' | 'other';
-
 export type CourseType = 'aperitif' | 'starter' | 'first' | 'main' | 'dessert' | 'pairing';
 
-export type ProposalType = 'available' | 'suggested_purchase';
-
 // ============================================================
-// CORE ENTITIES
+// USER & AUTH
 // ============================================================
 
 export interface User {
   id: string;
-  email: string;
-  displayName: string;
+  email?: string;
+  displayName?: string;
   photoUrl?: string;
+  preferences?: UserPreferences;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 
 export interface UserPreferences {
-  favoriteTypes?: WineType[];
-  avoidTypes?: WineType[];
-  favoriteRegions?: string[];
-  notes?: string;
+  language: string;
+  notifications: boolean;
+  defaultCellarId?: string;
 }
 
 // ============================================================
-// CELLAR & LOCATION
+// CELLAR & LOCATIONS
 // ============================================================
 
 export interface Cellar {
   id: string;
   name: string;
   description?: string;
-  members: Record<string, UserRole>; // userId -> role
+  members: Record<string, UserRole>;
   createdAt: Timestamp;
-  createdBy: string;
+  updatedAt: Timestamp;
 }
 
 export interface Location {
   id: string;
   cellarId: string;
-  shelf: string;        // es. "A", "B", "Scaffale 1"
-  row?: number;         // riga nel ripiano
-  slot?: number;        // posizione nella riga
-  description?: string;
-  capacity?: number;    // bottiglie max
+  name: string;
+  path: LocationPath;
+  capacity?: number;
+  currentCount: number;
+  createdAt: Timestamp;
 }
 
-// Full path for display
 export interface LocationPath {
-  cellarName: string;
-  shelf: string;
+  shelf?: string;
   row?: number;
   slot?: number;
 }
 
 // ============================================================
-// WINE & BOTTLE
+// WINE & BOTTLES
 // ============================================================
 
 export interface Wine {
@@ -102,30 +84,29 @@ export interface Wine {
   type: WineType;
   region?: string;
   country?: string;
+  appellation?: string;
   grapes?: string[];
-  alcoholContent?: number;
+  alcohol?: number;
   description?: string;
-  createdAt: Timestamp;
+  imageUrl?: string;
   createdBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface Bottle {
   id: string;
   wineId: string;
-  locationId: string;
+  cellarId: string;
+  locationId?: string;
   status: BottleStatus;
   acquiredAt?: Timestamp;
   acquiredPrice?: number;
+  acquiredFrom?: string;
   consumedAt?: Timestamp;
   notes?: string;
   createdAt: Timestamp;
-  createdBy: string;
-}
-
-// Bottle with denormalized wine data for display
-export interface BottleWithWine extends Bottle {
-  wine: Wine;
-  location?: Location;
+  updatedAt: Timestamp;
 }
 
 export interface Movement {
@@ -135,18 +116,19 @@ export interface Movement {
   fromLocationId?: string;
   toLocationId?: string;
   reason?: string;
-  performedBy: string;
-  performedAt: Timestamp;
+  createdBy: string;
+  createdAt: Timestamp;
 }
 
 // ============================================================
-// RATINGS & TASTE
+// RATINGS & TASTE PROFILES
 // ============================================================
 
 export interface Rating {
   id: string;
   wineId: string;
-  rating: number;       // 1-5
+  userId: string;
+  rating: number;
   isFavorite: boolean;
   notes?: string;
   createdAt: Timestamp;
@@ -156,23 +138,16 @@ export interface Rating {
 export interface TasteProfile {
   id: string;
   wineId: string;
-  acidity: number;      // 1-5
-  tannin: number;       // 1-5
-  body: number;         // 1-5
-  sweetness: number;    // 1-5
-  effervescence: number; // 0-5
-  notes?: string;
-  tags?: string[];
+  userId: string;
+  acidity: number;
+  tannin: number;
+  body: number;
+  sweetness: number;
+  effervescence: number;
+  aromas: string[];
+  flavors: string[];
+  finish: string;
   createdAt: Timestamp;
-}
-
-// Aggregated wine data for a user
-export interface UserWineData {
-  wineId: string;
-  rating?: Rating;
-  tasteProfile?: TasteProfile;
-  consumptionCount: number;
-  lastConsumedAt?: Timestamp;
 }
 
 // ============================================================
@@ -187,20 +162,17 @@ export interface Friend {
   foodieLevel: FoodieLevel;
   notes?: string;
   createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface FoodPreference {
   id: string;
   friendId: string;
-  type: FoodPrefType;
-  category: string;     // es. "dairy", "gluten", "meat"
-  description?: string;
-  severity?: FoodPrefSeverity;
-}
-
-// Friend with all preferences loaded
-export interface FriendWithPreferences extends Friend {
-  preferences: FoodPreference[];
+  type: PreferenceType;
+  category: string;
+  severity?: string;
+  notes?: string;
+  createdAt: Timestamp;
 }
 
 // ============================================================
@@ -211,7 +183,7 @@ export interface DinnerEvent {
   id: string;
   name: string;
   date: Timestamp;
-  time?: string;        // "20:30"
+  time?: string;
   style: DinnerStyle;
   cookingTime: CookingTime;
   budgetLevel: BudgetLevel;
@@ -226,15 +198,47 @@ export interface DinnerGuest {
   id: string;
   dinnerId: string;
   friendId: string;
-  confirmed: boolean;
+  status: 'invited' | 'confirmed' | 'declined';
+  createdAt: Timestamp;
+}
+
+// ============================================================
+// MENU PROPOSALS
+// ============================================================
+
+export interface WinePairing {
+  name: string;
+  reasoning: string;
+  details?: string;
+}
+
+export interface MenuCourse {
+  course: CourseType;
+  name: string;
+  description: string;
+  dietaryFlags: string[];
+  prepTime: number;
+  notes?: string;
+  cellarWine?: WinePairing;
+  marketWine?: WinePairing;
+}
+
+export interface MenuProposal {
+  courses: MenuCourse[];
+  reasoning: string;
+  wineStrategy?: string;
+  seasonContext: string;
+  guestConsiderations: string[];
+  totalPrepTime: number;
+  generatedAt: Timestamp;
 }
 
 export interface WineProposal {
   id: string;
-  dinnerId: string;
-  type: ProposalType;
-  wineId?: string;              // if available
-  suggestedWineName?: string;   // if suggested_purchase
+  dinnerId?: string;
+  type: 'available' | 'suggested_purchase';
+  wineId?: string;
+  suggestedWineName?: string;
   suggestedWineDetails?: string;
   course: CourseType;
   reasoning: string;
@@ -243,96 +247,24 @@ export interface WineProposal {
 }
 
 // ============================================================
-// AI-GENERATED CONTENT
-// ============================================================
-
-export interface WinePairing {
-  name: string;
-  reasoning: string;
-  details?: string;  // For market wines: type, region, producer
-}
-
-export interface MenuCourse {
-  course: CourseType;
-  name: string;
-  description: string;
-  dietaryFlags: string[];   // "GF", "Vegan", "LF", etc.
-  prepTime: number;         // minutes
-  notes?: string;
-  cellarWine?: WinePairing;   // Wine from user's cellar
-  marketWine?: WinePairing;   // Wine to purchase
-}
-
-export interface MenuProposal {
-  courses: MenuCourse[];
-  reasoning: string;
-  wineStrategy?: string;      // Strategy for wine pairings
-  seasonContext: string;
-  guestConsiderations: string[];
-  totalPrepTime: number;
-  generatedAt: Timestamp;
-}
-
-// ============================================================
-// PHOTOS & OCR
-// ============================================================
-
-export interface PhotoAsset {
-  id: string;
-  storageUrl: string;
-  thumbnailUrl?: string;
-  type: PhotoType;
-  bottleId?: string;
-  wineId?: string;
-  createdAt: Timestamp;
-}
-
-export interface ExtractedField {
-  value: string;
-  confidence: number;     // 0-1
-}
-
-export interface ExtractionResult {
-  id: string;
-  photoAssetId: string;
-  rawOcrText: string;
-  extractedFields: {
-    name?: ExtractedField;
-    producer?: ExtractedField;
-    vintage?: ExtractedField;
-    region?: ExtractedField;
-    country?: ExtractedField;
-    alcoholContent?: ExtractedField;
-    grapes?: ExtractedField;
-  };
-  overallConfidence: number;
-  wasManuallyEdited: boolean;
-  finalWineId?: string;
-  createdAt: Timestamp;
-}
-
-// ============================================================
-// CHAT & CONVERSATIONS
+// CONVERSATIONS & CHAT
 // ============================================================
 
 export interface Conversation {
   id: string;
+  userId: string;
   title?: string;
-  context?: {
-    cellarId?: string;
-    dinnerId?: string;
-  };
+  lastMessageAt: Timestamp;
   createdAt: Timestamp;
-  updatedAt: Timestamp;
 }
 
 export interface ChatMessage {
   id: string;
+  conversationId: string;
   role: 'user' | 'assistant';
   content: string;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
-  wineReferences?: string[];  // wineIds mentioned
   createdAt: Timestamp;
 }
 
@@ -345,6 +277,25 @@ export interface ToolCall {
 export interface ToolResult {
   toolCallId: string;
   result: unknown;
+}
+
+// ============================================================
+// EXTRACTION & OCR
+// ============================================================
+
+export interface ExtractionResult {
+  ocrText: string;
+  extractedFields: {
+    name?: { value: string; confidence: number };
+    producer?: { value: string; confidence: number };
+    vintage?: { value: string; confidence: number };
+    type?: { value: string; confidence: number };
+    region?: { value: string; confidence: number };
+    country?: { value: string; confidence: number };
+    grapes?: { value: string[]; confidence: number };
+    alcohol?: { value: number; confidence: number };
+  };
+  overallConfidence: number;
 }
 
 // ============================================================
@@ -382,10 +333,6 @@ export interface ChatRequest {
   message: string;
   conversationId?: string;
   userId: string;
-  context?: {
-    cellarId?: string;
-    dinnerId?: string;
-  };
 }
 
 export interface ChatResponse {
@@ -393,71 +340,5 @@ export interface ChatResponse {
   response?: string;
   conversationId?: string;
   wineReferences?: Wine[];
-  suggestedActions?: SuggestedAction[];
   error?: string;
-}
-
-export interface SuggestedAction {
-  type: 'select_wine' | 'consume_wine' | 'add_to_dinner' | 'view_details';
-  label: string;
-  wineId?: string;
-  data?: Record<string, unknown>;
-}
-
-// ============================================================
-// INVENTORY AGGREGATIONS
-// ============================================================
-
-export interface CellarStats {
-  totalBottles: number;
-  byType: Record<WineType, number>;
-  byStatus: Record<BottleStatus, number>;
-  vintageRange: { min: number; max: number };
-  avgRating?: number;
-  lastUpdated: Timestamp;
-}
-
-export interface WineInventory {
-  wineId: string;
-  wine: Wine;
-  totalBottles: number;
-  availableBottles: number;
-  locations: LocationPath[];
-  avgRating?: number;
-  lastConsumed?: Timestamp;
-}
-
-// ============================================================
-// SEARCH & FILTER
-// ============================================================
-
-export interface WineSearchFilters {
-  type?: WineType[];
-  region?: string[];
-  vintageMin?: number;
-  vintageMax?: number;
-  ratingMin?: number;
-  available?: boolean;
-  query?: string;       // free text search
-}
-
-export interface WineSearchResult {
-  wines: WineInventory[];
-  totalCount: number;
-  filters: WineSearchFilters;
-}
-
-// ============================================================
-// SERVICE INSTRUCTIONS (AI-generated)
-// ============================================================
-
-export interface WineServiceInstructions {
-  wineId: string;
-  idealTemperature: number;     // Celsius
-  currentTemperature?: number;  // if in cellar
-  coolingTimeMinutes?: number;
-  decantationMinutes?: number;
-  glassType: string;
-  openingTime?: string;         // "19:30"
-  notes: string[];
 }

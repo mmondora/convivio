@@ -1,58 +1,48 @@
 /**
  * Health Check Endpoint
- * 
- * Endpoint semplice per verificare che le functions siano operative.
+ *
+ * Simple health check for monitoring and deployment verification.
  */
 
-import { onRequest } from 'firebase-functions/v2/https';
-import { getFirestore } from 'firebase-admin/firestore';
-import { logger } from 'firebase-functions';
+import { onCall } from 'firebase-functions/v2/https';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
 const db = getFirestore();
 
-export const healthCheck = onRequest(
-  { 
-    cors: true,
-    region: 'europe-west1'
+export const healthCheck = onCall(
+  {
+    region: 'europe-west1',
   },
-  async (req, res) => {
+  async () => {
     const startTime = Date.now();
-    
-    const checks = {
-      status: 'ok' as 'ok' | 'degraded' | 'error',
+
+    // Test Firestore connectivity
+    let firestoreStatus = 'ok';
+    let firestoreLatency = 0;
+
+    try {
+      const firestoreStart = Date.now();
+      await db.collection('_health').doc('ping').set({
+        timestamp: Timestamp.now(),
+      });
+      firestoreLatency = Date.now() - firestoreStart;
+    } catch (error) {
+      firestoreStatus = 'error';
+    }
+
+    const totalLatency = Date.now() - startTime;
+
+    return {
+      status: 'ok',
       timestamp: new Date().toISOString(),
-      version: process.env.K_REVISION || 'local',
+      version: '1.1',
       services: {
-        firestore: 'unknown' as 'ok' | 'error',
+        firestore: firestoreStatus,
       },
       latency: {
-        firestore: 0,
-      }
+        firestore: firestoreLatency,
+      },
+      totalLatency,
     };
-    
-    // Check Firestore connectivity
-    try {
-      const fsStart = Date.now();
-      await db.collection('_health').doc('check').get();
-      checks.services.firestore = 'ok';
-      checks.latency.firestore = Date.now() - fsStart;
-    } catch (error) {
-      checks.services.firestore = 'error';
-      checks.status = 'degraded';
-      logger.error('Firestore health check failed', { error });
-    }
-    
-    // Overall status
-    const hasErrors = Object.values(checks.services).some(s => s === 'error');
-    if (hasErrors) {
-      checks.status = 'degraded';
-    }
-    
-    const totalLatency = Date.now() - startTime;
-    
-    res.status(checks.status === 'ok' ? 200 : 503).json({
-      ...checks,
-      totalLatency
-    });
   }
 );

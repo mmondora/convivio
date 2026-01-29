@@ -1,12 +1,18 @@
 /**
  * Propose Dinner Menu
- * 
+ *
  * Genera una proposta completa per una cena:
  * 1. Carica contesto cena (ospiti, parametri, stagione)
  * 2. Carica preferenze alimentari ospiti
- * 3. Carica inventario vini disponibili con rating
- * 4. LLM genera menu + abbinamenti
+ * 3. Carica inventario vini disponibili
+ * 4. LLM genera menu + abbinamenti vino per ogni portata
  * 5. Salva proposta e ritorna
+ *
+ * REQUISITI:
+ * - Ogni piatto ha un vino abbinato
+ * - Minimizza cambi vino (2-3 vini max per cena)
+ * - Per ogni piatto: cellarWine (dalla cantina) + marketWine (da acquistare)
+ * - Note utente hanno PRIORITÀ MASSIMA
  */
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
@@ -56,65 +62,65 @@ export const proposeDinnerMenu = onCall<ProposeDinnerRequest>(
   },
   async (request): Promise<ProposeDinnerResponse> => {
     const startTime = Date.now();
-    
+
     // Validate request
     const validation = RequestSchema.safeParse(request.data);
     if (!validation.success) {
       throw new HttpsError('invalid-argument', 'Invalid request: ' + validation.error.message);
     }
-    
+
     const { dinnerId, userId } = validation.data;
-    
+
     // Verify authentication
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
-    
+
     if (request.auth.uid !== userId) {
       throw new HttpsError('permission-denied', 'Cannot propose for another user');
     }
-    
+
     logger.info('Starting dinner proposal', { userId, dinnerId });
-    
+
     try {
       // Step 1: Load dinner details
       const dinner = await loadDinner(userId, dinnerId);
       if (!dinner) {
         throw new HttpsError('not-found', 'Cena non trovata');
       }
-      
+
       // Step 2: Load guests with preferences
       const guests = await loadGuestsWithPreferences(userId, dinnerId);
       logger.info('Loaded guests', { count: guests.length });
-      
+
       // Step 3: Load wine inventory
       const inventory = await loadWineInventory(userId);
       logger.info('Loaded wine inventory', { count: inventory.length });
-      
+
       // Step 4: Determine season
       const season = getSeason(dinner.date.toDate());
-      
+
       // Step 5: Build context and call LLM
       const context = buildProposalContext(dinner, guests, inventory, season);
       const proposal = await generateProposal(context);
-      
+
       // Step 6: Save proposal to dinner
       await saveDinnerProposal(userId, dinnerId, proposal.menu, proposal.wines);
-      
+
       const totalTime = Date.now() - startTime;
-      logger.info('Dinner proposal completed', { 
-        dinnerId, 
+      logger.info('Dinner proposal completed', {
+        dinnerId,
         coursesGenerated: proposal.menu.courses.length,
         winesProposed: proposal.wines.available.length + proposal.wines.suggested.length,
         totalTimeMs: totalTime
       });
-      
+
       return {
         success: true,
         menu: proposal.menu,
         wineProposals: proposal.wines,
       };
-      
+
     } catch (error) {
       logger.error('Proposal generation failed', { userId, dinnerId, error });
       if (error instanceof HttpsError) throw error;
@@ -128,9 +134,15 @@ export const proposeDinnerMenu = onCall<ProposeDinnerRequest>(
 // ============================================================
 
 async function loadDinner(userId: string, dinnerId: string): Promise<DinnerEvent | null> {
-  const doc = await db.collection('users').doc(userId).collection('dinners').doc(dinnerId).get();
+  // Dinners are in top-level collection
+  const doc = await db.collection('dinners').doc(dinnerId).get();
   if (!doc.exists) return null;
-  return { id: doc.id, ...doc.data() } as DinnerEvent;
+
+  const data = doc.data();
+  // Verify ownership
+  if (data?.hostId !== userId) return null;
+
+  return { id: doc.id, ...data } as DinnerEvent;
 }
 
 interface GuestWithPrefs {
@@ -139,41 +151,38 @@ interface GuestWithPrefs {
 }
 
 async function loadGuestsWithPreferences(userId: string, dinnerId: string): Promise<GuestWithPrefs[]> {
-  // Load dinner guests
   const guestsSnapshot = await db.collection('users').doc(userId)
     .collection('dinners').doc(dinnerId)
     .collection('guests').get();
-  
+
   const guestFriendIds = guestsSnapshot.docs.map(doc => doc.data().friendId);
-  
+
   if (guestFriendIds.length === 0) {
     return [];
   }
-  
-  // Load friends and their preferences
+
   const guests: GuestWithPrefs[] = [];
-  
+
   for (const friendId of guestFriendIds) {
     const friendDoc = await db.collection('users').doc(userId)
       .collection('friends').doc(friendId).get();
-    
+
     if (!friendDoc.exists) continue;
-    
+
     const friend = { id: friendDoc.id, ...friendDoc.data() } as Friend;
-    
-    // Load preferences
+
     const prefsSnapshot = await db.collection('users').doc(userId)
       .collection('friends').doc(friendId)
       .collection('foodPreferences').get();
-    
+
     const preferences = prefsSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as FoodPreference[];
-    
+
     guests.push({ friend, preferences });
   }
-  
+
   return guests;
 }
 
@@ -185,60 +194,55 @@ interface WineWithRating extends Wine {
 }
 
 async function loadWineInventory(userId: string): Promise<WineWithRating[]> {
-  // Get user's cellars
   const cellarsSnapshot = await db.collection('cellars')
     .where(`members.${userId}`, '!=', null)
     .get();
-  
+
   if (cellarsSnapshot.empty) {
     return [];
   }
-  
+
   const inventory: WineWithRating[] = [];
   const wineBottleCounts = new Map<string, { count: number; location: string }>();
-  
-  // For each cellar, get available bottles
+
   for (const cellarDoc of cellarsSnapshot.docs) {
     const bottlesSnapshot = await cellarDoc.ref.collection('bottles')
       .where('status', '==', 'available')
       .get();
-    
+
     for (const bottleDoc of bottlesSnapshot.docs) {
       const bottle = bottleDoc.data();
       const wineId = bottle.wineId;
-      
+
       const current = wineBottleCounts.get(wineId) || { count: 0, location: cellarDoc.data().name };
       current.count++;
       wineBottleCounts.set(wineId, current);
     }
   }
-  
-  // Load wine details and ratings
+
   for (const [wineId, { count, location }] of wineBottleCounts) {
     const wineDoc = await db.collection('wines').doc(wineId).get();
     if (!wineDoc.exists) continue;
-    
+
     const wine = { id: wineDoc.id, ...wineDoc.data() } as Wine;
-    
-    // Load user's rating for this wine
+
     const ratingSnapshot = await db.collection('users').doc(userId)
       .collection('ratings')
       .where('wineId', '==', wineId)
       .limit(1)
       .get();
-    
+
     const rating = ratingSnapshot.empty ? undefined : (ratingSnapshot.docs[0].data() as Rating).rating;
-    
-    // Load taste profile
+
     const profileSnapshot = await db.collection('users').doc(userId)
       .collection('tasteProfiles')
       .where('wineId', '==', wineId)
       .limit(1)
       .get();
-    
-    const tasteProfile = profileSnapshot.empty ? undefined : 
+
+    const tasteProfile = profileSnapshot.empty ? undefined :
       { id: profileSnapshot.docs[0].id, ...profileSnapshot.docs[0].data() } as TasteProfile;
-    
+
     inventory.push({
       ...wine,
       rating,
@@ -247,7 +251,7 @@ async function loadWineInventory(userId: string): Promise<WineWithRating[]> {
       locationDescription: location,
     });
   }
-  
+
   return inventory;
 }
 
@@ -270,18 +274,17 @@ function buildProposalContext(
   inventory: WineWithRating[],
   season: string
 ): ProposalContext {
-  // Build dietary summary
   const dietarySummary: string[] = [];
-  
+
   for (const { friend, preferences } of guests) {
     const restrictions = preferences
       .filter(p => p.type === 'allergy' || p.type === 'intolerance' || p.type === 'diet')
       .map(p => p.category);
-    
+
     const dislikes = preferences
       .filter(p => p.type === 'dislike')
       .map(p => p.category);
-    
+
     if (restrictions.length > 0 || dislikes.length > 0) {
       let summary = friend.name;
       if (restrictions.length > 0) {
@@ -296,11 +299,10 @@ function buildProposalContext(
       dietarySummary.push(`${friend.name} - Nessuna restrizione - Foodie: ${friend.foodieLevel}`);
     }
   }
-  
-  // Build inventory summary
+
   const inventorySummary = inventory
     .sort((a, b) => (b.rating || 0) - (a.rating || 0))
-    .slice(0, 20) // Top 20 wines
+    .slice(0, 20)
     .map(w => {
       let desc = `${w.name}`;
       if (w.producer) desc += ` (${w.producer})`;
@@ -309,11 +311,10 @@ function buildProposalContext(
       if (w.region) desc += `, ${w.region}`;
       desc += ` - ${w.availableBottles} bottiglia/e`;
       if (w.rating) desc += ` - Rating: ${w.rating}/5`;
-      desc += ` - Posizione: ${w.locationDescription}`;
       return desc;
     })
     .join('\n');
-  
+
   return {
     dinner,
     guests,
@@ -325,7 +326,7 @@ function buildProposalContext(
 }
 
 function getSeason(date: Date): string {
-  const month = date.getMonth() + 1; // 1-12
+  const month = date.getMonth() + 1;
   if (month >= 3 && month <= 5) return 'primavera';
   if (month >= 6 && month <= 8) return 'estate';
   if (month >= 9 && month <= 11) return 'autunno';
@@ -355,7 +356,7 @@ VINI DISPONIBILI IN CANTINA:
 
 ISTRUZIONI:
 1. Proponi un menu completo con: antipasto, primo, secondo, dolce
-2. IMPORTANTE: Se ci sono "RICHIESTE SPECIFICHE DELL'UTENTE", queste hanno la MASSIMA priorità - segui esattamente le indicazioni dell'utente (es. tipo di cucina, ingredienti specifici, tema della serata)
+2. IMPORTANTE: Se ci sono "RICHIESTE SPECIFICHE DELL'UTENTE", queste hanno la MASSIMA PRIORITÀ - segui esattamente le indicazioni dell'utente (es. tipo di cucina, ingredienti specifici, tema della serata)
 3. Considera TUTTE le restrizioni alimentari - nessun piatto deve contenere ingredienti vietati
 4. Adatta la complessità al tempo di preparazione disponibile
 5. Per ogni piatto indica:
@@ -368,7 +369,7 @@ ISTRUZIONI:
    - Per ogni piatto proponi:
      a) "cellarWine": un vino dalla lista "DISPONIBILI IN CANTINA" (obbligatorio se disponibile)
      b) "marketWine": un vino da acquistare come alternativa
-   - Se lo stesso vino va bene per più portate, usa lo stesso nome
+   - Se lo stesso vino va bene per più portate, usa lo stesso nome esatto
 7. Lo stile del menu deve rispecchiare il tipo di cena (informale/conviviale/elegante)
 
 FORMATO OUTPUT (JSON):
@@ -411,29 +412,33 @@ interface GeneratedProposal {
 }
 
 async function generateProposal(context: ProposalContext): Promise<GeneratedProposal> {
-  // Build user notes section
   const userNotesSection = context.dinner.notes
     ? `\nRICHIESTE SPECIFICHE DELL'UTENTE:\n${context.dinner.notes}`
     : '';
 
+  // Handle iOS model which uses 'title' instead of 'name' and may not have style/cookingTime/budgetLevel
+  const dinnerName = (context.dinner as any).title || context.dinner.name || 'Cena';
+  const dinnerStyle = context.dinner.style || 'conviviale';
+  const cookingTime = context.dinner.cookingTime || 'twoHours';
+  const budgetLevel = context.dinner.budgetLevel || 'standard';
+  const guestCount = (context.dinner as any).guestCount || context.guests.length || 4;
+
   const prompt = PROPOSAL_PROMPT
-    .replace('{dinner_name}', context.dinner.name)
+    .replace('{dinner_name}', dinnerName)
     .replace('{dinner_date}', context.dinner.date.toDate().toLocaleDateString('it-IT'))
     .replace('{season}', context.season)
-    .replace('{dinner_style}', context.dinner.style)
-    .replace('{cooking_time}', context.dinner.cookingTime)
-    .replace('{budget_level}', context.dinner.budgetLevel)
+    .replace('{dinner_style}', dinnerStyle)
+    .replace('{cooking_time}', cookingTime)
+    .replace('{budget_level}', budgetLevel)
     .replace('{user_notes}', userNotesSection)
-    .replace('{guest_count}', context.guests.length.toString())
-    .replace('{dietary_summary}', context.dietarySummary.join('\n'))
+    .replace('{guest_count}', guestCount.toString())
+    .replace('{dietary_summary}', context.dietarySummary.length > 0 ? context.dietarySummary.join('\n') : 'Nessun ospite registrato')
     .replace('{inventory_summary}', context.inventorySummary || 'Nessun vino in cantina');
 
   // Log AI input
   logger.info('=== AI REQUEST (proposeDinnerMenu) ===');
   logger.info('USER NOTES: ' + (context.dinner.notes || 'NESSUNA'));
-  logger.info('FULL PROMPT START ===');
-  console.log(prompt);
-  logger.info('FULL PROMPT END ===');
+  logger.info('FULL PROMPT:', { prompt });
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
@@ -450,17 +455,17 @@ async function generateProposal(context: ProposalContext): Promise<GeneratedProp
 
   // Log AI output
   logger.info('=== AI RESPONSE (proposeDinnerMenu) ===');
-  console.log('RESPONSE:', responseText);
-  
+  logger.info('RESPONSE:', { responseText });
+
   // Parse JSON
   const jsonText = responseText
     .replace(/```json\n?/g, '')
     .replace(/```\n?/g, '')
     .trim();
-  
+
   const parsed = JSON.parse(jsonText);
 
-  // Transform to our types - wines are now embedded in each course
+  // Transform to our types
   const menu: MenuProposal = {
     courses: parsed.menu.courses.map((c: any) => ({
       course: c.course as CourseType,
@@ -487,13 +492,12 @@ async function generateProposal(context: ProposalContext): Promise<GeneratedProp
     generatedAt: Timestamp.now(),
   };
 
-  // Extract wine proposals for backward compatibility and separate storage
+  // Extract wine proposals
   const availableWines: WineProposal[] = [];
   const suggestedWines: WineProposal[] = [];
 
   for (const c of parsed.menu.courses) {
     if (c.cellarWine) {
-      // Find wine in inventory by name (fuzzy)
       const matchedWine = context.inventory.find(inv =>
         inv.name.toLowerCase().includes(c.cellarWine.name.toLowerCase()) ||
         c.cellarWine.name.toLowerCase().includes(inv.name.toLowerCase())
@@ -545,25 +549,14 @@ async function saveDinnerProposal(
   menu: MenuProposal,
   wines: { available: WineProposal[]; suggested: WineProposal[] }
 ): Promise<void> {
-  const dinnerRef = db.collection('users').doc(userId).collection('dinners').doc(dinnerId);
-  const proposalsRef = dinnerRef.collection('proposals');
-  
-  // Update dinner with menu proposal
+  // Dinners are in top-level collection
+  const dinnerRef = db.collection('dinners').doc(dinnerId);
+
+  // Update dinner with menu proposal (iOS uses 'menu' field)
   await dinnerRef.update({
-    menuProposal: menu,
+    menu: menu,
     updatedAt: Timestamp.now(),
   });
-  
-  // Clear existing proposals
-  const existingProposals = await proposalsRef.get();
-  const batch = db.batch();
-  existingProposals.docs.forEach(doc => batch.delete(doc.ref));
-  
-  // Add new wine proposals
-  for (const proposal of [...wines.available, ...wines.suggested]) {
-    const ref = proposalsRef.doc();
-    batch.set(ref, { ...proposal, id: ref.id });
-  }
-  
-  await batch.commit();
+
+  logger.info('Saved menu proposal to dinner', { dinnerId });
 }

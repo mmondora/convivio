@@ -1,8 +1,8 @@
 /**
- * Sommelier Cloud Functions
- * 
- * Entry point per tutte le Cloud Functions dell'applicazione.
- * Architettura: Gen 2 functions con Firebase Admin SDK.
+ * Convivio Cloud Functions
+ *
+ * Entry point for all Cloud Functions.
+ * Architecture: Gen 2 functions with Firebase Admin SDK.
  */
 
 import { initializeApp } from 'firebase-admin/app';
@@ -18,13 +18,11 @@ export const db = getFirestore();
 // FUNCTION EXPORTS
 // ============================================================
 
-// Phase 1: Foundation
+// Triggers
 export { onUserCreate, onUserDelete } from './triggers/users';
 
-// Phase 2: Intelligence
+// API Endpoints
 export { extractWineFromPhoto } from './api/extract';
 export { proposeDinnerMenu } from './api/propose';
 export { chatWithSommelier } from './api/chat';
-
-// Utility exports
 export { healthCheck } from './api/health';

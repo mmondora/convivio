@@ -1,253 +1,167 @@
-//
-//  AuthManager.swift
-//  Convivio
-//
-//  Gestione autenticazione con Firebase Auth
-//
-
 import Foundation
 import FirebaseAuth
-import FirebaseFirestore
-import AuthenticationServices
-import CryptoKit
+import Combine
 
 @MainActor
 class AuthManager: ObservableObject {
     static let shared = AuthManager()
-    
-    @Published var user: User?
+
+    @Published var currentUser: User?
     @Published var isAuthenticated = false
     @Published var isLoading = true
-    @Published var error: AuthError?
-    
-    private var authStateHandler: AuthStateDidChangeListenerHandle?
-    private var currentNonce: String?
-    private let db = Firestore.firestore()
-    
-    init() {
-        #if targetEnvironment(simulator)
-        // Bypass login on simulator for development
-        setupSimulatorBypass()
-        #else
+    @Published var error: String?
+
+    private var authStateHandle: AuthStateDidChangeListenerHandle?
+
+    private init() {
         setupAuthStateListener()
-        #endif
     }
 
-    /// Mock user ID for simulator testing (nil on real devices)
-    var simulatorUserId: String?
-
-    // MARK: - Simulator Bypass
-
-    #if targetEnvironment(simulator)
-    private func setupSimulatorBypass() {
-        // Use anonymous auth on simulator with emulators
-        print("🍷 AUTH: Starting anonymous auth...")
-        print("🍷 AUTH: Auth emulator should be at 127.0.0.1:9099")
-        Task {
-            do {
-                print("🍷 AUTH: Calling signInAnonymously()...")
-                let result = try await Auth.auth().signInAnonymously()
-                self.user = result.user
-                self.isAuthenticated = true
-                self.simulatorUserId = result.user.uid
-                print("🍷 AUTH: SUCCESS - UID: \(result.user.uid)")
-            } catch {
-                print("🍷 AUTH: FAILED - \(error.localizedDescription)")
-                print("🍷 AUTH: Full error - \(error)")
-                // Fallback to fake ID (won't work with Firestore rules)
-                self.isAuthenticated = true
-                self.simulatorUserId = "simulator-dev-user"
-            }
-            self.isLoading = false
-        }
-    }
-    #endif
-    
-    deinit {
-        if let handler = authStateHandler {
-            Auth.auth().removeStateDidChangeListener(handler)
-        }
-    }
-    
-    // MARK: - Auth State Listener
-    
     private func setupAuthStateListener() {
-        authStateHandler = Auth.auth().addStateDidChangeListener { [weak self] _, user in
+        authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
-                guard let self = self else { return }
-                
-                if let user = user {
-                    self.user = user
-                    self.isAuthenticated = true
-                    await self.ensureUserDocument(user)
-                } else {
-                    self.user = nil
-                    self.isAuthenticated = false
-                }
-                
-                self.isLoading = false
+                self?.currentUser = user
+                self?.isAuthenticated = user != nil
+                self?.isLoading = false
             }
         }
     }
-    
-    // MARK: - Sign In Methods
-    
-    func signInWithApple() async {
-        // Apple Sign In implementation would go here
-        // Using ASAuthorizationController
+
+    // MARK: - Anonymous Sign In
+
+    func signInAnonymously() async throws {
+        isLoading = true
+        error = nil
+
+        do {
+            let result = try await Auth.auth().signInAnonymously()
+            currentUser = result.user
+            isAuthenticated = true
+        } catch {
+            self.error = "Errore accesso anonimo: \(error.localizedDescription)"
+            throw error
+        }
+
+        isLoading = false
     }
-    
-    func signInWithGoogle() async {
-        // Google Sign In implementation would go here
-    }
-    
-    func signInWithEmail(email: String, password: String) async {
+
+    // MARK: - Sign In
+
+    func signInWithEmail(email: String, password: String) async throws {
+        isLoading = true
+        error = nil
+
         do {
             let result = try await Auth.auth().signIn(withEmail: email, password: password)
-            await ensureUserDocument(result.user)
+            currentUser = result.user
+            isAuthenticated = true
         } catch {
-            self.error = AuthError(message: error.localizedDescription)
+            self.error = mapAuthError(error)
+            throw error
         }
+
+        isLoading = false
     }
-    
-    func signUpWithEmail(email: String, password: String, displayName: String) async {
+
+    // MARK: - Sign Up
+
+    func signUpWithEmail(email: String, password: String, displayName: String) async throws {
+        isLoading = true
+        error = nil
+
         do {
             let result = try await Auth.auth().createUser(withEmail: email, password: password)
-            
+
             // Update display name
             let changeRequest = result.user.createProfileChangeRequest()
             changeRequest.displayName = displayName
             try await changeRequest.commitChanges()
-            
-            await createUserDocument(result.user, displayName: displayName)
+
+            currentUser = result.user
+            isAuthenticated = true
         } catch {
-            self.error = AuthError(message: error.localizedDescription)
+            self.error = mapAuthError(error)
+            throw error
         }
+
+        isLoading = false
     }
-    
-    func signOut() {
+
+    // MARK: - Sign Out
+
+    func signOut() throws {
         do {
             try Auth.auth().signOut()
+            currentUser = nil
+            isAuthenticated = false
         } catch {
-            self.error = AuthError(message: error.localizedDescription)
+            self.error = "Errore durante il logout"
+            throw error
         }
     }
-    
-    func resetPassword(email: String) async {
+
+    // MARK: - Password Reset
+
+    func sendPasswordReset(email: String) async throws {
         do {
             try await Auth.auth().sendPasswordReset(withEmail: email)
         } catch {
-            self.error = AuthError(message: error.localizedDescription)
+            self.error = mapAuthError(error)
+            throw error
         }
     }
-    
-    // MARK: - User Document Management
-    
-    private func ensureUserDocument(_ user: User) async {
-        let docRef = db.collection("users").document(user.uid)
-        
+
+    // MARK: - Delete Account
+
+    func deleteAccount() async throws {
+        guard let user = currentUser else {
+            throw AuthError.notAuthenticated
+        }
+
         do {
-            let doc = try await docRef.getDocument()
-            if !doc.exists {
-                await createUserDocument(user, displayName: user.displayName ?? "Utente")
-            }
+            try await user.delete()
+            currentUser = nil
+            isAuthenticated = false
         } catch {
-            print("Error checking user document: \(error)")
+            self.error = mapAuthError(error)
+            throw error
         }
     }
-    
-    private func createUserDocument(_ user: User, displayName: String) async {
-        let userData: [String: Any] = [
-            "email": user.email ?? "",
-            "displayName": displayName,
-            "photoUrl": user.photoURL?.absoluteString ?? "",
-            "createdAt": FieldValue.serverTimestamp(),
-            "updatedAt": FieldValue.serverTimestamp()
-        ]
-        
-        do {
-            try await db.collection("users").document(user.uid).setData(userData)
-        } catch {
-            print("Error creating user document: \(error)")
+
+    // MARK: - Error Mapping
+
+    private func mapAuthError(_ error: Error) -> String {
+        let nsError = error as NSError
+
+        switch nsError.code {
+        case AuthErrorCode.wrongPassword.rawValue:
+            return "Password errata"
+        case AuthErrorCode.invalidEmail.rawValue:
+            return "Email non valida"
+        case AuthErrorCode.emailAlreadyInUse.rawValue:
+            return "Email già in uso"
+        case AuthErrorCode.weakPassword.rawValue:
+            return "Password troppo debole (minimo 6 caratteri)"
+        case AuthErrorCode.userNotFound.rawValue:
+            return "Utente non trovato"
+        case AuthErrorCode.networkError.rawValue:
+            return "Errore di rete. Controlla la connessione."
+        case AuthErrorCode.tooManyRequests.rawValue:
+            return "Troppi tentativi. Riprova più tardi."
+        case AuthErrorCode.userDisabled.rawValue:
+            return "Account disabilitato"
+        default:
+            return "Errore di autenticazione: \(error.localizedDescription)"
         }
     }
-    
-    // MARK: - Apple Sign In Helpers
-    
-    func prepareAppleSignIn() -> String {
-        let nonce = randomNonceString()
-        currentNonce = nonce
-        return sha256(nonce)
-    }
-    
-    func handleAppleSignIn(authorization: ASAuthorization) async {
-        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
-              let nonce = currentNonce,
-              let appleIDToken = appleIDCredential.identityToken,
-              let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-            self.error = AuthError(message: "Errore durante l'autenticazione Apple")
-            return
+
+    deinit {
+        if let handle = authStateHandle {
+            Auth.auth().removeStateDidChangeListener(handle)
         }
-        
-        let credential = OAuthProvider.appleCredential(
-            withIDToken: idTokenString,
-            rawNonce: nonce,
-            fullName: appleIDCredential.fullName
-        )
-        
-        do {
-            let result = try await Auth.auth().signIn(with: credential)
-            
-            // Get display name from Apple credential
-            var displayName = "Utente"
-            if let fullName = appleIDCredential.fullName {
-                let parts = [fullName.givenName, fullName.familyName].compactMap { $0 }
-                if !parts.isEmpty {
-                    displayName = parts.joined(separator: " ")
-                }
-            }
-            
-            await ensureUserDocument(result.user)
-        } catch {
-            self.error = AuthError(message: error.localizedDescription)
-        }
-    }
-    
-    private func randomNonceString(length: Int = 32) -> String {
-        precondition(length > 0)
-        var randomBytes = [UInt8](repeating: 0, count: length)
-        let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
-        if errorCode != errSecSuccess {
-            fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
-        }
-        
-        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
-        let nonce = randomBytes.map { byte in
-            charset[Int(byte) % charset.count]
-        }
-        
-        return String(nonce)
-    }
-    
-    private func sha256(_ input: String) -> String {
-        let inputData = Data(input.utf8)
-        let hashedData = SHA256.hash(data: inputData)
-        let hashString = hashedData.compactMap { String(format: "%02x", $0) }.joined()
-        return hashString
     }
 }
 
-// MARK: - Auth Error
-
-struct AuthError: Identifiable {
-    let id = UUID()
-    let message: String
-}
-
-// MARK: - User Extension
-
-extension User {
-    var displayNameOrEmail: String {
-        displayName ?? email ?? "Utente"
-    }
+enum AuthError: Error {
+    case notAuthenticated
 }

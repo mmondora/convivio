@@ -1,140 +1,140 @@
 /**
- * User Triggers
- * 
- * Gestisce eventi di lifecycle degli utenti Firebase Auth.
+ * User Lifecycle Triggers
+ *
+ * Handles user creation and deletion events.
  */
 
-import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { auth } from 'firebase-functions/v1';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
+import type { User, Cellar } from '../types';
 
 const db = getFirestore();
 
-/**
- * Trigger: quando un nuovo utente viene creato in Firestore.
- * - Crea una cantina di default "Casa"
- * - Inizializza le preferenze utente
- */
-export const onUserCreate = onDocumentCreated(
-  'users/{userId}',
-  async (event) => {
-    const userId = event.params.userId;
-    const userData = event.data?.data();
-    
-    if (!userData) {
-      logger.error('onUserCreate: No user data found', { userId });
-      return;
-    }
-    
-    logger.info('Creating default resources for new user', { 
-      userId, 
-      email: userData.email 
-    });
-    
-    const batch = db.batch();
-    
-    // 1. Create default cellar "Casa"
-    const cellarRef = db.collection('cellars').doc();
-    batch.set(cellarRef, {
-      name: 'Casa',
-      description: 'La mia cantina principale',
-      members: {
-        [userId]: 'owner'
-      },
-      createdAt: FieldValue.serverTimestamp(),
-      createdBy: userId
-    });
-    
-    // 2. Create default location in cellar
-    const locationRef = cellarRef.collection('locations').doc();
-    batch.set(locationRef, {
-      shelf: 'A',
-      row: 1,
-      slot: 1,
-      description: 'Primo scaffale',
-      capacity: 12
-    });
-    
-    // 3. Initialize user preferences
-    const prefsRef = db.collection('users').doc(userId).collection('preferences').doc('main');
-    batch.set(prefsRef, {
-      favoriteTypes: [],
-      avoidTypes: [],
-      favoriteRegions: [],
-      notes: '',
-      onboardingCompleted: false,
-      createdAt: FieldValue.serverTimestamp()
-    });
-    
-    try {
-      await batch.commit();
-      logger.info('Default resources created successfully', { userId, cellarId: cellarRef.id });
-    } catch (error) {
-      logger.error('Failed to create default resources', { userId, error });
-      throw error;
-    }
-  }
-);
+// ============================================================
+// USER CREATION
+// ============================================================
 
-/**
- * Trigger: quando un utente viene eliminato da Firestore.
- * - Rimuove tutti i dati associati (cascade delete)
- * - Rimuove l'utente dalle cantine condivise
- * 
- * NOTA: Questo è un soft-delete. Le cantine di cui l'utente era owner
- * vengono marcate come orfane, non eliminate.
- */
-export const onUserDelete = onDocumentDeleted(
-  'users/{userId}',
-  async (event) => {
-    const userId = event.params.userId;
-    
-    logger.info('Cleaning up data for deleted user', { userId });
-    
+export const onUserCreate = auth.user().onCreate(async (user) => {
+  logger.info('New user created', { uid: user.uid, email: user.email });
+
+  const now = Timestamp.now();
+
+  // Create user document
+  const userData: Omit<User, 'id'> = {
+    email: user.email || '',
+    displayName: user.displayName || user.email?.split('@')[0] || 'Utente',
+    photoUrl: user.photoURL || undefined,
+    createdAt: now,
+    updatedAt: now,
+    preferences: {
+      language: 'it',
+      notifications: true,
+    },
+  };
+
+  // Create default cellar
+  const cellarData: Omit<Cellar, 'id'> = {
+    name: 'La mia cantina',
+    description: 'Cantina personale',
+    members: {
+      [user.uid]: 'owner',
+    },
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  try {
     const batch = db.batch();
-    
-    // 1. Delete user's subcollections
-    const subcollections = ['ratings', 'tasteProfiles', 'friends', 'dinners', 'photos', 'extractions', 'conversations', 'preferences'];
-    
-    for (const subcol of subcollections) {
-      const snapshot = await db.collection('users').doc(userId).collection(subcol).get();
-      snapshot.docs.forEach(doc => batch.delete(doc.ref));
-    }
-    
-    // 2. Remove user from shared cellars (but don't delete cellars)
+
+    // Create user document
+    const userRef = db.collection('users').doc(user.uid);
+    batch.set(userRef, userData);
+
+    // Create default cellar
+    const cellarRef = db.collection('cellars').doc();
+    batch.set(cellarRef, cellarData);
+
+    await batch.commit();
+
+    logger.info('User setup completed', {
+      uid: user.uid,
+      cellarId: cellarRef.id,
+    });
+  } catch (error) {
+    logger.error('Failed to setup user', { uid: user.uid, error });
+    throw error;
+  }
+});
+
+// ============================================================
+// USER DELETION
+// ============================================================
+
+export const onUserDelete = auth.user().onDelete(async (user) => {
+  logger.info('User deleted', { uid: user.uid });
+
+  try {
+    const batch = db.batch();
+
+    // Delete user document
+    const userRef = db.collection('users').doc(user.uid);
+    batch.delete(userRef);
+
+    // Find cellars where user is a member
     const cellarsSnapshot = await db.collection('cellars')
-      .where(`members.${userId}`, '!=', null)
+      .where(`members.${user.uid}`, 'in', ['owner', 'family', 'guest'])
       .get();
-    
+
     for (const cellarDoc of cellarsSnapshot.docs) {
       const cellarData = cellarDoc.data();
-      const memberRole = cellarData.members[userId];
-      
-      if (memberRole === 'owner') {
-        // Mark cellar as orphaned (could transfer ownership or delete)
-        batch.update(cellarDoc.ref, {
-          [`members.${userId}`]: FieldValue.delete(),
-          orphanedAt: FieldValue.serverTimestamp(),
-          orphanedBy: userId
-        });
-        logger.warn('Cellar orphaned due to owner deletion', { 
-          cellarId: cellarDoc.id, 
-          userId 
-        });
+      const userRole = cellarData.members?.[user.uid];
+
+      if (userRole === 'owner') {
+        // Delete all bottles in cellar
+        const bottlesSnapshot = await cellarDoc.ref.collection('bottles').get();
+        for (const bottleDoc of bottlesSnapshot.docs) {
+          batch.delete(bottleDoc.ref);
+        }
+        // Delete the cellar itself
+        batch.delete(cellarDoc.ref);
       } else {
-        // Just remove from members
+        // Just remove user from members
         batch.update(cellarDoc.ref, {
-          [`members.${userId}`]: FieldValue.delete()
+          [`members.${user.uid}`]: FieldValue.delete(),
+          updatedAt: Timestamp.now(),
         });
       }
     }
-    
-    try {
-      await batch.commit();
-      logger.info('User data cleanup completed', { userId });
-    } catch (error) {
-      logger.error('Failed to cleanup user data', { userId, error });
-      // Don't throw - we don't want to block user deletion
+
+    // Delete user's dinner events
+    const dinnersSnapshot = await db.collection('dinners')
+      .where('hostId', '==', user.uid)
+      .get();
+
+    for (const dinnerDoc of dinnersSnapshot.docs) {
+      batch.delete(dinnerDoc.ref);
     }
+
+    // Delete user's conversations
+    const conversationsSnapshot = await db.collection('conversations')
+      .where('userId', '==', user.uid)
+      .get();
+
+    for (const convDoc of conversationsSnapshot.docs) {
+      // Delete messages in conversation
+      const messagesSnapshot = await convDoc.ref.collection('messages').get();
+      for (const msgDoc of messagesSnapshot.docs) {
+        batch.delete(msgDoc.ref);
+      }
+      batch.delete(convDoc.ref);
+    }
+
+    await batch.commit();
+
+    logger.info('User cleanup completed', { uid: user.uid });
+  } catch (error) {
+    logger.error('Failed to cleanup user data', { uid: user.uid, error });
+    throw error;
   }
-);
+});
