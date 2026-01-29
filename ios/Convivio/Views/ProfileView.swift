@@ -224,26 +224,17 @@ struct ProfileView: View {
                 }
 
                 // App info
-                Section("Informazioni") {
-                    HStack {
-                        Text("Versione")
-                        Spacer()
-                        Text("2.0 (Locale)")
-                            .foregroundColor(.secondary)
-                    }
+                Section(L10n.about) {
+                    NavigationLink {
+                        AboutView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundColor(.purple)
+                                .frame(width: 30)
 
-                    HStack {
-                        Text("Storage")
-                        Spacer()
-                        Text("SwiftData")
-                            .foregroundColor(.secondary)
-                    }
-
-                    HStack {
-                        Text("AI Engine")
-                        Spacer()
-                        Text("OpenAI GPT-4o")
-                            .foregroundColor(.secondary)
+                            Text("Convivio")
+                        }
                     }
                 }
 
