@@ -245,6 +245,10 @@ final class DinnerEvent {
     var createdAt: Date
     var updatedAt: Date
 
+    // Wine confirmation data
+    var confirmedWinesData: Data?
+    var notificationsScheduled: Bool = false
+
     var status: DinnerStatus {
         get { DinnerStatus(rawValue: statusRaw) ?? .planning }
         set { statusRaw = newValue.rawValue }
@@ -274,6 +278,16 @@ final class DinnerEvent {
         get {
             guard let data = menuData else { return nil }
             return try? JSONDecoder().decode(MenuResponse.self, from: data)
+        }
+    }
+
+    var confirmedWines: [ConfirmedWine] {
+        get {
+            guard let data = confirmedWinesData else { return [] }
+            return (try? JSONDecoder().decode([ConfirmedWine].self, from: data)) ?? []
+        }
+        set {
+            confirmedWinesData = try? JSONEncoder().encode(newValue)
         }
     }
 

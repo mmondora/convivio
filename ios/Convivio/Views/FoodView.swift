@@ -295,6 +295,11 @@ struct DinnerDetailView: View {
     @State private var selectedWinePairing: MenuWinePairing?
     @State private var showEditSheet = false
     @State private var expandedSections: Set<String> = ["menu", "vini"]
+    @State private var showWineConfirmation = false
+    @State private var showInviteGenerator = false
+    @State private var regeneratingDish: (course: String, index: Int)?
+    @State private var showDeleteConfirmation = false
+    @State private var dishToDelete: (course: String, index: Int)?
 
     private var settings: AppSettings? { appSettings.first }
 
@@ -333,6 +338,22 @@ struct DinnerDetailView: View {
         }
         .sheet(item: $selectedWinePairing) { pairing in
             WinePairingDetailView(pairing: pairing, bottles: bottles)
+        }
+        .sheet(isPresented: $showWineConfirmation) {
+            WineConfirmationView(dinner: dinner)
+        }
+        .sheet(isPresented: $showInviteGenerator) {
+            InviteGeneratorView(dinner: dinner)
+        }
+        .alert("Elimina piatto", isPresented: $showDeleteConfirmation) {
+            Button("Annulla", role: .cancel) {}
+            Button("Elimina", role: .destructive) {
+                if let toDelete = dishToDelete {
+                    deleteDish(course: toDelete.course, index: toDelete.index)
+                }
+            }
+        } message: {
+            Text("Vuoi eliminare questo piatto dal menu?")
         }
     }
 
@@ -438,13 +459,19 @@ struct DinnerDetailView: View {
                                     .font(.subheadline.bold())
                                     .foregroundColor(.purple)
 
-                                ForEach(course.dishes) { dish in
-                                    Button {
-                                        selectedDish = dish
-                                    } label: {
-                                        DishRow(dish: dish)
-                                    }
-                                    .buttonStyle(.plain)
+                                ForEach(Array(course.dishes.enumerated()), id: \.element.id) { index, dish in
+                                    EditableDishRow(
+                                        dish: dish,
+                                        courseName: course.name,
+                                        dishIndex: index,
+                                        isRegenerating: regeneratingDish?.course == course.name && regeneratingDish?.index == index,
+                                        onTap: { selectedDish = dish },
+                                        onRegenerate: { regenerateDish(course: course.name, index: index) },
+                                        onDelete: {
+                                            dishToDelete = (course.name, index)
+                                            showDeleteConfirmation = true
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -536,26 +563,61 @@ struct DinnerDetailView: View {
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
 
-            // Regenerate button
-            Button {
-                Task { await regenerateMenu() }
-            } label: {
-                HStack {
-                    if isGenerating {
-                        ProgressView()
-                            .tint(.purple)
-                    } else {
-                        Image(systemName: "arrow.clockwise")
+            // Action buttons
+            VStack(spacing: 12) {
+                // Wine confirmation button
+                if !menu.abbinamenti.isEmpty {
+                    Button {
+                        showWineConfirmation = true
+                    } label: {
+                        HStack {
+                            Image(systemName: dinner.notificationsScheduled ? "bell.badge.fill" : "thermometer.medium")
+                            Text(dinner.notificationsScheduled ? "Vini Confermati" : "Conferma Vini")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(dinner.notificationsScheduled ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                        .foregroundColor(dinner.notificationsScheduled ? .green : .orange)
+                        .cornerRadius(12)
                     }
-                    Text(isGenerating ? "Rigenerazione..." : "Rigenera Menu")
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.purple.opacity(0.15))
-                .foregroundColor(.purple)
-                .cornerRadius(12)
+
+                // Invite generator button
+                Button {
+                    showInviteGenerator = true
+                } label: {
+                    HStack {
+                        Image(systemName: "envelope")
+                        Text("Genera Invito")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue.opacity(0.15))
+                    .foregroundColor(.blue)
+                    .cornerRadius(12)
+                }
+
+                // Regenerate button
+                Button {
+                    Task { await regenerateMenu() }
+                } label: {
+                    HStack {
+                        if isGenerating {
+                            ProgressView()
+                                .tint(.purple)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        Text(isGenerating ? "Rigenerazione..." : "Rigenera Menu")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.purple.opacity(0.15))
+                    .foregroundColor(.purple)
+                    .cornerRadius(12)
+                }
+                .disabled(isGenerating || settings?.openAIApiKey == nil)
             }
-            .disabled(isGenerating || settings?.openAIApiKey == nil)
         }
     }
 
@@ -572,7 +634,60 @@ struct DinnerDetailView: View {
         )
     }
 
-    // MARK: - Actions
+    // MARK: - Dish Editing Actions
+
+    private func regenerateDish(course: String, index: Int) {
+        guard let currentMenu = dinner.menuResponse else { return }
+
+        regeneratingDish = (course, index)
+
+        Task {
+            do {
+                let updatedMenu = try await MenuGeneratorService.shared.regenerateDish(
+                    courseName: course,
+                    dishIndex: index,
+                    currentMenu: currentMenu,
+                    dinner: dinner,
+                    wines: wines,
+                    bottles: bottles,
+                    tastePreferences: settings?.tastePreferences
+                )
+
+                await MainActor.run {
+                    if let jsonData = try? JSONEncoder().encode(updatedMenu) {
+                        dinner.menuData = jsonData
+                    }
+                    dinner.updatedAt = Date()
+                    try? modelContext.save()
+                    regeneratingDish = nil
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Errore: \(error.localizedDescription)"
+                    regeneratingDish = nil
+                }
+            }
+        }
+    }
+
+    private func deleteDish(course: String, index: Int) {
+        guard let currentMenu = dinner.menuResponse else { return }
+
+        let updatedMenu = MenuGeneratorService.shared.deleteDish(
+            courseName: course,
+            dishIndex: index,
+            from: currentMenu
+        )
+
+        if let jsonData = try? JSONEncoder().encode(updatedMenu) {
+            dinner.menuData = jsonData
+        }
+        dinner.updatedAt = Date()
+        try? modelContext.save()
+        dishToDelete = nil
+    }
+
+    // MARK: - Menu Actions
 
     private func generateMenu() async {
         isGenerating = true
@@ -632,15 +747,71 @@ struct DinnerDetailView: View {
     }
 }
 
+// MARK: - Editable Dish Row
+
+struct EditableDishRow: View {
+    let dish: Dish
+    let courseName: String
+    let dishIndex: Int
+    let isRegenerating: Bool
+    let onTap: () -> Void
+    let onRegenerate: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            DishRow(dish: dish, isRegenerating: isRegenerating)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                onRegenerate()
+            } label: {
+                Label("Rigenera piatto", systemImage: "arrow.clockwise")
+            }
+
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Elimina piatto", systemImage: "trash")
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Elimina", systemImage: "trash")
+            }
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                onRegenerate()
+            } label: {
+                Label("Rigenera", systemImage: "arrow.clockwise")
+            }
+            .tint(.purple)
+        }
+    }
+}
+
 // MARK: - Dish Row
 
 struct DishRow: View {
     let dish: Dish
+    var isRegenerating: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(dish.nome)
-                .font(.subheadline.bold())
+            HStack {
+                Text(dish.nome)
+                    .font(.subheadline.bold())
+
+                if isRegenerating {
+                    Spacer()
+                    ProgressView()
+                        .scaleEffect(0.8)
+                }
+            }
 
             Text(dish.descrizione)
                 .font(.caption)
@@ -659,6 +830,7 @@ struct DishRow: View {
         .padding()
         .background(Color(.tertiarySystemBackground))
         .cornerRadius(8)
+        .opacity(isRegenerating ? 0.6 : 1.0)
     }
 }
 

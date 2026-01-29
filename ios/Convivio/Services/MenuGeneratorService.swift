@@ -290,6 +290,349 @@ actor MenuGeneratorService {
     }
 }
 
+// MARK: - Dish Editing Methods
+
+extension MenuGeneratorService {
+    /// Regenerate a single dish while maintaining menu coherence
+    func regenerateDish(
+        courseName: String,
+        dishIndex: Int,
+        currentMenu: MenuResponse,
+        dinner: DinnerEvent,
+        wines: [Wine],
+        bottles: [Bottle],
+        tastePreferences: TastePreferences?
+    ) async throws -> MenuResponse {
+        // Get current dishes for context
+        let currentDishes = getDishesForCourse(courseName, from: currentMenu)
+        guard dishIndex < currentDishes.count else {
+            throw OpenAIError.parseError
+        }
+
+        let dishToReplace = currentDishes[dishIndex]
+        let otherDishes = currentDishes.enumerated()
+            .filter { $0.offset != dishIndex }
+            .map { $0.element.nome }
+            .joined(separator: ", ")
+
+        // Build context about the dinner
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .full
+        dateFormatter.locale = Locale(identifier: "it_IT")
+
+        let wineInventory = buildWineInventory(bottles: bottles.filter { $0.quantity > 0 })
+
+        let prompt = """
+        Sei un sommelier professionista e chef consulente italiano.
+        Devi generare UN SOLO piatto alternativo per sostituire "\(dishToReplace.nome)" nella portata \(courseName).
+
+        CONTESTO DELLA CENA:
+        - Titolo: \(dinner.title)
+        - Data: \(dateFormatter.string(from: dinner.date))
+        - Persone: \(dinner.guestCount)
+        - Occasione: \(dinner.occasion ?? "Convivio")
+        \(dinner.notes.map { "- Note dell'utente (PRIORITÀ MASSIMA): \($0)" } ?? "")
+
+        ALTRI PIATTI NELLA STESSA PORTATA (per coerenza):
+        \(otherDishes.isEmpty ? "Nessun altro piatto" : otherDishes)
+
+        VINI ABBINATI ALLA PORTATA:
+        \(getWinePairingsForCourse(courseName, from: currentMenu))
+
+        CANTINA DISPONIBILE:
+        \(wineInventory)
+
+        IMPORTANTE:
+        - Il nuovo piatto deve essere DIVERSO da "\(dishToReplace.nome)"
+        - Deve essere coerente con il tema della cena e gli altri piatti
+        - Deve abbinarsi bene con i vini già selezionati
+        - Mantieni lo stesso livello di raffinatezza del menu esistente
+
+        Rispondi SOLO con JSON valido per UN singolo piatto:
+        {
+          "nome": "string",
+          "descrizione": "string",
+          "porzioni": number,
+          "ricetta": {
+            "ingredienti": [{"nome": "string", "quantita": "string", "unita": "string o null"}],
+            "tempo_preparazione": number,
+            "tempo_cottura": number,
+            "difficolta": "facile|media|difficile",
+            "procedimento": ["step 1", "step 2", ...],
+            "consigli": "string o null"
+          }
+        }
+        """
+
+        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: prompt)
+        let newDish = try parseSingleDish(responseText)
+
+        // Create updated menu with the new dish
+        return replaceDishInMenu(currentMenu, courseName: courseName, dishIndex: dishIndex, newDish: newDish)
+    }
+
+    /// Delete a dish from a course
+    nonisolated func deleteDish(
+        courseName: String,
+        dishIndex: Int,
+        from currentMenu: MenuResponse
+    ) -> MenuResponse {
+        var updatedMenu = currentMenu.menu
+
+        switch courseName.lowercased() {
+        case "antipasti":
+            var dishes = updatedMenu.antipasti
+            if dishIndex < dishes.count {
+                dishes.remove(at: dishIndex)
+                updatedMenu = MenuSections(
+                    antipasti: dishes,
+                    primi: updatedMenu.primi,
+                    secondi: updatedMenu.secondi,
+                    contorni: updatedMenu.contorni,
+                    dolci: updatedMenu.dolci
+                )
+            }
+        case "primi":
+            var dishes = updatedMenu.primi
+            if dishIndex < dishes.count {
+                dishes.remove(at: dishIndex)
+                updatedMenu = MenuSections(
+                    antipasti: updatedMenu.antipasti,
+                    primi: dishes,
+                    secondi: updatedMenu.secondi,
+                    contorni: updatedMenu.contorni,
+                    dolci: updatedMenu.dolci
+                )
+            }
+        case "secondi":
+            var dishes = updatedMenu.secondi
+            if dishIndex < dishes.count {
+                dishes.remove(at: dishIndex)
+                updatedMenu = MenuSections(
+                    antipasti: updatedMenu.antipasti,
+                    primi: updatedMenu.primi,
+                    secondi: dishes,
+                    contorni: updatedMenu.contorni,
+                    dolci: updatedMenu.dolci
+                )
+            }
+        case "contorni":
+            var dishes = updatedMenu.contorni
+            if dishIndex < dishes.count {
+                dishes.remove(at: dishIndex)
+                updatedMenu = MenuSections(
+                    antipasti: updatedMenu.antipasti,
+                    primi: updatedMenu.primi,
+                    secondi: updatedMenu.secondi,
+                    contorni: dishes,
+                    dolci: updatedMenu.dolci
+                )
+            }
+        case "dolci":
+            var dishes = updatedMenu.dolci
+            if dishIndex < dishes.count {
+                dishes.remove(at: dishIndex)
+                updatedMenu = MenuSections(
+                    antipasti: updatedMenu.antipasti,
+                    primi: updatedMenu.primi,
+                    secondi: updatedMenu.secondi,
+                    contorni: updatedMenu.contorni,
+                    dolci: dishes
+                )
+            }
+        default:
+            break
+        }
+
+        return MenuResponse(
+            menu: updatedMenu,
+            abbinamenti: currentMenu.abbinamenti,
+            suggerimentiAcquisto: currentMenu.suggerimentiAcquisto,
+            noteServizio: currentMenu.noteServizio,
+            galateo: currentMenu.galateo
+        )
+    }
+
+    // MARK: - Private Helpers
+
+    private func getDishesForCourse(_ courseName: String, from menu: MenuResponse) -> [Dish] {
+        switch courseName.lowercased() {
+        case "antipasti": return menu.menu.antipasti
+        case "primi": return menu.menu.primi
+        case "secondi": return menu.menu.secondi
+        case "contorni": return menu.menu.contorni
+        case "dolci": return menu.menu.dolci
+        default: return []
+        }
+    }
+
+    private func getWinePairingsForCourse(_ courseName: String, from menu: MenuResponse) -> String {
+        let pairings = menu.abbinamenti.filter { $0.portata.lowercased() == courseName.lowercased() }
+        if pairings.isEmpty { return "Nessun vino abbinato" }
+        return pairings.map { "\($0.vino.produttore) \($0.vino.nome)" }.joined(separator: ", ")
+    }
+
+    private func parseSingleDish(_ text: String) throws -> Dish {
+        var cleanJson = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if cleanJson.hasPrefix("```json") {
+            cleanJson = String(cleanJson.dropFirst(7))
+        } else if cleanJson.hasPrefix("```") {
+            cleanJson = String(cleanJson.dropFirst(3))
+        }
+
+        if cleanJson.hasSuffix("```") {
+            cleanJson = String(cleanJson.dropLast(3))
+        }
+
+        cleanJson = cleanJson.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let data = cleanJson.data(using: .utf8) else {
+            throw OpenAIError.parseError
+        }
+
+        return try JSONDecoder().decode(Dish.self, from: data)
+    }
+
+    private func replaceDishInMenu(_ menu: MenuResponse, courseName: String, dishIndex: Int, newDish: Dish) -> MenuResponse {
+        var updatedMenu = menu.menu
+
+        switch courseName.lowercased() {
+        case "antipasti":
+            var dishes = updatedMenu.antipasti
+            if dishIndex < dishes.count {
+                dishes[dishIndex] = newDish
+                updatedMenu = MenuSections(
+                    antipasti: dishes,
+                    primi: updatedMenu.primi,
+                    secondi: updatedMenu.secondi,
+                    contorni: updatedMenu.contorni,
+                    dolci: updatedMenu.dolci
+                )
+            }
+        case "primi":
+            var dishes = updatedMenu.primi
+            if dishIndex < dishes.count {
+                dishes[dishIndex] = newDish
+                updatedMenu = MenuSections(
+                    antipasti: updatedMenu.antipasti,
+                    primi: dishes,
+                    secondi: updatedMenu.secondi,
+                    contorni: updatedMenu.contorni,
+                    dolci: updatedMenu.dolci
+                )
+            }
+        case "secondi":
+            var dishes = updatedMenu.secondi
+            if dishIndex < dishes.count {
+                dishes[dishIndex] = newDish
+                updatedMenu = MenuSections(
+                    antipasti: updatedMenu.antipasti,
+                    primi: updatedMenu.primi,
+                    secondi: dishes,
+                    contorni: updatedMenu.contorni,
+                    dolci: updatedMenu.dolci
+                )
+            }
+        case "contorni":
+            var dishes = updatedMenu.contorni
+            if dishIndex < dishes.count {
+                dishes[dishIndex] = newDish
+                updatedMenu = MenuSections(
+                    antipasti: updatedMenu.antipasti,
+                    primi: updatedMenu.primi,
+                    secondi: updatedMenu.secondi,
+                    contorni: dishes,
+                    dolci: updatedMenu.dolci
+                )
+            }
+        case "dolci":
+            var dishes = updatedMenu.dolci
+            if dishIndex < dishes.count {
+                dishes[dishIndex] = newDish
+                updatedMenu = MenuSections(
+                    antipasti: updatedMenu.antipasti,
+                    primi: updatedMenu.primi,
+                    secondi: updatedMenu.secondi,
+                    contorni: updatedMenu.contorni,
+                    dolci: dishes
+                )
+            }
+        default:
+            break
+        }
+
+        return MenuResponse(
+            menu: updatedMenu,
+            abbinamenti: menu.abbinamenti,
+            suggerimentiAcquisto: menu.suggerimentiAcquisto,
+            noteServizio: menu.noteServizio,
+            galateo: menu.galateo
+        )
+    }
+}
+
+// MARK: - Invite Generation
+
+extension MenuGeneratorService {
+    /// Generate an elegant invite message for the dinner
+    func generateInviteMessage(for dinner: DinnerEvent, menu: MenuResponse?) async throws -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .full
+        dateFormatter.locale = Locale(identifier: "it_IT")
+
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH:mm"
+        timeFormatter.locale = Locale(identifier: "it_IT")
+
+        var menuPreview = ""
+        if let menu = menu {
+            var courses: [String] = []
+            if !menu.menu.antipasti.isEmpty {
+                courses.append("Antipasti: \(menu.menu.antipasti.map { $0.nome }.joined(separator: ", "))")
+            }
+            if !menu.menu.primi.isEmpty {
+                courses.append("Primi: \(menu.menu.primi.map { $0.nome }.joined(separator: ", "))")
+            }
+            if !menu.menu.secondi.isEmpty {
+                courses.append("Secondi: \(menu.menu.secondi.map { $0.nome }.joined(separator: ", "))")
+            }
+            if !menu.menu.dolci.isEmpty {
+                courses.append("Dolci: \(menu.menu.dolci.map { $0.nome }.joined(separator: ", "))")
+            }
+            menuPreview = courses.joined(separator: "\n")
+        }
+
+        let prompt = """
+        Sei un esperto di galateo italiano. Genera un messaggio di invito elegante per questa cena:
+
+        DETTAGLI CENA:
+        - Titolo: \(dinner.title)
+        - Data: \(dateFormatter.string(from: dinner.date))
+        - Ora: \(timeFormatter.string(from: dinner.date))
+        - Occasione: \(dinner.occasion ?? "Cena conviviale")
+        \(dinner.notes.map { "- Note: \($0)" } ?? "")
+
+        \(menuPreview.isEmpty ? "" : "ANTEPRIMA MENU:\n\(menuPreview)")
+
+        REQUISITI:
+        - Il messaggio deve essere elegante ma non formale
+        - Includi data, ora e occasione
+        - Se c'è un menu, accennalo brevemente (senza elencare tutto)
+        - Tono appropriato all'occasione
+        - Chiedi conferma di partecipazione
+        - Lunghezza: 3-5 frasi
+        - NON includere emoji o formattazione markdown
+
+        Rispondi SOLO con il testo del messaggio di invito, senza altro.
+        """
+
+        let response = try await OpenAIService.shared.generateMenuWithGPT(prompt: prompt)
+        return response.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 // MARK: - Wine Quantity Helper
 
 extension MenuGeneratorService {
