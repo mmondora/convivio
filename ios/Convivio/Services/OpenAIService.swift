@@ -310,6 +310,7 @@ actor OpenAIService {
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 180 // 3 minutes for complex menu generation
 
         let body: [String: Any] = [
             "model": "gpt-4o",
@@ -317,13 +318,19 @@ actor OpenAIService {
                 ["role": "user", "content": prompt]
             ],
             "temperature": 0.7,
-            "max_tokens": 8000
+            "max_tokens": 16000
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
+        // Use custom session with longer timeout
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 180
+        config.timeoutIntervalForResource = 300
+        let session = URLSession(configuration: config)
+
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await session.data(for: request)
             let duration = Date().timeIntervalSince(startTime)
 
             guard let httpResponse = response as? HTTPURLResponse else {
