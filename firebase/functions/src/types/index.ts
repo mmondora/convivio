@@ -21,7 +21,7 @@ export type DinnerStyle = 'informal' | 'convivial' | 'elegant';
 export type CookingTime = 'quick' | 'oneHour' | 'twoHours' | 'unlimited';
 export type BudgetLevel = 'economic' | 'standard' | 'premium' | 'luxury';
 export type DinnerStatus = 'planning' | 'confirmed' | 'completed' | 'cancelled';
-export type CourseType = 'aperitif' | 'starter' | 'first' | 'main' | 'dessert' | 'pairing';
+export type CourseType = 'aperitif' | 'starter' | 'first' | 'main' | 'side' | 'dessert' | 'pairing';
 
 // ============================================================
 // USER & AUTH

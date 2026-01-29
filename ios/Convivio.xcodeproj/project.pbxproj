@@ -9,40 +9,52 @@
 /* Begin PBXBuildFile section */
 		F000000000000001 /* ConvivioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000001 /* ConvivioApp.swift */; };
 		F000000000000002 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000002 /* Models.swift */; };
-		F000000000000003 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000003 /* AuthManager.swift */; };
 		F000000000000004 /* CellarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000004 /* CellarView.swift */; };
 		F000000000000005 /* ScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000005 /* ScanView.swift */; };
 		F000000000000006 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000006 /* ProfileView.swift */; };
-		F000000000000007 /* DinnerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000007 /* DinnerListView.swift */; };
-		F000000000000008 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000008 /* AuthenticationView.swift */; };
 		F000000000000009 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000009 /* ChatView.swift */; };
-		F00000000000000A /* FirebaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000A /* FirebaseService.swift */; };
 		F00000000000000B /* AppIconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000B /* AppIconGenerator.swift */; };
+		F00000000000000C /* OpenAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000C /* OpenAIService.swift */; };
+		F00000000000000E /* MenuGeneratorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000E /* MenuGeneratorService.swift */; };
+		F00000000000000F /* MenuModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000F /* MenuModels.swift */; };
+		F000000000000012 /* FoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000014 /* FoodView.swift */; };
 		F000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000010 /* Assets.xcassets */; };
 		F000000000000011 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000011 /* GoogleService-Info.plist */; };
-		F000000000000020 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F200000000000001 /* FirebaseAuth */; };
-		F000000000000021 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = F200000000000002 /* FirebaseFirestore */; };
-		F000000000000022 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = F200000000000003 /* FirebaseStorage */; };
-		F000000000000023 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = F200000000000004 /* FirebaseFunctions */; };
+		F000000000000020 /* WineRatingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000020 /* WineRatingModels.swift */; };
+		F000000000000021 /* StarRatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000021 /* StarRatingView.swift */; };
+		F000000000000022 /* AISParameterPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000022 /* AISParameterPicker.swift */; };
+		F000000000000023 /* QuickRatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000023 /* QuickRatingView.swift */; };
+		F000000000000024 /* SchedaAISView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000024 /* SchedaAISView.swift */; };
+		F000000000000025 /* WineRatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000025 /* WineRatingView.swift */; };
+		F000000000000026 /* WineRatingsHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000026 /* WineRatingsHistoryView.swift */; };
+		F000000000000027 /* WineRatingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000027 /* WineRatingService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		F100000000000000 /* Convivio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Convivio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000001 /* ConvivioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvivioApp.swift; sourceTree = "<group>"; };
 		F100000000000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		F100000000000003 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		F100000000000004 /* CellarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CellarView.swift; sourceTree = "<group>"; };
 		F100000000000005 /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
 		F100000000000006 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
-		F100000000000007 /* DinnerListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DinnerListView.swift; sourceTree = "<group>"; };
-		F100000000000008 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
 		F100000000000009 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
-		F10000000000000A /* FirebaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseService.swift; sourceTree = "<group>"; };
 		F10000000000000B /* AppIconGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconGenerator.swift; sourceTree = "<group>"; };
 		F100000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F100000000000011 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		F100000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F100000000000013 /* Convivio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Convivio.entitlements; sourceTree = "<group>"; };
+		F10000000000000C /* OpenAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIService.swift; sourceTree = "<group>"; };
+		F10000000000000E /* MenuGeneratorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuGeneratorService.swift; sourceTree = "<group>"; };
+		F10000000000000F /* MenuModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuModels.swift; sourceTree = "<group>"; };
+		F100000000000014 /* FoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodView.swift; sourceTree = "<group>"; };
+		F100000000000020 /* WineRatingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineRatingModels.swift; sourceTree = "<group>"; };
+		F100000000000021 /* StarRatingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarRatingView.swift; sourceTree = "<group>"; };
+		F100000000000022 /* AISParameterPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISParameterPicker.swift; sourceTree = "<group>"; };
+		F100000000000023 /* QuickRatingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickRatingView.swift; sourceTree = "<group>"; };
+		F100000000000024 /* SchedaAISView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedaAISView.swift; sourceTree = "<group>"; };
+		F100000000000025 /* WineRatingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineRatingView.swift; sourceTree = "<group>"; };
+		F100000000000026 /* WineRatingsHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineRatingsHistoryView.swift; sourceTree = "<group>"; };
+		F100000000000027 /* WineRatingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineRatingService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,10 +62,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F000000000000020 /* FirebaseAuth in Frameworks */,
-				F000000000000021 /* FirebaseFirestore in Frameworks */,
-				F000000000000022 /* FirebaseStorage in Frameworks */,
-				F000000000000023 /* FirebaseFunctions in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,6 +96,8 @@
 			isa = PBXGroup;
 			children = (
 				F100000000000002 /* Models.swift */,
+				F10000000000000F /* MenuModels.swift */,
+				F100000000000020 /* WineRatingModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -98,9 +108,10 @@
 				F100000000000004 /* CellarView.swift */,
 				F100000000000005 /* ScanView.swift */,
 				F100000000000006 /* ProfileView.swift */,
-				F100000000000007 /* DinnerListView.swift */,
-				F100000000000008 /* AuthenticationView.swift */,
 				F100000000000009 /* ChatView.swift */,
+				F100000000000014 /* FoodView.swift */,
+				F400000000000007 /* Components */,
+				F400000000000008 /* Ratings */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -108,8 +119,9 @@
 		F400000000000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				F100000000000003 /* AuthManager.swift */,
-				F10000000000000A /* FirebaseService.swift */,
+				F10000000000000C /* OpenAIService.swift */,
+				F10000000000000E /* MenuGeneratorService.swift */,
+				F100000000000027 /* WineRatingService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -120,6 +132,26 @@
 				F10000000000000B /* AppIconGenerator.swift */,
 			);
 			path = Utils;
+			sourceTree = "<group>";
+		};
+		F400000000000007 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				F100000000000021 /* StarRatingView.swift */,
+				F100000000000022 /* AISParameterPicker.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		F400000000000008 /* Ratings */ = {
+			isa = PBXGroup;
+			children = (
+				F100000000000023 /* QuickRatingView.swift */,
+				F100000000000024 /* SchedaAISView.swift */,
+				F100000000000025 /* WineRatingView.swift */,
+				F100000000000026 /* WineRatingsHistoryView.swift */,
+			);
+			path = Ratings;
 			sourceTree = "<group>";
 		};
 		F400000000000010 /* Products */ = {
@@ -146,12 +178,6 @@
 			dependencies = (
 			);
 			name = Convivio;
-			packageProductDependencies = (
-				F200000000000001 /* FirebaseAuth */,
-				F200000000000002 /* FirebaseFirestore */,
-				F200000000000003 /* FirebaseStorage */,
-				F200000000000004 /* FirebaseFunctions */,
-			);
 			productName = Convivio;
 			productReference = F100000000000000 /* Convivio.app */;
 			productType = "com.apple.product-type.application";
@@ -181,9 +207,6 @@
 				Base,
 			);
 			mainGroup = F400000000000001;
-			packageReferences = (
-				FA00000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
-			);
 			productRefGroup = F400000000000010 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -212,15 +235,23 @@
 			files = (
 				F000000000000001 /* ConvivioApp.swift in Sources */,
 				F000000000000002 /* Models.swift in Sources */,
-				F000000000000003 /* AuthManager.swift in Sources */,
-				F00000000000000A /* FirebaseService.swift in Sources */,
+				F00000000000000F /* MenuModels.swift in Sources */,
+				F000000000000020 /* WineRatingModels.swift in Sources */,
 				F000000000000004 /* CellarView.swift in Sources */,
 				F000000000000005 /* ScanView.swift in Sources */,
 				F000000000000006 /* ProfileView.swift in Sources */,
-				F000000000000007 /* DinnerListView.swift in Sources */,
-				F000000000000008 /* AuthenticationView.swift in Sources */,
 				F000000000000009 /* ChatView.swift in Sources */,
 				F00000000000000B /* AppIconGenerator.swift in Sources */,
+				F00000000000000C /* OpenAIService.swift in Sources */,
+				F00000000000000E /* MenuGeneratorService.swift in Sources */,
+				F000000000000012 /* FoodView.swift in Sources */,
+				F000000000000021 /* StarRatingView.swift in Sources */,
+				F000000000000022 /* AISParameterPicker.swift in Sources */,
+				F000000000000023 /* QuickRatingView.swift in Sources */,
+				F000000000000024 /* SchedaAISView.swift in Sources */,
+				F000000000000025 /* WineRatingView.swift in Sources */,
+				F000000000000026 /* WineRatingsHistoryView.swift in Sources */,
+				F000000000000027 /* WineRatingService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -434,40 +465,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		FA00000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 11.0.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		F200000000000001 /* FirebaseAuth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FA00000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAuth;
-		};
-		F200000000000002 /* FirebaseFirestore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FA00000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseFirestore;
-		};
-		F200000000000003 /* FirebaseStorage */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FA00000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseStorage;
-		};
-		F200000000000004 /* FirebaseFunctions */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FA00000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseFunctions;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F900000000000001 /* Project object */;
 }

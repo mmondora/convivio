@@ -1,13 +1,37 @@
 import SwiftUI
+import SwiftData
 
 struct ProfileView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var firebaseService: FirebaseService
+    @Environment(\.modelContext) private var modelContext
+    @Query private var settings: [AppSettings]
+    @Query private var bottles: [Bottle]
+    @Query private var wines: [Wine]
 
-    @State private var showCellarPicker = false
+    @State private var showApiKeySheet = false
+    @State private var showLogsSheet = false
     @State private var isLoadingSamples = false
     @State private var sampleLoadResult: String?
     @State private var showSampleResult = false
+
+    var currentSettings: AppSettings? { settings.first }
+
+    var stats: (total: Int, value: Double, byType: [WineType: Int]) {
+        var total = 0
+        var value = 0.0
+        var byType: [WineType: Int] = [:]
+
+        for bottle in bottles where bottle.quantity > 0 {
+            total += bottle.quantity
+            if let price = bottle.purchasePrice {
+                value += price * Double(bottle.quantity)
+            }
+            if let wine = bottle.wine {
+                byType[wine.type, default: 0] += bottle.quantity
+            }
+        }
+
+        return (total, value, byType)
+    }
 
     var body: some View {
         NavigationStack {
@@ -22,77 +46,124 @@ struct ProfileView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("La mia cantina")
                                 .font(.headline)
+                            Text("Dati salvati localmente")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                     .padding(.vertical, 8)
                 }
 
-                // Cellar selection
-                Section("Cantina") {
-                    if let cellar = firebaseService.currentCellar {
+                // Stats
+                Section("Statistiche") {
+                    StatRow(
+                        icon: "wineglass",
+                        label: "Bottiglie totali",
+                        value: "\(stats.total)"
+                    )
+
+                    StatRow(
+                        icon: "eurosign.circle",
+                        label: "Valore stimato",
+                        value: formatCurrency(stats.value)
+                    )
+
+                    HStack {
+                        Image(systemName: "chart.pie")
+                            .foregroundColor(.purple)
+                            .frame(width: 30)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Per tipo")
+                                .font(.subheadline)
+
+                            HStack(spacing: 8) {
+                                ForEach(WineType.allCases, id: \.self) { type in
+                                    if let count = stats.byType[type], count > 0 {
+                                        HStack(spacing: 2) {
+                                            Text(type.icon)
+                                                .font(.caption)
+                                            Text("\(count)")
+                                                .font(.caption.bold())
+                                        }
+                                    }
+                                }
+                            }
+                            .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                // Taste Preferences
+                Section("Preferenze Gusto") {
+                    NavigationLink {
+                        TastePreferencesView(settings: currentSettings ?? createSettings())
+                    } label: {
                         HStack {
+                            Image(systemName: "heart.fill")
+                                .foregroundColor(.pink)
+                                .frame(width: 30)
+
                             VStack(alignment: .leading) {
-                                Text(cellar.name)
-                                    .font(.headline)
-                                Text("\(cellar.stats.totalBottles) bottiglie")
+                                Text("I miei gusti")
+                                Text("Configura le tue preferenze vino")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
 
                             Spacer()
-
-                            if firebaseService.cellars.count > 1 {
-                                Button {
-                                    showCellarPicker = true
-                                } label: {
-                                    Text("Cambia")
-                                        .font(.subheadline)
-                                }
-                            }
                         }
                     }
                 }
 
-                // Stats
-                Section("Statistiche") {
-                    if let cellar = firebaseService.currentCellar {
-                        StatRow(
-                            icon: "wineglass",
-                            label: "Bottiglie totali",
-                            value: "\(cellar.stats.totalBottles)"
-                        )
-
-                        StatRow(
-                            icon: "eurosign.circle",
-                            label: "Valore stimato",
-                            value: formatCurrency(cellar.stats.totalValue)
-                        )
-
+                // AI Configuration
+                Section("Intelligenza Artificiale") {
+                    Button {
+                        showApiKeySheet = true
+                    } label: {
                         HStack {
-                            Image(systemName: "chart.pie")
+                            Image(systemName: "key")
+                                .foregroundColor(.green)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading) {
+                                Text("API Key OpenAI")
+                                if currentSettings?.openAIApiKey != nil {
+                                    Text("Configurata")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                } else {
+                                    Text("Non configurata")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                }
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .foregroundColor(.primary)
+
+                    Button {
+                        showLogsSheet = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.text.magnifyingglass")
                                 .foregroundColor(.purple)
                                 .frame(width: 30)
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Per tipo")
-                                    .font(.subheadline)
+                            Text("Log chiamate AI")
 
-                                HStack(spacing: 8) {
-                                    ForEach(WineType.allCases, id: \.self) { type in
-                                        if let count = cellar.stats.wineTypes[type.rawValue], count > 0 {
-                                            HStack(spacing: 2) {
-                                                Text(type.icon)
-                                                    .font(.caption)
-                                                Text("\(count)")
-                                                    .font(.caption.bold())
-                                            }
-                                        }
-                                    }
-                                }
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
                                 .foregroundColor(.secondary)
-                            }
                         }
                     }
+                    .foregroundColor(.primary)
                 }
 
                 // App info
@@ -100,32 +171,28 @@ struct ProfileView: View {
                     HStack {
                         Text("Versione")
                         Spacer()
-                        Text("1.1")
+                        Text("2.0 (Locale)")
                             .foregroundColor(.secondary)
                     }
 
-                    Link(destination: URL(string: "https://convivio.app/privacy")!) {
-                        HStack {
-                            Text("Privacy Policy")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                        }
+                    HStack {
+                        Text("Storage")
+                        Spacer()
+                        Text("SwiftData")
+                            .foregroundColor(.secondary)
                     }
 
-                    Link(destination: URL(string: "https://convivio.app/terms")!) {
-                        HStack {
-                            Text("Termini di Servizio")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                        }
+                    HStack {
+                        Text("AI Engine")
+                        Spacer()
+                        Text("OpenAI GPT-4o")
+                            .foregroundColor(.secondary)
                     }
                 }
 
                 // Dev section
                 #if DEBUG
-                Section("Dev") {
+                Section("Sviluppo") {
                     Button {
                         Task { await loadSampleWines() }
                     } label: {
@@ -139,13 +206,24 @@ struct ProfileView: View {
                         }
                     }
                     .disabled(isLoadingSamples)
+
+                    Button(role: .destructive) {
+                        clearAllData()
+                    } label: {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("Cancella tutti i dati")
+                        }
+                    }
                 }
                 #endif
-
             }
             .navigationTitle("Profilo")
-            .sheet(isPresented: $showCellarPicker) {
-                CellarPickerView()
+            .sheet(isPresented: $showApiKeySheet) {
+                ApiKeyConfigView(settings: currentSettings ?? createSettings())
+            }
+            .sheet(isPresented: $showLogsSheet) {
+                AILogsView()
             }
             .alert("Vini di esempio", isPresented: $showSampleResult) {
                 Button("OK") {}
@@ -153,6 +231,13 @@ struct ProfileView: View {
                 Text(sampleLoadResult ?? "")
             }
         }
+    }
+
+    private func createSettings() -> AppSettings {
+        let newSettings = AppSettings()
+        modelContext.insert(newSettings)
+        try? modelContext.save()
+        return newSettings
     }
 
     private func formatCurrency(_ value: Double) -> String {
@@ -164,119 +249,49 @@ struct ProfileView: View {
     }
 
     private func loadSampleWines() async {
-        guard let userId = authManager.currentUser?.uid else {
-            sampleLoadResult = "Errore: utente non autenticato"
-            showSampleResult = true
-            return
-        }
-
         isLoadingSamples = true
 
-        // Ensure cellar exists
-        do {
-            try await firebaseService.ensureCellarExists(for: userId)
-        } catch {
-            isLoadingSamples = false
-            sampleLoadResult = "Errore creazione cantina: \(error.localizedDescription)"
-            showSampleResult = true
-            return
-        }
-
-        let sampleWines: [(Wine, Bottle)] = [
-            (
-                Wine(
-                    name: "Barolo Monfortino Riserva",
-                    producer: "Giacomo Conterno",
-                    vintage: "2015",
-                    type: .red,
-                    region: "Piemonte",
-                    country: "Italia",
-                    grapes: ["Nebbiolo"],
-                    alcohol: 14.5,
-                    description: "Grande Barolo di Serralunga, strutturato e longevo",
-                    createdAt: .init(date: Date()),
-                    updatedAt: .init(date: Date())
-                ),
-                Bottle(
-                    wineId: "",
-                    cellarId: "",
-                    purchasePrice: 350,
-                    quantity: 2,
-                    status: .available,
-                    createdAt: .init(date: Date()),
-                    updatedAt: .init(date: Date())
-                )
-            ),
-            (
-                Wine(
-                    name: "Tignanello",
-                    producer: "Antinori",
-                    vintage: "2019",
-                    type: .red,
-                    region: "Toscana",
-                    country: "Italia",
-                    grapes: ["Sangiovese", "Cabernet Sauvignon", "Cabernet Franc"],
-                    alcohol: 14.0,
-                    description: "Supertuscan iconico, blend elegante",
-                    createdAt: .init(date: Date()),
-                    updatedAt: .init(date: Date())
-                ),
-                Bottle(
-                    wineId: "",
-                    cellarId: "",
-                    purchasePrice: 120,
-                    quantity: 3,
-                    status: .available,
-                    createdAt: .init(date: Date()),
-                    updatedAt: .init(date: Date())
-                )
-            ),
-            (
-                Wine(
-                    name: "Franciacorta Satèn",
-                    producer: "Ca' del Bosco",
-                    vintage: "2018",
-                    type: .sparkling,
-                    region: "Lombardia",
-                    country: "Italia",
-                    grapes: ["Chardonnay"],
-                    alcohol: 12.5,
-                    description: "Bollicine eleganti, cremoso e raffinato",
-                    createdAt: .init(date: Date()),
-                    updatedAt: .init(date: Date())
-                ),
-                Bottle(
-                    wineId: "",
-                    cellarId: "",
-                    purchasePrice: 45,
-                    quantity: 4,
-                    status: .available,
-                    createdAt: .init(date: Date()),
-                    updatedAt: .init(date: Date())
-                )
-            )
+        let sampleData: [(name: String, producer: String, vintage: String, type: WineType, region: String, price: Double, qty: Int)] = [
+            ("Barolo Monfortino Riserva", "Giacomo Conterno", "2015", .red, "Piemonte", 350, 2),
+            ("Tignanello", "Antinori", "2019", .red, "Toscana", 120, 3),
+            ("Franciacorta Satèn", "Ca' del Bosco", "2018", .sparkling, "Lombardia", 45, 4)
         ]
 
-        var addedCount = 0
-        var errors: [String] = []
+        for item in sampleData {
+            let wine = Wine(
+                name: item.name,
+                producer: item.producer,
+                vintage: item.vintage,
+                type: item.type,
+                region: item.region,
+                country: "Italia"
+            )
 
-        for (wine, bottle) in sampleWines {
-            do {
-                try await firebaseService.addBottle(bottle, wine: wine)
-                addedCount += 1
-            } catch {
-                errors.append("\(wine.name): \(error.localizedDescription)")
-            }
+            let bottle = Bottle(
+                wine: wine,
+                quantity: item.qty,
+                purchasePrice: item.price,
+                purchaseDate: Date()
+            )
+
+            modelContext.insert(wine)
+            modelContext.insert(bottle)
         }
 
+        try? modelContext.save()
         isLoadingSamples = false
-
-        if errors.isEmpty {
-            sampleLoadResult = "Aggiunti \(addedCount) vini alla cantina!"
-        } else {
-            sampleLoadResult = "Aggiunti \(addedCount)/3 vini.\nErrori: \(errors.joined(separator: ", "))"
-        }
+        sampleLoadResult = "Aggiunti 3 vini alla cantina!"
         showSampleResult = true
+    }
+
+    private func clearAllData() {
+        for bottle in bottles {
+            modelContext.delete(bottle)
+        }
+        for wine in wines {
+            modelContext.delete(wine)
+        }
+        try? modelContext.save()
     }
 }
 
@@ -301,43 +316,285 @@ struct StatRow: View {
     }
 }
 
-struct CellarPickerView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var firebaseService: FirebaseService
+struct ApiKeyConfigView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+
+    @Bindable var settings: AppSettings
+    @State private var apiKey: String = ""
+    @State private var isValidating = false
+    @State private var validationResult: String?
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(firebaseService.cellars) { cellar in
+            Form {
+                Section {
+                    SecureField("sk-...", text: $apiKey)
+                        .textContentType(.password)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                } header: {
+                    Text("API Key OpenAI")
+                } footer: {
+                    Text("La chiave viene salvata localmente sul tuo dispositivo. Puoi ottenerla da platform.openai.com")
+                }
+
+                Section {
                     Button {
-                        if let userId = authManager.currentUser?.uid {
-                            firebaseService.selectCellar(cellar, userId: userId)
-                        }
-                        dismiss()
+                        Task { await validateAndSave() }
                     } label: {
                         HStack {
-                            VStack(alignment: .leading) {
-                                Text(cellar.name)
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-
-                                Text("\(cellar.stats.totalBottles) bottiglie")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-
+                            Text("Salva")
                             Spacer()
-
-                            if cellar.id == firebaseService.currentCellar?.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.purple)
+                            if isValidating {
+                                ProgressView()
                             }
+                        }
+                    }
+                    .disabled(apiKey.isEmpty || isValidating)
+
+                    if let result = validationResult {
+                        Text(result)
+                            .font(.caption)
+                            .foregroundColor(result.contains("Errore") ? .red : .green)
+                    }
+                }
+
+                if settings.openAIApiKey != nil {
+                    Section {
+                        Button(role: .destructive) {
+                            removeApiKey()
+                        } label: {
+                            Text("Rimuovi API Key")
                         }
                     }
                 }
             }
-            .navigationTitle("Seleziona Cantina")
+            .navigationTitle("Configura API Key")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Chiudi") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                if let existingKey = settings.openAIApiKey {
+                    // Show masked key
+                    apiKey = String(existingKey.prefix(7)) + "..." + String(existingKey.suffix(4))
+                }
+            }
+        }
+    }
+
+    private func validateAndSave() async {
+        isValidating = true
+        validationResult = nil
+
+        // Basic validation
+        guard apiKey.hasPrefix("sk-") else {
+            validationResult = "Errore: La chiave deve iniziare con 'sk-'"
+            isValidating = false
+            return
+        }
+
+        // Save the key
+        settings.openAIApiKey = apiKey
+        settings.updatedAt = Date()
+        try? modelContext.save()
+
+        // Update OpenAI service
+        await OpenAIService.shared.setApiKey(apiKey)
+
+        validationResult = "API Key salvata con successo!"
+        isValidating = false
+
+        // Dismiss after a short delay
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        dismiss()
+    }
+
+    private func removeApiKey() {
+        settings.openAIApiKey = nil
+        settings.updatedAt = Date()
+        try? modelContext.save()
+        apiKey = ""
+        validationResult = nil
+    }
+}
+
+// MARK: - AI Logs View
+
+struct AILogsView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var logs: [AILogEntry] = []
+    @State private var selectedLog: AILogEntry?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if logs.isEmpty {
+                    ContentUnavailableView(
+                        "Nessun log",
+                        systemImage: "doc.text",
+                        description: Text("I log delle chiamate AI appariranno qui")
+                    )
+                } else {
+                    ForEach(logs) { log in
+                        Button {
+                            selectedLog = log
+                        } label: {
+                            LogRow(log: log)
+                        }
+                        .foregroundColor(.primary)
+                    }
+                }
+            }
+            .navigationTitle("Log AI")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Chiudi") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Pulisci") {
+                        Task {
+                            await OpenAIService.shared.clearLogs()
+                            await loadLogs()
+                        }
+                    }
+                    .disabled(logs.isEmpty)
+                }
+            }
+            .task {
+                await loadLogs()
+            }
+            .sheet(item: $selectedLog) { log in
+                LogDetailView(log: log)
+            }
+        }
+    }
+
+    private func loadLogs() async {
+        logs = await OpenAIService.shared.logs
+    }
+}
+
+struct LogRow: View {
+    let log: AILogEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Image(systemName: log.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .foregroundColor(log.success ? .green : .red)
+
+                Text(log.endpoint)
+                    .font(.headline)
+
+                Spacer()
+
+                Text(log.formattedTimestamp)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Text(log.prompt.prefix(100) + (log.prompt.count > 100 ? "..." : ""))
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+
+            HStack {
+                Text(String(format: "%.2fs", log.duration))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+
+                if let error = log.error {
+                    Text(error)
+                        .font(.caption2)
+                        .foregroundColor(.red)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct LogDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let log: AILogEntry
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Header
+                    HStack {
+                        Image(systemName: log.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(log.success ? .green : .red)
+                            .font(.title)
+
+                        VStack(alignment: .leading) {
+                            Text(log.endpoint)
+                                .font(.headline)
+                            Text(log.formattedTimestamp)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        Text(String(format: "%.2fs", log.duration))
+                            .font(.title3)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+
+                    // Prompt
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("PROMPT")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+
+                        Text(log.prompt)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+
+                    // Response
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("RESPONSE")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+
+                        if log.success {
+                            Text(log.response)
+                                .font(.system(.caption, design: .monospaced))
+                                .textSelection(.enabled)
+                        } else {
+                            Text(log.error ?? "Unknown error")
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundColor(.red)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+                }
+                .padding()
+            }
+            .navigationTitle("Dettaglio Log")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -350,8 +607,113 @@ struct CellarPickerView: View {
     }
 }
 
+// MARK: - Taste Preferences View
+
+struct TastePreferencesView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var settings: AppSettings
+
+    @State private var prefs: TastePreferences = TastePreferences()
+
+    // Wine type options
+    let wineTypes = ["Rosso", "Bianco", "Rosato", "Bollicine", "Dolce", "Fortificato"]
+    let regions = ["Piemonte", "Toscana", "Veneto", "Lombardia", "Sicilia", "Puglia", "Friuli", "Alto Adige", "Campania", "Umbria"]
+    let grapes = ["Nebbiolo", "Sangiovese", "Barbera", "Chardonnay", "Pinot Grigio", "Glera", "Moscato", "Vermentino", "Primitivo", "Nero d'Avola"]
+
+    var body: some View {
+        Form {
+            Section("Tipi di vino preferiti") {
+                ForEach(wineTypes, id: \.self) { type in
+                    Toggle(type, isOn: Binding(
+                        get: { prefs.preferredWineTypes.contains(type) },
+                        set: { isOn in
+                            if isOn {
+                                prefs.preferredWineTypes.append(type)
+                            } else {
+                                prefs.preferredWineTypes.removeAll { $0 == type }
+                            }
+                        }
+                    ))
+                }
+            }
+
+            Section("Regioni preferite") {
+                ForEach(regions, id: \.self) { region in
+                    Toggle(region, isOn: Binding(
+                        get: { prefs.preferredRegions.contains(region) },
+                        set: { isOn in
+                            if isOn {
+                                prefs.preferredRegions.append(region)
+                            } else {
+                                prefs.preferredRegions.removeAll { $0 == region }
+                            }
+                        }
+                    ))
+                }
+            }
+
+            Section("Vitigni preferiti") {
+                ForEach(grapes, id: \.self) { grape in
+                    Toggle(grape, isOn: Binding(
+                        get: { prefs.preferredGrapes.contains(grape) },
+                        set: { isOn in
+                            if isOn {
+                                prefs.preferredGrapes.append(grape)
+                            } else {
+                                prefs.preferredGrapes.removeAll { $0 == grape }
+                            }
+                        }
+                    ))
+                }
+            }
+
+            Section("Caratteristiche") {
+                Picker("Corpo", selection: $prefs.bodyPreference) {
+                    ForEach(BodyPreference.allCases, id: \.self) { pref in
+                        Text(pref.displayName).tag(pref)
+                    }
+                }
+
+                Picker("Dolcezza", selection: $prefs.sweetnessPreference) {
+                    ForEach(SweetnessPreference.allCases, id: \.self) { pref in
+                        Text(pref.displayName).tag(pref)
+                    }
+                }
+
+                Picker("Tannini", selection: $prefs.tanninPreference) {
+                    ForEach(TanninPreference.allCases, id: \.self) { pref in
+                        Text(pref.displayName).tag(pref)
+                    }
+                }
+
+                Picker("Acidità", selection: $prefs.acidityPreference) {
+                    ForEach(AcidityPreference.allCases, id: \.self) { pref in
+                        Text(pref.displayName).tag(pref)
+                    }
+                }
+            }
+
+            Section("Note aggiuntive") {
+                TextField("Es: Preferisco vini eleganti, non troppo fruttati...", text: Binding(
+                    get: { prefs.notes ?? "" },
+                    set: { prefs.notes = $0.isEmpty ? nil : $0 }
+                ), axis: .vertical)
+                    .lineLimit(3...5)
+            }
+        }
+        .navigationTitle("Preferenze Gusto")
+        .onAppear {
+            prefs = settings.tastePreferences
+        }
+        .onDisappear {
+            settings.tastePreferences = prefs
+            settings.updatedAt = Date()
+            try? modelContext.save()
+        }
+    }
+}
+
 #Preview {
     ProfileView()
-        .environmentObject(AuthManager.shared)
-        .environmentObject(FirebaseService.shared)
+        .modelContainer(for: [AppSettings.self, Wine.self, Bottle.self], inMemory: true)
 }

@@ -1,80 +1,69 @@
 import SwiftUI
-import FirebaseCore
-import FirebaseAuth
-import FirebaseFirestore
-import FirebaseFunctions
+import SwiftData
 
 @main
 struct ConvivioApp: App {
-    @StateObject private var authManager = AuthManager.shared
-    @StateObject private var firebaseService = FirebaseService.shared
+    let modelContainer: ModelContainer
 
     init() {
-        FirebaseApp.configure()
-
-        #if targetEnvironment(simulator)
-        // Always connect to emulators in simulator
-        let settings = Firestore.firestore().settings
-        settings.host = "127.0.0.1:8080"
-        settings.cacheSettings = MemoryCacheSettings()
-        settings.isSSLEnabled = false
-        Firestore.firestore().settings = settings
-
-        Auth.auth().useEmulator(withHost: "127.0.0.1", port: 9099)
-        Functions.functions(region: "europe-west1").useEmulator(withHost: "127.0.0.1", port: 5001)
-
-        print("🔧 Firebase Emulators configured: Auth=9099, Firestore=8080, Functions=5001")
-        #endif
+        do {
+            let schema = Schema([
+                Wine.self,
+                Bottle.self,
+                DinnerEvent.self,
+                ChatMessage.self,
+                AppSettings.self,
+                QuickRating.self,
+                SchedaAIS.self
+            ])
+            let modelConfiguration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false
+            )
+            modelContainer = try ModelContainer(
+                for: schema,
+                configurations: [modelConfiguration]
+            )
+        } catch {
+            fatalError("Failed to create ModelContainer: \(error)")
+        }
     }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(authManager)
-                .environmentObject(firebaseService)
         }
+        .modelContainer(modelContainer)
     }
 }
 
 struct ContentView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var firebaseService: FirebaseService
+    @Environment(\.modelContext) private var modelContext
+    @Query private var settings: [AppSettings]
 
     var body: some View {
-        Group {
-            if authManager.isLoading {
-                LoadingView()
-            } else if authManager.isAuthenticated {
-                MainTabView()
-                    .onAppear {
-                        if let userId = authManager.currentUser?.uid {
-                            firebaseService.loadCellars(for: userId)
-                        }
-                    }
-            } else {
-                LoadingView()
-                    .task {
-                        try? await authManager.signInAnonymously()
-                    }
+        MainTabView()
+            .task {
+                await setupApp()
             }
-        }
     }
-}
 
-struct LoadingView: View {
-    var body: some View {
-        VStack(spacing: 20) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Caricamento...")
-                .foregroundColor(.secondary)
+    private func setupApp() async {
+        // Create default settings if needed
+        if settings.isEmpty {
+            let defaultSettings = AppSettings()
+            modelContext.insert(defaultSettings)
+            try? modelContext.save()
+        }
+
+        // Load API key if it exists
+        if let openAIKey = settings.first?.openAIApiKey {
+            await OpenAIService.shared.setApiKey(openAIKey)
         }
     }
 }
 
 struct MainTabView: View {
-    @EnvironmentObject var firebaseService: FirebaseService
-
     var body: some View {
         TabView {
             CellarView()
@@ -87,9 +76,9 @@ struct MainTabView: View {
                     Label("Scansiona", systemImage: "camera")
                 }
 
-            DinnerListView()
+            FoodView()
                 .tabItem {
-                    Label("Cene", systemImage: "fork.knife")
+                    Label("Convivio", systemImage: "fork.knife")
                 }
 
             ChatView()

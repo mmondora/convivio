@@ -354,30 +354,42 @@ OSPITI ({guest_count} persone):
 VINI DISPONIBILI IN CANTINA:
 {inventory_summary}
 
-ISTRUZIONI:
-1. Proponi un menu completo con: antipasto, primo, secondo, dolce
-2. IMPORTANTE: Se ci sono "RICHIESTE SPECIFICHE DELL'UTENTE", queste hanno la MASSIMA PRIORITÀ - segui esattamente le indicazioni dell'utente (es. tipo di cucina, ingredienti specifici, tema della serata)
-3. Considera TUTTE le restrizioni alimentari - nessun piatto deve contenere ingredienti vietati
-4. Adatta la complessità al tempo di preparazione disponibile
-5. Per ogni piatto indica:
+ISTRUZIONI PRIORITARIE:
+⚠️ MASSIMA PRIORITÀ: Le "RICHIESTE SPECIFICHE DELL'UTENTE" DEVONO essere seguite ESATTAMENTE.
+   - Se l'utente specifica il numero di piatti per portata (es. "10 antipasti, 1 primo"), genera ESATTAMENTE quel numero
+   - Se l'utente specifica il tipo di cucina, tema, o ingredienti, seguili alla lettera
+   - NON ignorare MAI le richieste dell'utente
+
+ISTRUZIONI GENERALI (se non specificate dall'utente):
+1. Se non ci sono richieste specifiche, proponi: 1 antipasto, 1 primo, 1 secondo, 1 dolce
+2. Considera TUTTE le restrizioni alimentari - nessun piatto deve contenere ingredienti vietati
+3. Adatta la complessità al tempo di preparazione disponibile
+4. Per ogni piatto indica:
    - Nome e breve descrizione
    - Flag dietetici (GF=senza glutine, LF=senza lattosio, V=vegetariano, VG=vegano)
    - Tempo di preparazione stimato
-6. ABBINAMENTI VINO (IMPORTANTE):
+5. ABBINAMENTI VINO:
    - Ogni piatto DEVE avere un vino abbinato
-   - MINIMIZZA il numero di vini diversi e i cambi durante la cena (es. stesso vino per antipasto+primo, stesso vino per secondo)
+   - MINIMIZZA il numero di vini diversi (es. stesso vino per tutti gli antipasti)
    - Per ogni piatto proponi:
-     a) "cellarWine": un vino dalla lista "DISPONIBILI IN CANTINA" (obbligatorio se disponibile)
+     a) "cellarWine": un vino dalla lista "DISPONIBILI IN CANTINA" (se disponibile)
      b) "marketWine": un vino da acquistare come alternativa
    - Se lo stesso vino va bene per più portate, usa lo stesso nome esatto
-7. Lo stile del menu deve rispecchiare il tipo di cena (informale/conviviale/elegante)
+6. Lo stile del menu deve rispecchiare il tipo di cena (informale/conviviale/elegante)
+
+TIPI DI PORTATA:
+- "starter" = antipasto
+- "first" = primo (pasta, risotto, zuppe)
+- "main" = secondo (carne, pesce)
+- "side" = contorno
+- "dessert" = dolce
 
 FORMATO OUTPUT (JSON):
 {
   "menu": {
     "courses": [
       {
-        "course": "starter|first|main|dessert",
+        "course": "starter|first|main|side|dessert",
         "name": "Nome piatto",
         "description": "Descrizione",
         "dietaryFlags": ["GF", "LF", "V"],
@@ -400,6 +412,8 @@ FORMATO OUTPUT (JSON):
     "totalPrepTime": 120
   }
 }
+
+IMPORTANTE: Se l'utente chiede N piatti di un tipo, l'array "courses" DEVE contenere esattamente N elementi con quel course type.
 
 Rispondi SOLO con il JSON, senza altro testo.`;
 

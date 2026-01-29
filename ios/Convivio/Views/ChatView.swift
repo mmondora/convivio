@@ -1,13 +1,17 @@
 import SwiftUI
+import SwiftData
 
 struct ChatView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var firebaseService: FirebaseService
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \ChatMessage.createdAt) private var messages: [ChatMessage]
+    @Query private var wines: [Wine]
+    @Query(filter: #Predicate<Bottle> { $0.quantity > 0 }) private var bottles: [Bottle]
+    @Query private var settings: [AppSettings]
 
-    @State private var messages: [ChatMessage] = []
     @State private var inputText = ""
     @State private var isLoading = false
-    @State private var scrollToBottom = false
+    @State private var errorMessage: String?
+    @FocusState private var isInputFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -16,11 +20,6 @@ struct ChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            // Welcome message
-                            if messages.isEmpty && !isLoading {
-                                WelcomeMessage()
-                            }
-
                             ForEach(messages) { message in
                                 MessageBubble(message: message)
                                     .id(message.id)
@@ -28,39 +27,63 @@ struct ChatView: View {
 
                             if isLoading {
                                 HStack {
-                                    TypingIndicator()
+                                    ProgressView()
+                                        .padding(.horizontal)
                                     Spacer()
                                 }
-                                .padding(.horizontal)
-                                .id("typing")
+                                .id("loading")
                             }
                         }
                         .padding()
                     }
                     .onChange(of: messages.count) { _, _ in
-                        withAnimation {
-                            proxy.scrollTo(messages.last?.id ?? "typing", anchor: .bottom)
-                        }
-                    }
-                    .onChange(of: isLoading) { _, loading in
-                        if loading {
+                        if let lastMessage = messages.last {
                             withAnimation {
-                                proxy.scrollTo("typing", anchor: .bottom)
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
                             }
                         }
                     }
                 }
 
-                Divider()
+                // Error message
+                if let error = errorMessage {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundColor(.orange)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button("Chiudi") {
+                            errorMessage = nil
+                        }
+                        .font(.caption)
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color(.secondarySystemBackground))
+                }
 
-                // Input bar
+                // Quick suggestions (when empty)
+                if messages.isEmpty && !isLoading {
+                    QuickSuggestionsView { suggestion in
+                        inputText = suggestion
+                        sendMessage()
+                    }
+                }
+
+                // Input area
                 HStack(spacing: 12) {
                     TextField("Chiedi al sommelier...", text: $inputText, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(1...4)
+                        .textFieldStyle(.plain)
+                        .padding(12)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(20)
+                        .focused($isInputFocused)
+                        .lineLimit(1...5)
 
                     Button {
-                        Task { await sendMessage() }
+                        sendMessage()
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.title)
@@ -75,7 +98,7 @@ struct ChatView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        messages = []
+                        clearChat()
                     } label: {
                         Image(systemName: "trash")
                     }
@@ -85,92 +108,56 @@ struct ChatView: View {
         }
     }
 
-    private func sendMessage() async {
-        guard let userId = authManager.currentUser?.uid,
-              let cellarId = firebaseService.currentCellar?.id else { return }
+    private func sendMessage() {
+        guard !inputText.isEmpty else { return }
 
-        let userMessage = ChatMessage(
-            userId: userId,
-            cellarId: cellarId,
-            role: .user,
-            content: inputText,
-            createdAt: .init(date: Date())
-        )
+        let userMessage = ChatMessage(role: .user, content: inputText)
+        modelContext.insert(userMessage)
+        try? modelContext.save()
 
-        messages.append(userMessage)
         let messageText = inputText
         inputText = ""
+        isInputFocused = false
+
+        Task {
+            await getAIResponse(for: messageText)
+        }
+    }
+
+    private func getAIResponse(for message: String) async {
         isLoading = true
+        errorMessage = nil
 
         do {
-            let response = try await firebaseService.chatWithSommelier(
-                message: messageText,
-                userId: userId,
-                cellarId: cellarId
+            let response = try await OpenAIService.shared.chatWithSommelier(
+                message: message,
+                history: Array(messages),
+                wines: wines,
+                bottles: bottles
             )
-            messages.append(response)
+
+            let assistantMessage = ChatMessage(role: .assistant, content: response)
+            modelContext.insert(assistantMessage)
+            try? modelContext.save()
         } catch {
-            let errorMessage = ChatMessage(
-                userId: "system",
-                cellarId: cellarId,
-                role: .assistant,
-                content: "Mi dispiace, si è verificato un errore. Riprova.",
-                createdAt: .init(date: Date())
-            )
-            messages.append(errorMessage)
+            errorMessage = error.localizedDescription
         }
 
         isLoading = false
     }
-}
 
-struct WelcomeMessage: View {
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "wineglass.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(.purple.gradient)
-
-            Text("Ciao! Sono il tuo sommelier AI")
-                .font(.title2.bold())
-
-            Text("Posso aiutarti a scoprire i vini nella tua cantina, suggerirti abbinamenti, e rispondere alle tue domande sul vino.")
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-
-            VStack(alignment: .leading, spacing: 8) {
-                SuggestionChip(text: "Quali vini ho in cantina?")
-                SuggestionChip(text: "Cosa abbino a una bistecca?")
-                SuggestionChip(text: "Consiglia un vino per stasera")
-            }
+    private func clearChat() {
+        for message in messages {
+            modelContext.delete(message)
         }
-        .padding()
-    }
-}
-
-struct SuggestionChip: View {
-    let text: String
-
-    var body: some View {
-        HStack {
-            Image(systemName: "lightbulb")
-                .foregroundColor(.orange)
-            Text(text)
-                .font(.subheadline)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color(.tertiarySystemBackground))
-        .cornerRadius(20)
+        try? modelContext.save()
     }
 }
 
 struct MessageBubble: View {
     let message: ChatMessage
 
-    var isUser: Bool {
-        message.role == .user
-    }
+    var isUser: Bool { message.role == .user }
 
     var body: some View {
         HStack {
@@ -178,13 +165,12 @@ struct MessageBubble: View {
 
             VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
                 Text(message.content)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    .padding(12)
                     .background(isUser ? Color.purple : Color(.secondarySystemBackground))
                     .foregroundColor(isUser ? .white : .primary)
-                    .cornerRadius(20)
+                    .cornerRadius(16)
 
-                Text(formatTime(message.createdAt.dateValue()))
+                Text(formatTime(message.createdAt))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -200,36 +186,47 @@ struct MessageBubble: View {
     }
 }
 
-struct TypingIndicator: View {
-    @State private var animationPhase = 0
+struct QuickSuggestionsView: View {
+    let onSelect: (String) -> Void
+
+    let suggestions = [
+        "Cosa mi consigli per una cena di pesce?",
+        "Ho uno Chardonnay, con cosa lo abbino?",
+        "Qual è il vino migliore nella mia cantina?",
+        "Suggeriscimi un vino rosso corposo"
+    ]
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<3) { index in
-                Circle()
-                    .fill(Color.gray)
-                    .frame(width: 8, height: 8)
-                    .scaleEffect(animationPhase == index ? 1.2 : 0.8)
-                    .animation(
-                        .easeInOut(duration: 0.4)
-                            .repeatForever()
-                            .delay(Double(index) * 0.15),
-                        value: animationPhase
-                    )
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Suggerimenti")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(suggestions, id: \.self) { suggestion in
+                        Button {
+                            onSelect(suggestion)
+                        } label: {
+                            Text(suggestion)
+                                .font(.subheadline)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color(.tertiarySystemBackground))
+                                .cornerRadius(16)
+                        }
+                        .foregroundColor(.primary)
+                    }
+                }
+                .padding(.horizontal)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(20)
-        .onAppear {
-            animationPhase = 2
-        }
+        .padding(.vertical, 8)
     }
 }
 
 #Preview {
     ChatView()
-        .environmentObject(AuthManager.shared)
-        .environmentObject(FirebaseService.shared)
+        .modelContainer(for: [ChatMessage.self, Wine.self, Bottle.self, AppSettings.self], inMemory: true)
 }

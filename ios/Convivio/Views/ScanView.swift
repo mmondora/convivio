@@ -1,490 +1,292 @@
 import SwiftUI
+import SwiftData
 import PhotosUI
 
 struct ScanView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var firebaseService: FirebaseService
+    @Environment(\.modelContext) private var modelContext
+    @Query private var settings: [AppSettings]
 
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var isProcessing = false
-    @State private var extractionResult: ExtractWineResponse?
+    @State private var extractionResult: ExtractionResult?
+    @State private var errorMessage: String?
     @State private var showCamera = false
-    @State private var error: String?
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Instructions
-                    VStack(spacing: 12) {
-                        Image(systemName: "camera.viewfinder")
-                            .font(.system(size: 60))
-                            .foregroundColor(.purple)
-
-                        Text("Scansiona Etichetta")
-                            .font(.title2.bold())
-
-                        Text("Fotografa l'etichetta di un vino per estrarre automaticamente le informazioni")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding()
-
-                    // Image preview or capture buttons
-                    if let image = selectedImage {
-                        VStack(spacing: 16) {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxHeight: 300)
-                                .cornerRadius(12)
-
-                            HStack(spacing: 16) {
-                                Button {
-                                    selectedImage = nil
-                                    extractionResult = nil
-                                } label: {
-                                    Label("Riprova", systemImage: "arrow.counterclockwise")
-                                        .padding()
-                                        .frame(maxWidth: .infinity)
-                                        .background(Color(.tertiarySystemBackground))
-                                        .cornerRadius(12)
-                                }
-
-                                if !isProcessing && extractionResult == nil {
-                                    Button {
-                                        Task { await processImage() }
-                                    } label: {
-                                        Label("Analizza", systemImage: "wand.and.stars")
-                                            .padding()
-                                            .frame(maxWidth: .infinity)
-                                            .background(.purple.gradient)
-                                            .foregroundColor(.white)
-                                            .cornerRadius(12)
-                                    }
-                                }
-                            }
-                        }
-                        .padding()
-                    } else {
-                        HStack(spacing: 16) {
-                            // Camera button
-                            Button {
-                                showCamera = true
-                            } label: {
-                                VStack(spacing: 12) {
-                                    Image(systemName: "camera.fill")
-                                        .font(.title)
-                                    Text("Fotocamera")
-                                        .font(.subheadline)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 32)
-                                .background(Color(.tertiarySystemBackground))
-                                .cornerRadius(12)
-                            }
-
-                            // Gallery button
-                            PhotosPicker(
-                                selection: $selectedItem,
-                                matching: .images
-                            ) {
-                                VStack(spacing: 12) {
-                                    Image(systemName: "photo.on.rectangle")
-                                        .font(.title)
-                                    Text("Galleria")
-                                        .font(.subheadline)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 32)
-                                .background(Color(.tertiarySystemBackground))
-                                .cornerRadius(12)
-                            }
-                        }
-                        .padding()
-                    }
-
-                    // Processing indicator
-                    if isProcessing {
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .scaleEffect(1.5)
-
-                            Text("Analisi in corso...")
-                                .foregroundColor(.secondary)
-                        }
-                        .padding()
-                    }
-
-                    // Error
-                    if let error = error {
-                        Text(error)
-                            .foregroundColor(.red)
-                            .padding()
-                    }
-
-                    // Results
-                    if let result = extractionResult {
-                        ExtractionResultView(result: result)
-                    }
-
-                    Spacer()
+            VStack(spacing: 24) {
+                if let image = selectedImage {
+                    // Show selected image and results
+                    ImagePreviewView(
+                        image: image,
+                        extractionResult: extractionResult,
+                        isProcessing: isProcessing,
+                        errorMessage: errorMessage,
+                        onSave: saveWine,
+                        onRetry: { selectedImage = nil; extractionResult = nil; errorMessage = nil }
+                    )
+                } else {
+                    // Show scan options
+                    ScanOptionsView(
+                        selectedItem: $selectedItem,
+                        showCamera: $showCamera
+                    )
                 }
             }
-            .navigationTitle("Scansiona")
-            .onChange(of: selectedItem) { _, newValue in
+            .navigationTitle("Scansiona Etichetta")
+            .onChange(of: selectedItem) { _, newItem in
                 Task {
-                    if let data = try? await newValue?.loadTransferable(type: Data.self),
+                    if let data = try? await newItem?.loadTransferable(type: Data.self),
                        let image = UIImage(data: data) {
                         selectedImage = image
-                        extractionResult = nil
+                        await processImage(image)
                     }
                 }
             }
-            .sheet(isPresented: $showCamera) {
-                CameraView(image: $selectedImage)
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraView { image in
+                    selectedImage = image
+                    Task { await processImage(image) }
+                }
             }
         }
     }
 
-    private func processImage() async {
-        guard let image = selectedImage,
-              let userId = authManager.currentUser?.uid else { return }
-
+    private func processImage(_ image: UIImage) async {
         isProcessing = true
-        error = nil
+        errorMessage = nil
 
         do {
-            // Upload image
-            guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-                throw ScanError.imageConversionFailed
-            }
-
-            let path = "scans/\(userId)/\(UUID().uuidString).jpg"
-            let photoUrl = try await firebaseService.uploadPhoto(imageData, path: path)
-
-            // Extract wine info
-            extractionResult = try await firebaseService.extractWineFromPhoto(
-                photoUrl: photoUrl,
-                userId: userId
-            )
-
-            if extractionResult?.success == false {
-                error = extractionResult?.error ?? "Estrazione fallita"
-            }
+            extractionResult = try await OpenAIService.shared.extractWineFromPhoto(image)
         } catch {
-            self.error = "Errore: \(error.localizedDescription)"
+            errorMessage = error.localizedDescription
         }
 
         isProcessing = false
     }
-}
 
-enum ScanError: LocalizedError {
-    case imageConversionFailed
+    private func saveWine() {
+        guard let result = extractionResult else { return }
 
-    var errorDescription: String? {
-        switch self {
-        case .imageConversionFailed:
-            return "Impossibile convertire l'immagine"
-        }
-    }
-}
-
-struct ExtractionResultView: View {
-    @EnvironmentObject var firebaseService: FirebaseService
-    @Environment(\.dismiss) private var dismiss
-
-    let result: ExtractWineResponse
-    @State private var showAddBottle = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Risultato Estrazione")
-                    .font(.headline)
-
-                Spacer()
-
-                if let confidence = result.extraction?.overallConfidence {
-                    ConfidenceBadge(confidence: confidence)
-                }
-            }
-
-            if let extraction = result.extraction {
-                VStack(spacing: 12) {
-                    if let name = extraction.extractedFields.name {
-                        ExtractedFieldRow(
-                            label: "Nome",
-                            value: name.value,
-                            confidence: name.confidence
-                        )
-                    }
-
-                    if let producer = extraction.extractedFields.producer {
-                        ExtractedFieldRow(
-                            label: "Produttore",
-                            value: producer.value,
-                            confidence: producer.confidence
-                        )
-                    }
-
-                    if let vintage = extraction.extractedFields.vintage {
-                        ExtractedFieldRow(
-                            label: "Annata",
-                            value: vintage.value,
-                            confidence: vintage.confidence
-                        )
-                    }
-
-                    if let type = extraction.extractedFields.type {
-                        ExtractedFieldRow(
-                            label: "Tipo",
-                            value: type.value,
-                            confidence: type.confidence
-                        )
-                    }
-
-                    if let region = extraction.extractedFields.region {
-                        ExtractedFieldRow(
-                            label: "Regione",
-                            value: region.value,
-                            confidence: region.confidence
-                        )
-                    }
-
-                    if let grapes = extraction.extractedFields.grapes {
-                        ExtractedFieldRow(
-                            label: "Vitigni",
-                            value: grapes.value.joined(separator: ", "),
-                            confidence: grapes.confidence
-                        )
-                    }
-                }
-            }
-
-            // Suggested matches
-            if let matches = result.suggestedMatches, !matches.isEmpty {
-                Divider()
-
-                Text("Vini Simili in Cantina")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-
-                ForEach(matches) { wine in
-                    HStack {
-                        Text(wine.type.icon)
-                        VStack(alignment: .leading) {
-                            Text(wine.name)
-                                .font(.subheadline)
-                            if let producer = wine.producer {
-                                Text(producer)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-
-            // Add button
-            Button {
-                showAddBottle = true
-            } label: {
-                Label("Aggiungi alla Cantina", systemImage: "plus.circle")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.purple.gradient)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-            }
-        }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
-        .padding()
-        .sheet(isPresented: $showAddBottle) {
-            if let extraction = result.extraction {
-                AddBottleFromScanView(extraction: extraction)
-            }
-        }
-    }
-}
-
-struct ExtractedFieldRow: View {
-    let label: String
-    let value: String
-    let confidence: Double
-
-    var body: some View {
-        HStack {
-            Text(label)
-                .foregroundColor(.secondary)
-                .frame(width: 80, alignment: .leading)
-
-            Text(value)
-                .fontWeight(.medium)
-
-            Spacer()
-
-            Circle()
-                .fill(confidenceColor)
-                .frame(width: 8, height: 8)
-        }
-    }
-
-    private var confidenceColor: Color {
-        if confidence >= 0.8 {
-            return .green
-        } else if confidence >= 0.5 {
-            return .yellow
+        let wineType: WineType
+        if let typeStr = result.type {
+            wineType = WineType(rawValue: typeStr) ?? .red
         } else {
-            return .red
+            wineType = .red
         }
-    }
-}
-
-struct ConfidenceBadge: View {
-    let confidence: Double
-
-    var body: some View {
-        Text("\(Int(confidence * 100))%")
-            .font(.caption.bold())
-            .foregroundColor(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(confidenceColor)
-            .cornerRadius(8)
-    }
-
-    private var confidenceColor: Color {
-        if confidence >= 0.8 {
-            return .green
-        } else if confidence >= 0.5 {
-            return .orange
-        } else {
-            return .red
-        }
-    }
-}
-
-struct AddBottleFromScanView: View {
-    @EnvironmentObject var firebaseService: FirebaseService
-    @Environment(\.dismiss) private var dismiss
-
-    let extraction: ExtractionResult
-
-    @State private var name: String
-    @State private var producer: String
-    @State private var vintage: String
-    @State private var selectedType: WineType
-    @State private var region: String
-    @State private var country: String
-    @State private var quantity = 1
-    @State private var price = ""
-    @State private var isLoading = false
-
-    init(extraction: ExtractionResult) {
-        self.extraction = extraction
-        let fields = extraction.extractedFields
-
-        _name = State(initialValue: fields.name?.value ?? "")
-        _producer = State(initialValue: fields.producer?.value ?? "")
-        _vintage = State(initialValue: fields.vintage?.value ?? "")
-        _region = State(initialValue: fields.region?.value ?? "")
-        _country = State(initialValue: fields.country?.value ?? "Italia")
-
-        let typeValue = fields.type?.value ?? "red"
-        _selectedType = State(initialValue: WineType(rawValue: typeValue) ?? .red)
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Vino") {
-                    TextField("Nome del vino *", text: $name)
-                    TextField("Produttore", text: $producer)
-                    TextField("Annata", text: $vintage)
-
-                    Picker("Tipo", selection: $selectedType) {
-                        ForEach(WineType.allCases, id: \.self) { type in
-                            Text("\(type.icon) \(type.displayName)").tag(type)
-                        }
-                    }
-                }
-
-                Section("Origine") {
-                    TextField("Regione", text: $region)
-                    TextField("Paese", text: $country)
-                }
-
-                Section("Dettagli Acquisto") {
-                    Stepper("Quantità: \(quantity)", value: $quantity, in: 1...100)
-                    TextField("Prezzo (€)", text: $price)
-                        .keyboardType(.decimalPad)
-                }
-            }
-            .navigationTitle("Conferma Dati")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Annulla") {
-                        dismiss()
-                    }
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Salva") {
-                        Task { await saveBottle() }
-                    }
-                    .disabled(name.isEmpty || isLoading)
-                }
-            }
-        }
-    }
-
-    private func saveBottle() async {
-        isLoading = true
 
         let wine = Wine(
-            name: name,
-            producer: producer.isEmpty ? nil : producer,
-            vintage: vintage.isEmpty ? nil : vintage,
-            type: selectedType,
-            region: region.isEmpty ? nil : region,
-            country: country,
-            createdAt: .init(date: Date()),
-            updatedAt: .init(date: Date())
+            name: result.name ?? "Vino sconosciuto",
+            producer: result.producer,
+            vintage: result.vintage,
+            type: wineType,
+            region: result.region,
+            country: result.country ?? "Italia",
+            grapes: result.grapes ?? [],
+            alcohol: result.alcohol
         )
 
         let bottle = Bottle(
-            wineId: "",
-            cellarId: "",
-            purchaseDate: .init(date: Date()),
-            purchasePrice: Double(price),
-            quantity: quantity,
-            status: .available,
-            createdAt: .init(date: Date()),
-            updatedAt: .init(date: Date())
+            wine: wine,
+            quantity: 1,
+            purchaseDate: Date()
         )
 
-        do {
-            try await firebaseService.addBottle(bottle, wine: wine)
-            dismiss()
-        } catch {
-            print("Error saving bottle: \(error)")
-        }
+        modelContext.insert(wine)
+        modelContext.insert(bottle)
+        try? modelContext.save()
 
-        isLoading = false
+        // Reset state
+        selectedImage = nil
+        selectedItem = nil
+        extractionResult = nil
     }
 }
 
+struct ScanOptionsView: View {
+    @Binding var selectedItem: PhotosPickerItem?
+    @Binding var showCamera: Bool
+
+    var body: some View {
+        VStack(spacing: 32) {
+            Spacer()
+
+            Image(systemName: "camera.viewfinder")
+                .font(.system(size: 80))
+                .foregroundColor(.purple.opacity(0.6))
+
+            VStack(spacing: 8) {
+                Text("Scansiona un'etichetta")
+                    .font(.title2.bold())
+
+                Text("Fotografa l'etichetta di una bottiglia per aggiungerla automaticamente alla cantina")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+
+            VStack(spacing: 16) {
+                Button {
+                    showCamera = true
+                } label: {
+                    Label("Scatta Foto", systemImage: "camera.fill")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.purple)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
+
+                PhotosPicker(selection: $selectedItem, matching: .images) {
+                    Label("Scegli dalla Libreria", systemImage: "photo.on.rectangle")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .foregroundColor(.primary)
+                        .cornerRadius(12)
+                }
+            }
+            .padding(.horizontal, 32)
+
+            Spacer()
+        }
+    }
+}
+
+struct ImagePreviewView: View {
+    let image: UIImage
+    let extractionResult: ExtractionResult?
+    let isProcessing: Bool
+    let errorMessage: String?
+    let onSave: () -> Void
+    let onRetry: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Image preview
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 300)
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+
+                if isProcessing {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Analizzando l'etichetta...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                } else if let error = errorMessage {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.largeTitle)
+                            .foregroundColor(.orange)
+
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+
+                        Button("Riprova") {
+                            onRetry()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding()
+                } else if let result = extractionResult {
+                    // Extraction results
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Informazioni Rilevate")
+                            .font(.headline)
+
+                        ExtractionRow(label: "Nome", value: result.name)
+                        ExtractionRow(label: "Produttore", value: result.producer)
+                        ExtractionRow(label: "Annata", value: result.vintage)
+                        ExtractionRow(label: "Tipo", value: result.type)
+                        ExtractionRow(label: "Regione", value: result.region)
+                        ExtractionRow(label: "Paese", value: result.country)
+
+                        if let grapes = result.grapes, !grapes.isEmpty {
+                            ExtractionRow(label: "Vitigni", value: grapes.joined(separator: ", "))
+                        }
+
+                        if let alcohol = result.alcohol {
+                            ExtractionRow(label: "Gradazione", value: String(format: "%.1f%%", alcohol))
+                        }
+
+                        HStack {
+                            Text("Confidenza")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(String(format: "%.0f%%", result.confidence * 100))
+                                .foregroundColor(result.confidence > 0.7 ? .green : .orange)
+                                .fontWeight(.medium)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+
+                    // Action buttons
+                    HStack(spacing: 16) {
+                        Button {
+                            onRetry()
+                        } label: {
+                            Text("Annulla")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color(.tertiarySystemBackground))
+                                .foregroundColor(.primary)
+                                .cornerRadius(12)
+                        }
+
+                        Button {
+                            onSave()
+                        } label: {
+                            Text("Aggiungi alla Cantina")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.purple)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+
+                Spacer(minLength: 32)
+            }
+        }
+    }
+}
+
+struct ExtractionRow: View {
+    let label: String
+    let value: String?
+
+    var body: some View {
+        if let value = value, !value.isEmpty {
+            HStack {
+                Text(label)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text(value)
+                    .fontWeight(.medium)
+            }
+        }
+    }
+}
+
+// Simple Camera View using UIImagePickerController
 struct CameraView: UIViewControllerRepresentable {
-    @Binding var image: UIImage?
+    let onCapture: (UIImage) -> Void
     @Environment(\.dismiss) private var dismiss
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
@@ -507,9 +309,9 @@ struct CameraView: UIViewControllerRepresentable {
             self.parent = parent
         }
 
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
             if let image = info[.originalImage] as? UIImage {
-                parent.image = image
+                parent.onCapture(image)
             }
             parent.dismiss()
         }
@@ -522,6 +324,5 @@ struct CameraView: UIViewControllerRepresentable {
 
 #Preview {
     ScanView()
-        .environmentObject(AuthManager.shared)
-        .environmentObject(FirebaseService.shared)
+        .modelContainer(for: [Wine.self, Bottle.self, AppSettings.self], inMemory: true)
 }

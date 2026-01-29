@@ -1,0 +1,349 @@
+import Foundation
+
+// MARK: - Menu Generator Service
+
+actor MenuGeneratorService {
+    static let shared = MenuGeneratorService()
+
+    private init() {}
+
+    // MARK: - Menu Generation
+
+    func generateMenu(request: MenuRequest, wines: [Wine], bottles: [Bottle]) async throws -> MenuResponse {
+        // Filter available bottles (quantity > 0)
+        let availableBottles = bottles.filter { $0.quantity > 0 }
+
+        // Build wine inventory string
+        let wineInventory = buildWineInventory(bottles: availableBottles)
+
+        // Build taste preferences string
+        let tastePrefsString = buildTastePreferences(request.tastePreferences)
+
+        // Build prompt
+        let prompt = buildPrompt(request: request, wineInventory: wineInventory, tastePreferences: tastePrefsString)
+
+        // Call OpenAI API
+        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: prompt)
+
+        // Parse response
+        return try parseMenuResponse(responseText)
+    }
+
+    // MARK: - Wine Inventory Builder
+
+    private func buildWineInventory(bottles: [Bottle]) -> String {
+        if bottles.isEmpty {
+            return "CANTINA VUOTA - Nessun vino disponibile"
+        }
+
+        return bottles.compactMap { bottle -> String? in
+            guard let wine = bottle.wine else { return nil }
+
+            var parts: [String] = []
+
+            if let producer = wine.producer {
+                parts.append(producer)
+            }
+            parts.append(wine.name)
+
+            var details: [String] = []
+            details.append(wine.type.displayName)
+
+            if let region = wine.region {
+                details.append(region)
+            }
+
+            if let vintage = wine.vintage {
+                details.append(vintage)
+            }
+
+            if !details.isEmpty {
+                parts.append("(\(details.joined(separator: ", ")))")
+            }
+
+            parts.append("- \(bottle.quantity) bottigli\(bottle.quantity == 1 ? "a" : "e")")
+
+            return "- " + parts.joined(separator: " ")
+        }.joined(separator: "\n")
+    }
+
+    // MARK: - Taste Preferences Builder
+
+    private func buildTastePreferences(_ prefs: TastePreferences?) -> String {
+        guard let prefs = prefs else {
+            return "Nessuna preferenza specifica indicata"
+        }
+
+        var parts: [String] = []
+
+        if !prefs.preferredWineTypes.isEmpty {
+            parts.append("Tipi preferiti: \(prefs.preferredWineTypes.joined(separator: ", "))")
+        }
+
+        if !prefs.preferredRegions.isEmpty {
+            parts.append("Regioni preferite: \(prefs.preferredRegions.joined(separator: ", "))")
+        }
+
+        if !prefs.preferredGrapes.isEmpty {
+            parts.append("Vitigni preferiti: \(prefs.preferredGrapes.joined(separator: ", "))")
+        }
+
+        parts.append("Corpo: \(prefs.bodyPreference.displayName)")
+        parts.append("Dolcezza: \(prefs.sweetnessPreference.displayName)")
+        parts.append("Tannini: \(prefs.tanninPreference.displayName)")
+        parts.append("Acidità: \(prefs.acidityPreference.displayName)")
+
+        if let notes = prefs.notes, !notes.isEmpty {
+            parts.append("Note: \(notes)")
+        }
+
+        return parts.isEmpty ? "Nessuna preferenza specifica" : parts.joined(separator: "\n")
+    }
+
+    // MARK: - Prompt Builder
+
+    private func buildPrompt(request: MenuRequest, wineInventory: String, tastePreferences: String) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .full
+        dateFormatter.locale = Locale(identifier: "it_IT")
+        let dataFormattata = dateFormatter.string(from: request.data)
+
+        return """
+        Sei un sommelier professionista, chef consulente e maestro di cerimonie italiano. Genera un menu completo con ricette dettagliate, abbinamenti vino e consigli di galateo per inviti e ricevimento.
+
+        ⚠️ REGOLA PRIORITARIA - LEGGERE ATTENTAMENTE:
+        Le "Note specifiche dell'utente" hanno MASSIMA PRIORITÀ ASSOLUTA.
+        - Se l'utente specifica il NUMERO di piatti per portata (es. "10 antipasti", "1 primo", "5 dolci"), DEVI generare ESATTAMENTE quel numero di piatti
+        - Se l'utente specifica ingredienti, tema, stile, o qualsiasi altra indicazione, DEVI seguirla alla lettera
+        - NON ignorare MAI le richieste dell'utente
+        - Se le note specificano una struttura del menu diversa da quella standard, segui le note
+
+        REGOLE ABBINAMENTO VINI:
+        - Privilegia SEMPRE i vini presenti nella cantina fornita
+        - Suggerisci vini esterni solo se la cantina non copre adeguatamente
+        - Progressione coerente: bollicine → bianchi → rossi leggeri → rossi strutturati → dolci
+        - Per ogni vino da cantina, verifica che la quantità sia sufficiente (1 bottiglia ogni 3-4 persone)
+        - Per i suggerimenti di acquisto, indica SEMPRE produttore e annata consigliata
+        - Valuta la compatibilità di ogni vino con le preferenze gusto dell'utente
+
+        REGOLE RICETTE:
+        - Ogni piatto deve avere una ricetta completa con ingredienti, quantità, tempi e procedimento
+        - Le quantità degli ingredienti devono essere calibrate per il numero di persone
+        - Indica tempo di preparazione e cottura separatamente
+        - Il procedimento deve essere chiaro, passo per passo
+
+        REGOLE GALATEO:
+        - Fornisci consigli su tempistica e formulazione degli inviti
+        - Descrivi il protocollo di accoglienza e ricevimento
+        - Indica la corretta disposizione della tavola
+        - Suggerisci argomenti di conversazione appropriati all'occasione
+
+        DETTAGLI CONVIVIO:
+        - Titolo: \(request.titolo)
+        - Data: \(dataFormattata)
+        - Persone: \(request.persone)
+        - Occasione: \(request.occasione ?? "Convivio informale")
+        - Vincoli dietetici: \(request.tipoDieta.rawValue)
+        - Tipo cucina: \(request.tipoCucina)
+
+        📋 NOTE SPECIFICHE DELL'UTENTE (PRIORITÀ MASSIMA):
+        \(request.descrizione ?? "nessuna")
+
+        PREFERENZE GUSTO OSPITE:
+        \(tastePreferences)
+
+        CANTINA DISPONIBILE:
+        \(wineInventory)
+
+        Rispondi SOLO con JSON valido (nessun markdown, nessun testo prima o dopo), seguendo ESATTAMENTE questo schema:
+        {
+          "menu": {
+            "antipasti": [{
+              "nome": "string",
+              "descrizione": "string",
+              "porzioni": number,
+              "ricetta": {
+                "ingredienti": [{"nome": "string", "quantita": "string", "unita": "string o null"}],
+                "tempo_preparazione": number,
+                "tempo_cottura": number,
+                "difficolta": "facile|media|difficile",
+                "procedimento": ["step 1", "step 2", ...],
+                "consigli": "string o null"
+              }
+            }],
+            "primi": [...],
+            "secondi": [...],
+            "contorni": [...],
+            "dolci": [...]
+          },
+          "abbinamenti": [
+            {
+              "portata": "antipasti|primi|secondi|dolci",
+              "vino": {
+                "nome": "string",
+                "produttore": "string",
+                "annata": "string o null",
+                "provenienza": "cantina" oppure "suggerimento",
+                "quantita_necessaria": number,
+                "motivazione": "string",
+                "compatibilita": {
+                  "punteggio": number (1-100),
+                  "motivazione": "string",
+                  "punti_forza": ["string"],
+                  "punti_deboli": ["string"]
+                }
+              }
+            }
+          ],
+          "suggerimenti_acquisto": [
+            {
+              "vino": "string",
+              "produttore": "string",
+              "annata": "string o null",
+              "perche": "string",
+              "abbinamento_ideale": "string",
+              "compatibilita": {
+                "punteggio": number (1-100),
+                "motivazione": "string",
+                "punti_forza": ["string"],
+                "punti_deboli": ["string"]
+              }
+            }
+          ],
+          "note_servizio": "string con consigli su temperatura vini, decantazione, ordine di servizio",
+          "galateo": {
+            "inviti": {
+              "tempistica": "quando inviare gli inviti",
+              "formulazione": "come formulare l'invito",
+              "conferma": "come gestire le conferme",
+              "consigli": ["consiglio 1", "consiglio 2"]
+            },
+            "ricevimento": {
+              "accoglienza": "come accogliere gli ospiti",
+              "aperitivo": "gestione momento aperitivo",
+              "passaggio_tavola": "come invitare a tavola",
+              "congedo": "come congedare gli ospiti",
+              "consigli": ["consiglio 1", "consiglio 2"]
+            },
+            "tavola": {
+              "disposizione": "come disporre tavola e posti",
+              "servizio": "ordine e modalità di servizio",
+              "conversazione": "argomenti consigliati per l'occasione",
+              "consigli": ["consiglio 1", "consiglio 2"]
+            }
+          }
+        }
+        """
+    }
+
+    // MARK: - Response Parser
+
+    private func parseMenuResponse(_ text: String) throws -> MenuResponse {
+        // Clean response from potential markdown
+        var cleanJson = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Remove markdown code blocks if present
+        if cleanJson.hasPrefix("```json") {
+            cleanJson = String(cleanJson.dropFirst(7))
+        } else if cleanJson.hasPrefix("```") {
+            cleanJson = String(cleanJson.dropFirst(3))
+        }
+
+        if cleanJson.hasSuffix("```") {
+            cleanJson = String(cleanJson.dropLast(3))
+        }
+
+        cleanJson = cleanJson.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let data = cleanJson.data(using: .utf8) else {
+            throw OpenAIError.parseError
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            return try decoder.decode(MenuResponse.self, from: data)
+        } catch let decodingError as DecodingError {
+            print("❌ JSON Parsing Error:")
+            print("Raw JSON: \(cleanJson.prefix(2000))")
+            switch decodingError {
+            case .keyNotFound(let key, let context):
+                print("Key '\(key.stringValue)' not found: \(context.debugDescription)")
+                print("codingPath: \(context.codingPath.map { $0.stringValue })")
+            case .typeMismatch(let type, let context):
+                print("Type mismatch for \(type): \(context.debugDescription)")
+                print("codingPath: \(context.codingPath.map { $0.stringValue })")
+            case .valueNotFound(let type, let context):
+                print("Value not found for \(type): \(context.debugDescription)")
+                print("codingPath: \(context.codingPath.map { $0.stringValue })")
+            case .dataCorrupted(let context):
+                print("Data corrupted: \(context.debugDescription)")
+                print("codingPath: \(context.codingPath.map { $0.stringValue })")
+            @unknown default:
+                print("Unknown decoding error: \(decodingError)")
+            }
+            throw OpenAIError.parseError
+        } catch {
+            print("❌ Unexpected Error: \(error)")
+            throw OpenAIError.parseError
+        }
+    }
+}
+
+// MARK: - Wine Quantity Helper
+
+extension MenuGeneratorService {
+    /// Checks if cellar has sufficient quantity for a wine pairing
+    static func checkWineAvailability(pairing: MenuWinePairing, bottles: [Bottle]) -> WineAvailabilityStatus {
+        guard pairing.vino.provenienza == .cantina else {
+            return .external
+        }
+
+        // Find matching bottle
+        let matchingBottle = bottles.first { bottle in
+            guard let wine = bottle.wine else { return false }
+            let nameMatch = wine.name.lowercased().contains(pairing.vino.nome.lowercased()) ||
+                           pairing.vino.nome.lowercased().contains(wine.name.lowercased())
+            return nameMatch
+        }
+
+        guard let bottle = matchingBottle else {
+            return .notFound
+        }
+
+        if bottle.quantity >= pairing.vino.quantitaNecessaria {
+            return .sufficient(available: bottle.quantity, needed: pairing.vino.quantitaNecessaria)
+        } else {
+            return .insufficient(available: bottle.quantity, needed: pairing.vino.quantitaNecessaria)
+        }
+    }
+}
+
+enum WineAvailabilityStatus {
+    case sufficient(available: Int, needed: Int)
+    case insufficient(available: Int, needed: Int)
+    case notFound
+    case external
+
+    var isWarning: Bool {
+        switch self {
+        case .insufficient, .notFound:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var message: String? {
+        switch self {
+        case .sufficient(let available, let needed):
+            return "✓ \(available) disponibili, \(needed) necessarie"
+        case .insufficient(let available, let needed):
+            return "⚠️ Solo \(available) disponibili, servono \(needed)"
+        case .notFound:
+            return "⚠️ Vino non trovato in cantina"
+        case .external:
+            return nil
+        }
+    }
+}
