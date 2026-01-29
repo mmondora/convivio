@@ -79,7 +79,15 @@ struct DinnerRowView: View {
                     .foregroundColor(.secondary)
             }
 
-            if dinner.menu != nil {
+            if dinner.needsBottleUnload {
+                HStack {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundColor(.orange)
+                    Text("Da completare - scarica bottiglie")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+            } else if dinner.menu != nil {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
@@ -297,6 +305,7 @@ struct DinnerDetailView: View {
     @State private var expandedSections: Set<String> = ["menu", "vini"]
     @State private var showWineConfirmation = false
     @State private var showInviteGenerator = false
+    @State private var showBottleUnload = false
     @State private var regeneratingDish: (course: String, index: Int)?
     @State private var showDeleteConfirmation = false
     @State private var dishToDelete: (course: String, index: Int)?
@@ -345,6 +354,9 @@ struct DinnerDetailView: View {
         .sheet(isPresented: $showInviteGenerator) {
             InviteGeneratorView(dinner: dinner)
         }
+        .sheet(isPresented: $showBottleUnload) {
+            BottleUnloadView(dinner: dinner)
+        }
         .alert("Elimina piatto", isPresented: $showDeleteConfirmation) {
             Button("Annulla", role: .cancel) {}
             Button("Elimina", role: .destructive) {
@@ -385,7 +397,48 @@ struct DinnerDetailView: View {
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(8)
             }
+
+            // Post-dinner unload banner
+            if dinner.needsBottleUnload {
+                postDinnerUnloadBanner
+            }
         }
+    }
+
+    // MARK: - Post-Dinner Unload Banner
+
+    private var postDinnerUnloadBanner: some View {
+        Button {
+            showBottleUnload = true
+        } label: {
+            HStack {
+                Image(systemName: "wineglass.fill")
+                    .font(.title3)
+                    .foregroundColor(.orange)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Cena completata!")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.primary)
+                    Text("Conferma le bottiglie consumate")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+            .background(Color.orange.opacity(0.15))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Generate Menu Section
@@ -565,8 +618,25 @@ struct DinnerDetailView: View {
 
             // Action buttons
             VStack(spacing: 12) {
-                // Wine confirmation button
-                if !menu.abbinamenti.isEmpty {
+                // Bottle unload button for past dinners
+                if dinner.isPast && dinner.status != .completed && !dinner.confirmedWines.isEmpty {
+                    Button {
+                        showBottleUnload = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.down.circle")
+                            Text("Scarica Bottiglie")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.orange.opacity(0.15))
+                        .foregroundColor(.orange)
+                        .cornerRadius(12)
+                    }
+                }
+
+                // Wine confirmation button (only for future dinners)
+                if !dinner.isPast && !menu.abbinamenti.isEmpty {
                     Button {
                         showWineConfirmation = true
                     } label: {
@@ -582,41 +652,58 @@ struct DinnerDetailView: View {
                     }
                 }
 
-                // Invite generator button
-                Button {
-                    showInviteGenerator = true
-                } label: {
-                    HStack {
-                        Image(systemName: "envelope")
-                        Text("Genera Invito")
+                // Invite generator button (only for future dinners)
+                if !dinner.isPast {
+                    Button {
+                        showInviteGenerator = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "envelope")
+                            Text("Genera Invito")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue.opacity(0.15))
+                        .foregroundColor(.blue)
+                        .cornerRadius(12)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue.opacity(0.15))
-                    .foregroundColor(.blue)
-                    .cornerRadius(12)
+
+                    // Regenerate button
+                    Button {
+                        Task { await regenerateMenu() }
+                    } label: {
+                        HStack {
+                            if isGenerating {
+                                ProgressView()
+                                    .tint(.purple)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            Text(isGenerating ? "Rigenerazione..." : "Rigenera Menu")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.purple.opacity(0.15))
+                        .foregroundColor(.purple)
+                        .cornerRadius(12)
+                    }
+                    .disabled(isGenerating || settings?.openAIApiKey == nil)
                 }
 
-                // Regenerate button
-                Button {
-                    Task { await regenerateMenu() }
-                } label: {
+                // Completed dinner indicator
+                if dinner.status == .completed {
                     HStack {
-                        if isGenerating {
-                            ProgressView()
-                                .tint(.purple)
-                        } else {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                        Text(isGenerating ? "Rigenerazione..." : "Rigenera Menu")
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Cena completata")
+                            .font(.subheadline)
+                            .foregroundColor(.green)
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.purple.opacity(0.15))
-                    .foregroundColor(.purple)
+                    .background(Color.green.opacity(0.1))
                     .cornerRadius(12)
                 }
-                .disabled(isGenerating || settings?.openAIApiKey == nil)
             }
         }
     }

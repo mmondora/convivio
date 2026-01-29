@@ -328,14 +328,15 @@ struct WineConfirmationView: View {
 
         do {
             // Schedule notifications
-            let updatedWines = try await NotificationService.shared.scheduleWineNotifications(
+            let result = try await NotificationService.shared.scheduleWineNotifications(
                 for: dinner,
                 wines: confirmedWines
             )
 
             await MainActor.run {
-                confirmedWines = updatedWines
-                dinner.confirmedWines = updatedWines
+                confirmedWines = result.wines
+                dinner.confirmedWines = result.wines
+                dinner.postDinnerNotificationId = result.postDinnerNotificationId
                 dinner.notificationsScheduled = true
                 dinner.updatedAt = Date()
                 try? modelContext.save()
@@ -360,6 +361,7 @@ struct WineConfirmationView: View {
                 confirmedWines[i].takeOutNotificationId = nil
             }
             dinner.confirmedWines = confirmedWines
+            dinner.postDinnerNotificationId = nil
             dinner.notificationsScheduled = false
             dinner.updatedAt = Date()
             try? modelContext.save()

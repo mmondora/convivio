@@ -33,6 +33,7 @@
 		F000000000000031 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000031 /* NotificationService.swift */; };
 		F000000000000032 /* WineConfirmationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000032 /* WineConfirmationView.swift */; };
 		F000000000000033 /* InviteGeneratorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000033 /* InviteGeneratorView.swift */; };
+		F000000000000034 /* BottleUnloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000034 /* BottleUnloadView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -65,6 +66,7 @@
 		F100000000000031 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F100000000000032 /* WineConfirmationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineConfirmationView.swift; sourceTree = "<group>"; };
 		F100000000000033 /* InviteGeneratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteGeneratorView.swift; sourceTree = "<group>"; };
+		F100000000000034 /* BottleUnloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottleUnloadView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +126,7 @@
 				F100000000000014 /* FoodView.swift */,
 				F100000000000032 /* WineConfirmationView.swift */,
 				F100000000000033 /* InviteGeneratorView.swift */,
+				F100000000000034 /* BottleUnloadView.swift */,
 				F400000000000007 /* Components */,
 				F400000000000008 /* Ratings */,
 			);
@@ -272,6 +275,7 @@
 				F000000000000031 /* NotificationService.swift in Sources */,
 				F000000000000032 /* WineConfirmationView.swift in Sources */,
 				F000000000000033 /* InviteGeneratorView.swift in Sources */,
+				F000000000000034 /* BottleUnloadView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

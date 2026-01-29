@@ -248,6 +248,7 @@ final class DinnerEvent {
     // Wine confirmation data
     var confirmedWinesData: Data?
     var notificationsScheduled: Bool = false
+    var postDinnerNotificationId: String?  // Notification for bottle unloading reminder
 
     var status: DinnerStatus {
         get { DinnerStatus(rawValue: statusRaw) ?? .planning }
@@ -289,6 +290,19 @@ final class DinnerEvent {
         set {
             confirmedWinesData = try? JSONEncoder().encode(newValue)
         }
+    }
+
+    /// Returns true if dinner is past and has confirmed wines but not yet completed
+    var needsBottleUnload: Bool {
+        date < Date() &&
+        status != .completed &&
+        status != .cancelled &&
+        !confirmedWines.isEmpty
+    }
+
+    /// Returns true if dinner is past (for display purposes)
+    var isPast: Bool {
+        date < Date()
     }
 
     init(
