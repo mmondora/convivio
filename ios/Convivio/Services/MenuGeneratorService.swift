@@ -301,7 +301,9 @@ extension MenuGeneratorService {
         dinner: DinnerEvent,
         wines: [Wine],
         bottles: [Bottle],
-        tastePreferences: TastePreferences?
+        tastePreferences: TastePreferences?,
+        cuisineType: String = "Italiana",
+        dietType: DietType = .normale
     ) async throws -> MenuResponse {
         // Get current dishes for context
         let currentDishes = getDishesForCourse(courseName, from: currentMenu)
@@ -315,12 +317,37 @@ extension MenuGeneratorService {
             .map { $0.element.nome }
             .joined(separator: ", ")
 
+        // Build all dishes context for style consistency
+        let allDishesContext = currentMenu.menu.allCourses.map { course in
+            "\(course.name): \(course.dishes.map { $0.nome }.joined(separator: ", "))"
+        }.joined(separator: "\n")
+
         // Build context about the dinner
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .full
         dateFormatter.locale = Locale(identifier: "it_IT")
 
         let wineInventory = buildWineInventory(bottles: bottles.filter { $0.quantity > 0 })
+
+        // Build taste preferences context
+        var preferencesContext = ""
+        if let prefs = tastePreferences {
+            var prefList: [String] = []
+            if !prefs.preferredWineTypes.isEmpty {
+                prefList.append("vini preferiti: \(prefs.preferredWineTypes.joined(separator: ", "))")
+            }
+            if !prefs.preferredRegions.isEmpty {
+                prefList.append("regioni preferite: \(prefs.preferredRegions.joined(separator: ", "))")
+            }
+            prefList.append("corpo: \(prefs.bodyPreference.rawValue)")
+            prefList.append("dolcezza: \(prefs.sweetnessPreference.rawValue)")
+            if let notes = prefs.notes, !notes.isEmpty {
+                prefList.append("note: \(notes)")
+            }
+            if !prefList.isEmpty {
+                preferencesContext = "- Preferenze gusto: \(prefList.joined(separator: "; "))"
+            }
+        }
 
         let prompt = """
         Sei un sommelier professionista e chef consulente italiano.
@@ -331,9 +358,15 @@ extension MenuGeneratorService {
         - Data: \(dateFormatter.string(from: dinner.date))
         - Persone: \(dinner.guestCount)
         - Occasione: \(dinner.occasion ?? "Convivio")
+        - Tipo di cucina: \(cuisineType)
+        - Dieta/restrizioni: \(dietType.rawValue)
+        \(preferencesContext.isEmpty ? "" : preferencesContext)
         \(dinner.notes.map { "- Note dell'utente (PRIORITÀ MASSIMA): \($0)" } ?? "")
 
-        ALTRI PIATTI NELLA STESSA PORTATA (per coerenza):
+        MENU ATTUALE COMPLETO (per coerenza di stile):
+        \(allDishesContext)
+
+        ALTRI PIATTI NELLA STESSA PORTATA:
         \(otherDishes.isEmpty ? "Nessun altro piatto" : otherDishes)
 
         VINI ABBINATI ALLA PORTATA:
@@ -344,7 +377,8 @@ extension MenuGeneratorService {
 
         IMPORTANTE:
         - Il nuovo piatto deve essere DIVERSO da "\(dishToReplace.nome)"
-        - Deve essere coerente con il tema della cena e gli altri piatti
+        - Deve essere coerente con il tipo di cucina (\(cuisineType)) e lo stile del menu esistente
+        - Deve rispettare le restrizioni dietetiche (\(dietType.rawValue))
         - Deve abbinarsi bene con i vini già selezionati
         - Mantieni lo stesso livello di raffinatezza del menu esistente
 

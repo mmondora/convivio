@@ -368,21 +368,28 @@ struct SommelierResponseParser {
     static func parse(_ response: String) -> ParsedResponse {
         // Look for the wine suggestions JSON block
         // Format: [WINE_SUGGESTIONS]{"suggestions":[...]}[/WINE_SUGGESTIONS]
-        let pattern = #"\[WINE_SUGGESTIONS\](.*?)\[/WINE_SUGGESTIONS\]"#
+        // Handle potential whitespace/newlines around and within the tags
+        let pattern = #"\[WINE_SUGGESTIONS\]\s*(.*?)\s*\[/WINE_SUGGESTIONS\]"#
 
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]),
               let match = regex.firstMatch(in: response, options: [], range: NSRange(response.startIndex..., in: response)),
               let jsonRange = Range(match.range(at: 1), in: response) else {
             // No structured suggestions found, return text as-is
-            return ParsedResponse(text: response, suggestions: [])
+            // But still strip any malformed tags that might appear
+            let cleaned = response.replacingOccurrences(
+                of: #"\[/?WINE_SUGGESTIONS\]"#,
+                with: "",
+                options: .regularExpression
+            ).trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+            return ParsedResponse(text: cleaned, suggestions: [])
         }
 
-        let jsonString = String(response[jsonRange])
+        let jsonString = String(response[jsonRange]).trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         let textOnly = response.replacingOccurrences(
             of: #"\[WINE_SUGGESTIONS\].*?\[/WINE_SUGGESTIONS\]"#,
             with: "",
             options: .regularExpression
-        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        ).trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
 
         // Parse the JSON
         guard let jsonData = jsonString.data(using: .utf8) else {
