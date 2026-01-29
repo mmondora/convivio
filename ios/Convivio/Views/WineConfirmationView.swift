@@ -136,13 +136,29 @@ struct WineConfirmationView: View {
 
     private var wineListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Vini Selezionati")
-                .font(.headline)
+            HStack {
+                Text("Vini Selezionati")
+                    .font(.headline)
+                Spacer()
+                Text("\(confirmedWines.count) vini")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
 
             ForEach(confirmedWines.indices, id: \.self) { index in
-                WineConfirmationRow(wine: $confirmedWines[index])
+                WineConfirmationRow(
+                    wine: $confirmedWines[index],
+                    onDelete: {
+                        removeWine(at: index)
+                    }
+                )
             }
         }
+    }
+
+    private func removeWine(at index: Int) {
+        guard index < confirmedWines.count else { return }
+        confirmedWines.remove(at: index)
     }
 
     // MARK: - Schedule Summary Section
@@ -390,6 +406,7 @@ struct WineConfirmationView: View {
 
 struct WineConfirmationRow: View {
     @Binding var wine: ConfirmedWine
+    var onDelete: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -419,6 +436,17 @@ struct WineConfirmationRow: View {
                 }
 
                 Spacer()
+
+                // Delete button
+                if let onDelete = onDelete {
+                    Button(role: .destructive) {
+                        onDelete()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.red.opacity(0.7))
+                    }
+                }
 
                 Image(systemName: wine.temperatureCategory.icon)
                     .font(.title2)
