@@ -911,23 +911,32 @@ struct DinnerDetailView: View {
         DisclosureGroup(
             isExpanded: bindingFor("vini"),
             content: {
-                VStack(spacing: 0) {
+                VStack(spacing: 16) {
+                    // Wine list
                     wineListSection(cellarWines: cellarWines, purchaseSuggestions: menu.suggerimentiAcquisto, wineCount: wineCount)
 
-                    // Service notes
+                    // Service notes - separated card
                     if !menu.noteServizio.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Note di servizio")
-                                .font(.caption.bold())
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "info.circle.fill")
+                                    .foregroundColor(.blue)
+                                Text("Note di servizio")
+                                    .font(.subheadline.bold())
+                            }
+
                             Text(menu.noteServizio)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
                         .background(Color(.tertiarySystemBackground))
-                        .cornerRadius(8)
+                        .cornerRadius(10)
                     }
                 }
+                .padding(.top, 8)
             },
             label: {
                 Label("Vini", systemImage: "wineglass")
