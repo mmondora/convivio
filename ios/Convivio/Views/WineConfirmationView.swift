@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 struct WineConfirmationView: View {
     @Environment(\.dismiss) private var dismiss
@@ -279,8 +280,51 @@ struct WineConfirmationView: View {
                         .cornerRadius(12)
                 }
             }
+
+            #if DEBUG
+            // Test notification button
+            Button {
+                testNotification()
+            } label: {
+                HStack {
+                    Image(systemName: "bell.badge")
+                    Text("Test Notifica (5 sec)")
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.orange.opacity(0.15))
+                .foregroundColor(.orange)
+                .cornerRadius(12)
+            }
+            #endif
         }
     }
+
+    #if DEBUG
+    private func testNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Test Notifica Convivio"
+        content.body = "Se vedi questo messaggio, le notifiche funzionano! 🍷"
+        content.sound = .default
+
+        // Fire in 5 seconds
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+
+        let request = UNNotificationRequest(
+            identifier: "test-notification-\(UUID().uuidString)",
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Error scheduling test notification: \(error)")
+            } else {
+                print("✅ Test notification scheduled - will fire in 5 seconds")
+            }
+        }
+    }
+    #endif
 
     // MARK: - Actions
 
