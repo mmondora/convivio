@@ -352,29 +352,54 @@ struct ProfileView: View {
                     }
                 }
 
-                // Language
-                Section(L10n.language) {
-                    ForEach(AppLanguage.allCases) { language in
-                        Button {
-                            languageManager.setLanguage(language)
+                // Language - compact Picker
+                Section {
+                    Picker(selection: Binding(
+                        get: { currentSettings?.preferredLanguage ?? "auto" },
+                        set: { newValue in
                             if let settings = currentSettings {
-                                settings.preferredLanguage = language.rawValue
+                                settings.preferredLanguage = newValue
                                 settings.updatedAt = Date()
                                 try? modelContext.save()
-                            }
-                        } label: {
-                            HStack {
-                                Text(language.flag)
-                                    .font(.title2)
-                                Text(language.displayName)
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                if languageManager.currentLanguage == language {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.purple)
+
+                                // Update language manager
+                                if newValue == "auto" {
+                                    languageManager.setLanguage(AppLanguage.fromDeviceLanguage())
+                                } else if let language = AppLanguage(rawValue: newValue) {
+                                    languageManager.setLanguage(language)
                                 }
                             }
                         }
+                    )) {
+                        // Automatic option
+                        HStack {
+                            Text("🌐")
+                            Text("Automatico (\(AppLanguage.fromDeviceLanguage().displayName))")
+                        }
+                        .tag("auto")
+
+                        Divider()
+
+                        // All languages
+                        ForEach(AppLanguage.allCases) { language in
+                            HStack {
+                                Text(language.flag)
+                                Text(language.displayName)
+                            }
+                            .tag(language.rawValue)
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "globe")
+                                .foregroundColor(.blue)
+                                .frame(width: 30)
+
+                            Text(L10n.language)
+                        }
+                    }
+                } footer: {
+                    if currentSettings?.preferredLanguage == "auto" {
+                        Text("La lingua viene impostata automaticamente in base alle preferenze del dispositivo")
                     }
                 }
 

@@ -129,6 +129,7 @@ struct BottleUnloadView: View {
     private var statusColor: Color {
         switch dinner.status {
         case .planning: return .orange
+        case .winesConfirmed: return .purple
         case .confirmed: return .blue
         case .completed: return .green
         case .cancelled: return .red
