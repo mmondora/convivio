@@ -7,6 +7,8 @@ struct WineConfirmationView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+    @Query private var settings: [AppSettings]
+
     @Bindable var dinner: DinnerEvent
 
     @State private var confirmedWines: [ConfirmedWine] = []
@@ -14,6 +16,10 @@ struct WineConfirmationView: View {
     @State private var showPermissionAlert = false
     @State private var errorMessage: String?
     @State private var showSuccessMessage = false
+
+    private var isDebugModeEnabled: Bool {
+        settings.first?.debugModeEnabled ?? false
+    }
 
     // Max width for content on iPad
     private var maxContentWidth: CGFloat? {
@@ -289,26 +295,25 @@ struct WineConfirmationView: View {
                 }
             }
 
-            #if DEBUG
-            // Test notification button
-            Button {
-                testNotification()
-            } label: {
-                HStack {
-                    Image(systemName: "bell.badge")
-                    Text("Test Notifica (5 sec)")
+            // Test notification button - visible when debug mode enabled
+            if isDebugModeEnabled {
+                Button {
+                    testNotification()
+                } label: {
+                    HStack {
+                        Image(systemName: "bell.badge")
+                        Text("Test Notifica (5 sec)")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.orange.opacity(0.15))
+                    .foregroundColor(.orange)
+                    .cornerRadius(12)
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.orange.opacity(0.15))
-                .foregroundColor(.orange)
-                .cornerRadius(12)
             }
-            #endif
         }
     }
 
-    #if DEBUG
     private func testNotification() {
         let content = UNMutableNotificationContent()
         content.title = "Test Notifica Convivio"
@@ -332,7 +337,6 @@ struct WineConfirmationView: View {
             }
         }
     }
-    #endif
 
     // MARK: - Actions
 

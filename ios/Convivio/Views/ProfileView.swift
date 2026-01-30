@@ -441,35 +441,69 @@ struct ProfileView: View {
                             Text("Convivio")
                         }
                     }
-                }
 
-                // Dev section
-                #if DEBUG
-                Section("Sviluppo") {
-                    Button {
-                        Task { await loadSampleWines() }
-                    } label: {
-                        HStack {
-                            Image(systemName: "flask")
-                            Text("Carica 3 vini di esempio")
-                            Spacer()
-                            if isLoadingSamples {
-                                ProgressView()
+                    // Debug mode toggle - hidden behind tap gesture
+                    if let settings = currentSettings, settings.debugModeEnabled {
+                        Toggle(isOn: Binding(
+                            get: { currentSettings?.debugModeEnabled ?? false },
+                            set: { newValue in
+                                if let settings = currentSettings {
+                                    settings.debugModeEnabled = newValue
+                                    settings.updatedAt = Date()
+                                    try? modelContext.save()
+                                }
+                            }
+                        )) {
+                            HStack {
+                                Image(systemName: "ladybug")
+                                    .foregroundColor(.orange)
+                                    .frame(width: 30)
+                                VStack(alignment: .leading) {
+                                    Text("Modalità Debug")
+                                    Text("Mostra opzioni sviluppatore")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                     }
-                    .disabled(isLoadingSamples)
+                }
+                .onTapGesture(count: 5) {
+                    // Secret gesture to enable debug mode (5 taps)
+                    if let settings = currentSettings {
+                        settings.debugModeEnabled = true
+                        settings.updatedAt = Date()
+                        try? modelContext.save()
+                    }
+                }
 
-                    Button(role: .destructive) {
-                        clearAllData()
-                    } label: {
-                        HStack {
-                            Image(systemName: "trash")
-                            Text("Cancella tutti i dati")
+                // Dev section - visible when debug mode is enabled
+                if currentSettings?.debugModeEnabled == true {
+                    Section("Sviluppo") {
+                        Button {
+                            Task { await loadSampleWines() }
+                        } label: {
+                            HStack {
+                                Image(systemName: "flask")
+                                Text("Carica 3 vini di esempio")
+                                Spacer()
+                                if isLoadingSamples {
+                                    ProgressView()
+                                }
+                            }
+                        }
+                        .disabled(isLoadingSamples)
+
+                        Button(role: .destructive) {
+                            clearAllData()
+                        } label: {
+                            HStack {
+                                Image(systemName: "trash")
+                                Text("Cancella tutti i dati")
+                            }
                         }
                     }
                 }
-                #endif
             }
             .navigationTitle(L10n.profile)
             .sheet(isPresented: $showApiKeySheet) {

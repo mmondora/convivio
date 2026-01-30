@@ -530,6 +530,7 @@ enum MessageRole: String, Codable {
 final class AppSettings {
     var openAIApiKey: String?
     var preferredLanguage: String
+    var debugModeEnabled: Bool = false  // Toggle per mostrare bottoni di debug
     var createdAt: Date
     var updatedAt: Date
 
