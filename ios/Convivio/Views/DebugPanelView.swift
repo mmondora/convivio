@@ -37,6 +37,26 @@ struct DebugPanelView: View {
                 Text("Impostazioni Debug")
             }
 
+            // Performance monitoring
+            Section {
+                NavigationLink {
+                    DebugPerformanceView()
+                } label: {
+                    HStack {
+                        Image(systemName: "speedometer")
+                            .foregroundColor(.purple)
+                            .frame(width: 30)
+
+                        VStack(alignment: .leading) {
+                            Text("Performance Monitor")
+                            MemoryIndicatorView()
+                        }
+                    }
+                }
+            } header: {
+                Text("Performance")
+            }
+
             // Scheduled notifications
             Section {
                 if isLoadingNotifications {
