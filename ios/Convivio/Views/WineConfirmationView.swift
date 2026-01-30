@@ -337,23 +337,32 @@ struct WineConfirmationView: View {
     // MARK: - Actions
 
     private func loadWinesFromMenu() {
-        // First check if there are already confirmed wines
-        if !dinner.confirmedWines.isEmpty {
-            confirmedWines = dinner.confirmedWines
+        // Menu is the single source of truth for available wines
+        guard let menu = dinner.menuResponse else {
+            confirmedWines = []
             return
         }
 
-        // Otherwise, load from menu
-        guard let menu = dinner.menuResponse else { return }
+        // Get existing confirmed wines to preserve user settings
+        let existingConfirmed = dinner.confirmedWines
 
         var wines: [ConfirmedWine] = []
 
-        // Add wines from pairings
+        // Add wines from menu pairings, preserving settings if already confirmed
         for pairing in menu.abbinamenti {
-            var wine = ConfirmedWine.from(pairing: pairing)
-            // Try to suggest temperature based on wine name/type
-            wine.temperatureCategory = suggestTemperature(for: wine)
-            wines.append(wine)
+            // Check if this wine was already confirmed (match by name and producer)
+            if let existing = existingConfirmed.first(where: {
+                $0.wineName == pairing.vino.nome &&
+                $0.producer == pairing.vino.produttore
+            }) {
+                // Preserve existing settings (temperature, notifications, quantity)
+                wines.append(existing)
+            } else {
+                // New wine from menu - create with suggested temperature
+                var wine = ConfirmedWine.from(pairing: pairing)
+                wine.temperatureCategory = suggestTemperature(for: wine)
+                wines.append(wine)
+            }
         }
 
         confirmedWines = wines
