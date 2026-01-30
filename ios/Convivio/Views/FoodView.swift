@@ -1002,40 +1002,36 @@ struct DinnerDetailView: View {
 
     @ViewBuilder
     private func wineListSection(cellarWines: [MenuWinePairing], purchaseSuggestions: [WineSuggestion], wineCount: Int) -> some View {
-        VStack(spacing: 0) {
+        List {
             // Wines from cellar
             if !cellarWines.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
+                Section {
+                    ForEach(Array(cellarWines.enumerated()), id: \.element.id) { index, pairing in
+                        cellarWineRow(pairing: pairing, index: index)
+                    }
+                } header: {
                     Text("Dalla Cantina")
                         .font(.subheadline.bold())
                         .foregroundColor(.green)
-                        .padding(.horizontal)
-                        .padding(.top, 8)
-
-                    ForEach(Array(cellarWines.enumerated()), id: \.element.id) { index, pairing in
-                        cellarWineRow(pairing: pairing, index: index)
-                            .padding(.horizontal)
-                    }
                 }
             }
 
             // Purchase suggestions
             if !purchaseSuggestions.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
+                Section {
+                    ForEach(Array(purchaseSuggestions.enumerated()), id: \.element.id) { index, suggestion in
+                        purchaseWineRow(suggestion: suggestion, index: index)
+                    }
+                } header: {
                     Text("Da Acquistare")
                         .font(.subheadline.bold())
                         .foregroundColor(.blue)
-                        .padding(.horizontal)
-                        .padding(.top, cellarWines.isEmpty ? 8 : 16)
-
-                    ForEach(Array(purchaseSuggestions.enumerated()), id: \.element.id) { index, suggestion in
-                        purchaseWineRow(suggestion: suggestion, index: index)
-                            .padding(.horizontal)
-                    }
                 }
             }
         }
-        .padding(.bottom, 8)
+        .listStyle(.plain)
+        .frame(minHeight: CGFloat(wineCount) * 60 + CGFloat(cellarWines.isEmpty || purchaseSuggestions.isEmpty ? 30 : 60))
+        .scrollDisabled(true)
         .animation(.easeInOut(duration: 0.2), value: wineCount)
     }
 
