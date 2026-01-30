@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
@@ -9,6 +10,11 @@ struct AboutView: View {
 
     private var buildNumber: String {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+    }
+
+    // Max width for content on iPad
+    private var maxContentWidth: CGFloat? {
+        horizontalSizeClass == .regular ? 600 : nil
     }
 
     var body: some View {
@@ -33,6 +39,8 @@ struct AboutView: View {
                 footerSection
             }
             .padding()
+            .frame(maxWidth: maxContentWidth)
+            .frame(maxWidth: .infinity)
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("About")

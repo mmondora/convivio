@@ -292,6 +292,7 @@ struct NewDinnerView: View {
 
 struct DinnerDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Query private var wines: [Wine]
     @Query(filter: #Predicate<Bottle> { $0.quantity > 0 }) private var bottles: [Bottle]
     @Query private var appSettings: [AppSettings]
@@ -316,6 +317,11 @@ struct DinnerDetailView: View {
 
     private var settings: AppSettings? { appSettings.first }
 
+    // Max width for content on iPad
+    private var maxContentWidth: CGFloat? {
+        horizontalSizeClass == .regular ? 700 : nil
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -334,6 +340,8 @@ struct DinnerDetailView: View {
                 }
             }
             .padding()
+            .frame(maxWidth: maxContentWidth)
+            .frame(maxWidth: .infinity)
         }
         .navigationTitle(dinner.title)
         .toolbar {

@@ -3,6 +3,7 @@ import SwiftData
 
 struct OnboardingView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @ObservedObject private var languageManager = LanguageManager.shared
     @Bindable var settings: AppSettings
 
@@ -13,6 +14,11 @@ struct OnboardingView: View {
 
     let onComplete: () -> Void
 
+    // Max width for content on iPad
+    private var maxContentWidth: CGFloat? {
+        horizontalSizeClass == .regular ? 500 : nil
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 32) {
@@ -20,7 +26,7 @@ struct OnboardingView: View {
 
                 // Logo/Icon
                 Image(systemName: "wineglass.fill")
-                    .font(.system(size: 80))
+                    .font(.system(size: horizontalSizeClass == .regular ? 120 : 80))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [.purple, .pink],
@@ -53,6 +59,8 @@ struct OnboardingView: View {
                 languageSelector
             }
             .padding()
+            .frame(maxWidth: maxContentWidth)
+            .frame(maxWidth: .infinity)
             .navigationBarHidden(true)
         }
     }

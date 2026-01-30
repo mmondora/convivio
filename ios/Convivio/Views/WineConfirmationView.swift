@@ -5,6 +5,7 @@ import UserNotifications
 struct WineConfirmationView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @Bindable var dinner: DinnerEvent
 
@@ -13,6 +14,11 @@ struct WineConfirmationView: View {
     @State private var showPermissionAlert = false
     @State private var errorMessage: String?
     @State private var showSuccessMessage = false
+
+    // Max width for content on iPad
+    private var maxContentWidth: CGFloat? {
+        horizontalSizeClass == .regular ? 600 : nil
+    }
 
     var body: some View {
         NavigationStack {
@@ -61,6 +67,8 @@ struct WineConfirmationView: View {
                     actionButtonsSection
                 }
                 .padding()
+                .frame(maxWidth: maxContentWidth)
+                .frame(maxWidth: .infinity)
             }
             .navigationTitle("Conferma Vini")
             .navigationBarTitleDisplayMode(.inline)

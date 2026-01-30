@@ -148,6 +148,7 @@ struct ContentView: View {
 
 struct MainTabView: View {
     @EnvironmentObject var languageManager: LanguageManager
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         TabView {
@@ -176,6 +177,60 @@ struct MainTabView: View {
                     Label(L10n.profile, systemImage: "person.circle")
                 }
         }
+        .modifier(AdaptiveTabStyle())
         .tint(.purple)
+    }
+}
+
+// MARK: - Adaptive Tab Style Modifier
+
+struct AdaptiveTabStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.tabViewStyle(.sidebarAdaptable)
+        } else {
+            content
+        }
+    }
+}
+
+// MARK: - Adaptive Layout Helpers
+
+/// Container that constrains content width on iPad for better readability
+struct AdaptiveFormContainer<Content: View>: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        if horizontalSizeClass == .regular {
+            content
+                .frame(maxWidth: 700)
+                .frame(maxWidth: .infinity)
+        } else {
+            content
+        }
+    }
+}
+
+/// Returns adaptive padding based on device size class
+struct AdaptiveLayout {
+    static func horizontalPadding(for sizeClass: UserInterfaceSizeClass?) -> CGFloat {
+        sizeClass == .regular ? 40 : 16
+    }
+
+    static func cardMaxWidth(for sizeClass: UserInterfaceSizeClass?) -> CGFloat? {
+        sizeClass == .regular ? 600 : nil
+    }
+
+    static func messageMaxWidth(for sizeClass: UserInterfaceSizeClass?, screenWidth: CGFloat) -> CGFloat {
+        if sizeClass == .regular {
+            return min(500, screenWidth * 0.6)
+        } else {
+            return screenWidth * 0.75
+        }
     }
 }

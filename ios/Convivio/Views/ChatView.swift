@@ -3,6 +3,7 @@ import SwiftData
 
 struct ChatView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Query(sort: \ChatMessage.createdAt) private var messages: [ChatMessage]
     @Query private var wines: [Wine]
     @Query(filter: #Predicate<Bottle> { $0.quantity > 0 }) private var bottles: [Bottle]
@@ -12,6 +13,11 @@ struct ChatView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @FocusState private var isInputFocused: Bool
+
+    // Max width for content on iPad
+    private var maxContentWidth: CGFloat? {
+        horizontalSizeClass == .regular ? 800 : nil
+    }
 
     var body: some View {
         NavigationStack {
@@ -39,6 +45,8 @@ struct ChatView: View {
                             }
                         }
                         .padding()
+                        .frame(maxWidth: maxContentWidth)
+                        .frame(maxWidth: .infinity)
                     }
                     .onChange(of: messages.count) { _, _ in
                         if let lastMessage = messages.last {
@@ -65,6 +73,8 @@ struct ChatView: View {
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 8)
+                    .frame(maxWidth: maxContentWidth)
+                    .frame(maxWidth: .infinity)
                     .background(Color(.secondarySystemBackground))
                 }
 
@@ -74,6 +84,8 @@ struct ChatView: View {
                         inputText = suggestion
                         sendMessage()
                     }
+                    .frame(maxWidth: maxContentWidth)
+                    .frame(maxWidth: .infinity)
                 }
 
                 // Input area
@@ -96,6 +108,8 @@ struct ChatView: View {
                     .disabled(inputText.isEmpty || isLoading)
                 }
                 .padding()
+                .frame(maxWidth: maxContentWidth)
+                .frame(maxWidth: .infinity)
                 .background(Color(.systemBackground))
             }
             .navigationTitle(L10n.sommelier)
@@ -165,6 +179,8 @@ struct MessageBubbleWithSuggestions: View {
     let wines: [Wine]
     let bottles: [Bottle]
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     var isUser: Bool { message.role == .user }
 
     // Parse on demand - only for assistant messages
@@ -173,9 +189,19 @@ struct MessageBubbleWithSuggestions: View {
         return SommelierResponseParser.parse(message.content)
     }
 
+    // Adaptive spacing based on device size
+    private var minSpacing: CGFloat {
+        horizontalSizeClass == .regular ? 200 : 60
+    }
+
+    // Max width for message content on iPad
+    private var maxMessageWidth: CGFloat? {
+        horizontalSizeClass == .regular ? 500 : nil
+    }
+
     var body: some View {
         HStack {
-            if isUser { Spacer(minLength: 60) }
+            if isUser { Spacer(minLength: minSpacing) }
 
             VStack(alignment: isUser ? .trailing : .leading, spacing: 8) {
                 // Message text
@@ -184,6 +210,7 @@ struct MessageBubbleWithSuggestions: View {
                     .background(isUser ? Color.purple : Color(.secondarySystemBackground))
                     .foregroundColor(isUser ? .white : .primary)
                     .cornerRadius(16)
+                    .frame(maxWidth: maxMessageWidth, alignment: isUser ? .trailing : .leading)
 
                 // Wine suggestions (only for assistant messages)
                 if let parsed = parsedResponse, !parsed.suggestions.isEmpty {
@@ -192,6 +219,7 @@ struct MessageBubbleWithSuggestions: View {
                         wines: wines,
                         bottles: bottles
                     )
+                    .frame(maxWidth: maxMessageWidth, alignment: .leading)
                 }
 
                 Text(formatTime(message.createdAt))
@@ -199,7 +227,7 @@ struct MessageBubbleWithSuggestions: View {
                     .foregroundColor(.secondary)
             }
 
-            if !isUser { Spacer(minLength: 60) }
+            if !isUser { Spacer(minLength: minSpacing) }
         }
     }
 
