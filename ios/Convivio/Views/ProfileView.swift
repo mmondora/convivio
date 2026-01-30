@@ -428,8 +428,9 @@ struct ProfileView: View {
                     .foregroundColor(.primary)
                 }
 
-                // App info
-                Section(L10n.about) {
+                // Informazioni section
+                Section("Informazioni") {
+                    // About Convivio
                     NavigationLink {
                         AboutView()
                     } label: {
@@ -438,11 +439,50 @@ struct ProfileView: View {
                                 .foregroundColor(.purple)
                                 .frame(width: 30)
 
-                            Text("Convivio")
+                            Text("About Convivio")
                         }
                     }
 
-                    // Debug mode toggle - hidden behind tap gesture
+                    // Privacy Policy
+                    NavigationLink {
+                        PrivacyPolicyView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "hand.raised.fill")
+                                .foregroundColor(.blue)
+                                .frame(width: 30)
+
+                            Text("Privacy Policy")
+                        }
+                    }
+
+                    // Istruzioni d'uso
+                    NavigationLink {
+                        HelpView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "questionmark.circle.fill")
+                                .foregroundColor(.green)
+                                .frame(width: 30)
+
+                            Text("Istruzioni d'uso")
+                        }
+                    }
+
+                    // Note di rilascio
+                    NavigationLink {
+                        ReleaseNotesView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.text.fill")
+                                .foregroundColor(.orange)
+                                .frame(width: 30)
+
+                            Text("Note di rilascio")
+                        }
+                    }
+
+                    // Debug mode toggle - only visible if already enabled
                     if let settings = currentSettings, settings.debugModeEnabled {
                         Toggle(isOn: Binding(
                             get: { currentSettings?.debugModeEnabled ?? false },
