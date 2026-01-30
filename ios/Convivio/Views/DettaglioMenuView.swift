@@ -4,7 +4,8 @@ import SwiftData
 // MARK: - Dettaglio Menu View
 
 struct DettaglioMenuView: View {
-    let dinner: DinnerEvent
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var dinner: DinnerEvent
     let menu: MenuResponse
 
     @Query private var appSettings: [AppSettings]
@@ -46,9 +47,27 @@ struct DettaglioMenuView: View {
                     }
                 }
             }
+
+            // Regenerate button if already exists
+            if dettaglio != nil {
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        dettaglio = nil
+                        Task { await generateDetailedMenu() }
+                    } label: {
+                        Label("Rigenera", systemImage: "arrow.clockwise")
+                    }
+                }
+            }
         }
         .sheet(isPresented: $promptInterceptionService.isShowingEditor) {
             PromptEditorSheet()
+        }
+        .onAppear {
+            // Load existing detailed menu if available
+            if let existing = dinner.detailedMenu {
+                dettaglio = existing
+            }
         }
     }
 
@@ -302,6 +321,10 @@ struct DettaglioMenuView: View {
 
             await MainActor.run {
                 dettaglio = result
+                // Save to dinner for persistence
+                dinner.detailedMenu = result
+                dinner.updatedAt = Date()
+                try? modelContext.save()
                 isLoading = false
             }
         } catch PromptInterceptionError.cancelled {

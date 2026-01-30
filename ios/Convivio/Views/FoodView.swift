@@ -89,12 +89,24 @@ struct DinnerRowView: View {
                         .foregroundColor(.orange)
                 }
             } else if dinner.menu != nil {
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text("Menu generato")
-                        .font(.caption)
-                        .foregroundColor(.green)
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Menu")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+
+                    if dinner.hasDetailedMenu {
+                        HStack(spacing: 4) {
+                            Image(systemName: "doc.text.fill")
+                                .foregroundColor(.indigo)
+                            Text("Dettaglio")
+                                .font(.caption)
+                                .foregroundColor(.indigo)
+                        }
+                    }
                 }
             }
 
@@ -810,13 +822,22 @@ struct DinnerDetailView: View {
                         DettaglioMenuView(dinner: dinner, menu: menu)
                     } label: {
                         HStack {
-                            Image(systemName: "doc.text.magnifyingglass")
-                            Text("Dettaglio Menu")
+                            if dinner.hasDetailedMenu {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                            } else {
+                                Image(systemName: "doc.text.magnifyingglass")
+                            }
+                            Text(dinner.hasDetailedMenu ? "Vedi Dettaglio Menu" : "Genera Dettaglio Menu")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.indigo.opacity(0.15))
-                        .foregroundColor(.indigo)
+                        .background(dinner.hasDetailedMenu ? Color.green.opacity(0.15) : Color.indigo.opacity(0.15))
+                        .foregroundColor(dinner.hasDetailedMenu ? .green : .indigo)
                         .cornerRadius(12)
                     }
                 }

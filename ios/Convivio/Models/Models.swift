@@ -259,6 +259,9 @@ final class DinnerEvent {
     var notificationsScheduled: Bool = false
     var postDinnerNotificationId: String?  // Notification for bottle unloading reminder
 
+    // Detailed menu data (recipes, timeline, shopping list, etc.)
+    var detailedMenuData: Data?
+
     // Collaboration data
     var collaborationStateRaw: String = "draft"
     @Relationship(deleteRule: .cascade, inverse: \DishProposal.dinner)
@@ -319,6 +322,25 @@ final class DinnerEvent {
         set {
             confirmedWinesData = try? JSONEncoder().encode(newValue)
         }
+    }
+
+    var detailedMenu: DettaglioMenuCompleto? {
+        get {
+            guard let data = detailedMenuData else { return nil }
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try? decoder.decode(DettaglioMenuCompleto.self, from: data)
+        }
+        set {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            detailedMenuData = try? encoder.encode(newValue)
+        }
+    }
+
+    /// Returns true if detailed menu has been generated
+    var hasDetailedMenu: Bool {
+        detailedMenuData != nil
     }
 
     /// Returns true if dinner is past and has confirmed wines but not yet completed
