@@ -58,6 +58,7 @@
 		F000000000000041 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000041 /* PrivacyPolicyView.swift */; };
 		F000000000000042 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000042 /* HelpView.swift */; };
 		F000000000000043 /* ReleaseNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000043 /* ReleaseNotesView.swift */; };
+		F000000000000044 /* DebugPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000044 /* DebugPanelView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -115,6 +116,7 @@
 		F100000000000041 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		F100000000000042 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		F100000000000043 /* ReleaseNotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseNotesView.swift; sourceTree = "<group>"; };
+		F100000000000044 /* DebugPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPanelView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -187,6 +189,7 @@
 				F100000000000041 /* PrivacyPolicyView.swift */,
 				F100000000000042 /* HelpView.swift */,
 				F100000000000043 /* ReleaseNotesView.swift */,
+				F100000000000044 /* DebugPanelView.swift */,
 				F400000000000007 /* Components */,
 				F400000000000008 /* Ratings */,
 			);
@@ -372,6 +375,7 @@
 				F000000000000041 /* PrivacyPolicyView.swift in Sources */,
 				F000000000000042 /* HelpView.swift in Sources */,
 				F000000000000043 /* ReleaseNotesView.swift in Sources */,
+				F000000000000044 /* DebugPanelView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

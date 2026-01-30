@@ -352,7 +352,7 @@ struct ProfileView: View {
                     }
                 }
 
-                // Language - compact Picker
+                // Language - system style picker
                 Section {
                     Picker(selection: Binding(
                         get: { currentSettings?.preferredLanguage ?? "auto" },
@@ -371,22 +371,12 @@ struct ProfileView: View {
                             }
                         }
                     )) {
-                        // Automatic option
-                        HStack {
-                            Text("🌐")
-                            Text("Automatico (\(AppLanguage.fromDeviceLanguage().displayName))")
-                        }
-                        .tag("auto")
+                        Text("Automatico")
+                            .tag("auto")
 
-                        Divider()
-
-                        // All languages
                         ForEach(AppLanguage.allCases) { language in
-                            HStack {
-                                Text(language.flag)
-                                Text(language.displayName)
-                            }
-                            .tag(language.rawValue)
+                            Text(language.displayName)
+                                .tag(language.rawValue)
                         }
                     } label: {
                         HStack {
@@ -399,7 +389,7 @@ struct ProfileView: View {
                     }
                 } footer: {
                     if currentSettings?.preferredLanguage == "auto" {
-                        Text("La lingua viene impostata automaticamente in base alle preferenze del dispositivo")
+                        Text("Usa la lingua del dispositivo (\(AppLanguage.fromDeviceLanguage().displayName))")
                     }
                 }
 
@@ -507,28 +497,17 @@ struct ProfileView: View {
                         }
                     }
 
-                    // Debug mode toggle - only visible if already enabled
+                    // Debug panel - only visible if debug mode enabled
                     if let settings = currentSettings, settings.debugModeEnabled {
-                        Toggle(isOn: Binding(
-                            get: { currentSettings?.debugModeEnabled ?? false },
-                            set: { newValue in
-                                if let settings = currentSettings {
-                                    settings.debugModeEnabled = newValue
-                                    settings.updatedAt = Date()
-                                    try? modelContext.save()
-                                }
-                            }
-                        )) {
+                        NavigationLink {
+                            DebugPanelView()
+                        } label: {
                             HStack {
                                 Image(systemName: "ladybug")
                                     .foregroundColor(.orange)
                                     .frame(width: 30)
-                                VStack(alignment: .leading) {
-                                    Text("Modalità Debug")
-                                    Text("Mostra opzioni sviluppatore")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
+
+                                Text("Pannello Debug")
                             }
                         }
                     }
