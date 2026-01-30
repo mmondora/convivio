@@ -691,7 +691,7 @@ struct DinnerDetailView: View {
                         }
                     }
                     .listStyle(.plain)
-                    .frame(minHeight: CGFloat(menu.menu.allCourses.reduce(0) { $0 + $1.dishes.count }) * 100 + CGFloat(menu.menu.allCourses.count) * 30)
+                    .frame(minHeight: CGFloat(menu.menu.allCourses.reduce(0) { $0 + $1.dishes.count }) * 130 + CGFloat(menu.menu.allCourses.count) * 50)
                     .scrollDisabled(true)
                 },
                 label: {
@@ -1030,7 +1030,7 @@ struct DinnerDetailView: View {
             }
         }
         .listStyle(.plain)
-        .frame(minHeight: CGFloat(wineCount) * 60 + CGFloat(cellarWines.isEmpty || purchaseSuggestions.isEmpty ? 30 : 60))
+        .frame(minHeight: CGFloat(wineCount) * 80 + CGFloat(cellarWines.isEmpty || purchaseSuggestions.isEmpty ? 50 : 100))
         .scrollDisabled(true)
         .animation(.easeInOut(duration: 0.2), value: wineCount)
     }
