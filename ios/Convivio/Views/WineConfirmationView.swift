@@ -83,7 +83,7 @@ struct WineConfirmationView: View {
                     Button("Chiudi") { dismiss() }
                 }
             }
-            .onAppear {
+            .task(id: dinner.menuData) {
                 loadWinesFromMenu()
             }
             .alert("Notifiche non autorizzate", isPresented: $showPermissionAlert) {
