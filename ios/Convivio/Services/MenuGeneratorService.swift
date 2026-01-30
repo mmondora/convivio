@@ -9,7 +9,12 @@ actor MenuGeneratorService {
 
     // MARK: - Menu Generation
 
-    func generateMenu(request: MenuRequest, wines: [Wine], bottles: [Bottle]) async throws -> MenuResponse {
+    func generateMenu(
+        request: MenuRequest,
+        wines: [Wine],
+        bottles: [Bottle],
+        debugEnabled: Bool = false
+    ) async throws -> MenuResponse {
         // Filter available bottles (quantity > 0)
         let availableBottles = bottles.filter { $0.quantity > 0 }
 
@@ -19,11 +24,31 @@ actor MenuGeneratorService {
         // Build taste preferences string
         let tastePrefsString = buildTastePreferences(request.tastePreferences)
 
-        // Build prompt
-        let prompt = buildPrompt(request: request, wineInventory: wineInventory, tastePreferences: tastePrefsString)
+        // Build prompts
+        let (systemPrompt, userPrompt) = buildMenuPrompts(
+            request: request,
+            wineInventory: wineInventory,
+            tastePreferences: tastePrefsString
+        )
+
+        // Intercept prompt if debug mode enabled
+        let finalPrompt: String
+        if debugEnabled {
+            guard let config = await PromptInterceptionService.shared.interceptPrompt(
+                identifier: .menuGeneration,
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                debugEnabled: true
+            ) else {
+                throw PromptInterceptionError.cancelled
+            }
+            finalPrompt = config.combinedPrompt
+        } else {
+            finalPrompt = systemPrompt + "\n\n" + userPrompt
+        }
 
         // Call OpenAI API
-        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: prompt)
+        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: finalPrompt)
 
         // Parse response
         return try parseMenuResponse(responseText)
@@ -102,6 +127,146 @@ actor MenuGeneratorService {
 
     // MARK: - Prompt Builder
 
+    /// Builds separate system and user prompts for menu generation
+    private func buildMenuPrompts(request: MenuRequest, wineInventory: String, tastePreferences: String) -> (systemPrompt: String, userPrompt: String) {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .full
+        dateFormatter.locale = Locale(identifier: "it_IT")
+        let dataFormattata = dateFormatter.string(from: request.data)
+
+        let systemPrompt = """
+        Sei un sommelier professionista, chef consulente e maestro di cerimonie italiano. Genera un menu completo con ricette dettagliate, abbinamenti vino e consigli di galateo per inviti e ricevimento.
+
+        ⚠️ REGOLA PRIORITARIA - LEGGERE ATTENTAMENTE:
+        Le "Note specifiche dell'utente" hanno MASSIMA PRIORITÀ ASSOLUTA.
+        - Se l'utente specifica il NUMERO di piatti per portata (es. "10 antipasti", "1 primo", "5 dolci"), DEVI generare ESATTAMENTE quel numero di piatti
+        - Se l'utente specifica ingredienti, tema, stile, o qualsiasi altra indicazione, DEVI seguirla alla lettera
+        - NON ignorare MAI le richieste dell'utente
+        - Se le note specificano una struttura del menu diversa da quella standard, segui le note
+
+        REGOLE ABBINAMENTO VINI:
+        - Privilegia SEMPRE i vini presenti nella cantina fornita
+        - Suggerisci vini esterni solo se la cantina non copre adeguatamente
+        - Progressione coerente: bollicine → bianchi → rossi leggeri → rossi strutturati → dolci
+        - Per ogni vino da cantina, verifica che la quantità sia sufficiente (1 bottiglia ogni 3-4 persone)
+        - Per i suggerimenti di acquisto, indica SEMPRE produttore e annata consigliata
+        - Valuta la compatibilità di ogni vino con le preferenze gusto dell'utente
+
+        REGOLE RICETTE:
+        - Ogni piatto deve avere una ricetta completa con ingredienti, quantità, tempi e procedimento
+        - Le quantità degli ingredienti devono essere calibrate per il numero di persone
+        - Indica tempo di preparazione e cottura separatamente
+        - Il procedimento deve essere chiaro, passo per passo
+
+        REGOLE GALATEO:
+        - Fornisci consigli su tempistica e formulazione degli inviti
+        - Descrivi il protocollo di accoglienza e ricevimento
+        - Indica la corretta disposizione della tavola
+        - Suggerisci argomenti di conversazione appropriati all'occasione
+        """
+
+        let userPrompt = """
+        DETTAGLI CONVIVIO:
+        - Titolo: \(request.titolo)
+        - Data: \(dataFormattata)
+        - Persone: \(request.persone)
+        - Occasione: \(request.occasione ?? "Convivio informale")
+        - Vincoli dietetici: \(request.tipoDieta.rawValue)
+        - Tipo cucina: \(request.tipoCucina)
+
+        📋 NOTE SPECIFICHE DELL'UTENTE (PRIORITÀ MASSIMA):
+        \(request.descrizione ?? "nessuna")
+
+        PREFERENZE GUSTO OSPITE:
+        \(tastePreferences)
+
+        CANTINA DISPONIBILE:
+        \(wineInventory)
+
+        Rispondi SOLO con JSON valido (nessun markdown, nessun testo prima o dopo), seguendo ESATTAMENTE questo schema:
+        {
+          "menu": {
+            "antipasti": [{
+              "nome": "string",
+              "descrizione": "string",
+              "porzioni": number,
+              "ricetta": {
+                "ingredienti": [{"nome": "string", "quantita": "string", "unita": "string o null"}],
+                "tempo_preparazione": number,
+                "tempo_cottura": number,
+                "difficolta": "facile|media|difficile",
+                "procedimento": ["step 1", "step 2", ...],
+                "consigli": "string o null"
+              }
+            }],
+            "primi": [...],
+            "secondi": [...],
+            "contorni": [...],
+            "dolci": [...]
+          },
+          "abbinamenti": [
+            {
+              "portata": "antipasti|primi|secondi|dolci",
+              "vino": {
+                "nome": "string",
+                "produttore": "string",
+                "annata": "string o null",
+                "provenienza": "cantina" oppure "suggerimento",
+                "quantita_necessaria": number,
+                "motivazione": "string",
+                "compatibilita": {
+                  "punteggio": number (1-100),
+                  "motivazione": "string",
+                  "punti_forza": ["string"],
+                  "punti_deboli": ["string"]
+                }
+              }
+            }
+          ],
+          "suggerimenti_acquisto": [
+            {
+              "vino": "string",
+              "produttore": "string",
+              "annata": "string o null",
+              "perche": "string",
+              "abbinamento_ideale": "string",
+              "compatibilita": {
+                "punteggio": number (1-100),
+                "motivazione": "string",
+                "punti_forza": ["string"],
+                "punti_deboli": ["string"]
+              }
+            }
+          ],
+          "note_servizio": "string con consigli su temperatura vini, decantazione, ordine di servizio",
+          "galateo": {
+            "inviti": {
+              "tempistica": "quando inviare gli inviti",
+              "formulazione": "come formulare l'invito",
+              "conferma": "come gestire le conferme",
+              "consigli": ["consiglio 1", "consiglio 2"]
+            },
+            "ricevimento": {
+              "accoglienza": "come accogliere gli ospiti",
+              "aperitivo": "gestione momento aperitivo",
+              "passaggio_tavola": "come invitare a tavola",
+              "congedo": "come congedare gli ospiti",
+              "consigli": ["consiglio 1", "consiglio 2"]
+            },
+            "tavola": {
+              "disposizione": "come disporre tavola e posti",
+              "servizio": "ordine e modalità di servizio",
+              "conversazione": "argomenti consigliati per l'occasione",
+              "consigli": ["consiglio 1", "consiglio 2"]
+            }
+          }
+        }
+        """
+
+        return (systemPrompt, userPrompt)
+    }
+
+    /// Legacy method for backwards compatibility
     private func buildPrompt(request: MenuRequest, wineInventory: String, tastePreferences: String) -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .full
@@ -293,6 +458,17 @@ actor MenuGeneratorService {
 // MARK: - Dish Editing Methods
 
 extension MenuGeneratorService {
+    /// Derives the season from a date for contextual dish generation
+    private func deriveSeason(from date: Date) -> String {
+        let month = Calendar.current.component(.month, from: date)
+        switch month {
+        case 3...5: return "primavera"
+        case 6...8: return "estate"
+        case 9...11: return "autunno"
+        default: return "inverno"
+        }
+    }
+
     /// Regenerate a single dish while maintaining menu coherence
     func regenerateDish(
         courseName: String,
@@ -303,7 +479,9 @@ extension MenuGeneratorService {
         bottles: [Bottle],
         tastePreferences: TastePreferences?,
         cuisineType: String = "Italiana",
-        dietType: DietType = .normale
+        dietType: DietType = .normale,
+        substitutionReason: String? = nil,
+        debugEnabled: Bool = false
     ) async throws -> MenuResponse {
         // Get current dishes for context
         let currentDishes = getDishesForCourse(courseName, from: currentMenu)
@@ -349,13 +527,29 @@ extension MenuGeneratorService {
             }
         }
 
-        let prompt = """
-        Sei un sommelier professionista e chef consulente italiano.
-        Devi generare UN SOLO piatto alternativo per sostituire "\(dishToReplace.nome)" nella portata \(courseName).
+        // Get season for seasonal context
+        let season = deriveSeason(from: dinner.date)
 
-        CONTESTO DELLA CENA:
+        // Build confirmed wines context
+        let confirmedWinesContext: String
+        if !dinner.confirmedWines.isEmpty {
+            confirmedWinesContext = dinner.confirmedWines.map { wine in
+                "- \(wine.producer ?? "") \(wine.wineName)"
+            }.joined(separator: "\n")
+        } else {
+            confirmedWinesContext = "Nessun vino ancora confermato"
+        }
+
+        // Build system and user prompts separately
+        let systemPrompt = """
+        Sei un chef italiano esperto e sommelier professionista.
+        Il tuo compito è generare UN SOLO piatto alternativo che si integri perfettamente nel menu esistente.
+        """
+
+        let userPrompt = """
+        CONTESTO CENA:
         - Titolo: \(dinner.title)
-        - Data: \(dateFormatter.string(from: dinner.date))
+        - Data: \(dateFormatter.string(from: dinner.date)) (\(season))
         - Persone: \(dinner.guestCount)
         - Occasione: \(dinner.occasion ?? "Convivio")
         - Tipo di cucina: \(cuisineType)
@@ -363,11 +557,14 @@ extension MenuGeneratorService {
         \(preferencesContext.isEmpty ? "" : preferencesContext)
         \(dinner.notes.map { "- Note dell'utente (PRIORITÀ MASSIMA): \($0)" } ?? "")
 
-        MENU ATTUALE COMPLETO (per coerenza di stile):
+        ALTRI PIATTI NEL MENU (evita ripetizione ingredienti):
         \(allDishesContext)
 
         ALTRI PIATTI NELLA STESSA PORTATA:
         \(otherDishes.isEmpty ? "Nessun altro piatto" : otherDishes)
+
+        VINI CONFERMATI (mantieni compatibilità):
+        \(confirmedWinesContext)
 
         VINI ABBINATI ALLA PORTATA:
         \(getWinePairingsForCourse(courseName, from: currentMenu))
@@ -375,12 +572,18 @@ extension MenuGeneratorService {
         CANTINA DISPONIBILE:
         \(wineInventory)
 
-        IMPORTANTE:
-        - Il nuovo piatto deve essere DIVERSO da "\(dishToReplace.nome)"
-        - Deve essere coerente con il tipo di cucina (\(cuisineType)) e lo stile del menu esistente
-        - Deve rispettare le restrizioni dietetiche (\(dietType.rawValue))
-        - Deve abbinarsi bene con i vini già selezionati
-        - Mantieni lo stesso livello di raffinatezza del menu esistente
+        RICHIESTA:
+        Sostituisci il piatto "\(dishToReplace.nome)" per la portata \(courseName).
+        \(substitutionReason.map { "Motivo sostituzione: \($0)" } ?? "")
+
+        Genera un piatto alternativo che:
+        1. Si integri armonicamente con gli altri piatti
+        2. Sia appropriato per la stagione (\(season))
+        3. Si abbini ai vini già selezionati
+        4. Non ripeta ingredienti principali già usati
+        5. Sia DIVERSO da "\(dishToReplace.nome)"
+        6. Sia coerente con lo stile del menu (\(cuisineType))
+        7. Rispetti le restrizioni dietetiche (\(dietType.rawValue))
 
         Rispondi SOLO con JSON valido per UN singolo piatto:
         {
@@ -398,7 +601,23 @@ extension MenuGeneratorService {
         }
         """
 
-        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: prompt)
+        // Intercept prompt if debug mode enabled
+        let finalPrompt: String
+        if debugEnabled {
+            guard let config = await PromptInterceptionService.shared.interceptPrompt(
+                identifier: .dishRegeneration,
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                debugEnabled: true
+            ) else {
+                throw PromptInterceptionError.cancelled
+            }
+            finalPrompt = config.combinedPrompt
+        } else {
+            finalPrompt = systemPrompt + "\n\n" + userPrompt
+        }
+
+        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: finalPrompt)
         let newDish = try parseSingleDish(responseText)
 
         // Create updated menu with the new dish
@@ -959,6 +1178,202 @@ extension MenuGeneratorService {
 
         // Default: informal
         return "Tono informale e amichevole, come tra amici"
+    }
+}
+
+// MARK: - Detailed Menu Generation
+
+extension MenuGeneratorService {
+    /// Generate a detailed menu with recipes, timeline, shopping list, and service advice
+    func generateDetailedMenu(
+        for dinner: DinnerEvent,
+        menu: MenuResponse,
+        debugEnabled: Bool = false
+    ) async throws -> DettaglioMenuCompleto {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .full
+        dateFormatter.locale = Locale(identifier: "it_IT")
+
+        // Build menu context
+        let menuContext = menu.menu.allCourses.map { course in
+            course.dishes.map { dish in
+                """
+                PORTATA: \(course.name)
+                PIATTO: \(dish.nome)
+                DESCRIZIONE: \(dish.descrizione)
+                INGREDIENTI: \(dish.ricetta.ingredienti.map { $0.displayText }.joined(separator: ", "))
+                TEMPO PREP: \(dish.ricetta.tempoPreparazione) min
+                TEMPO COTTURA: \(dish.ricetta.tempoCottura) min
+                PROCEDIMENTO: \(dish.ricetta.procedimento.joined(separator: " | "))
+                """
+            }.joined(separator: "\n\n")
+        }.joined(separator: "\n\n---\n\n")
+
+        // Build wines context
+        let winesContext = menu.abbinamenti.map { pairing in
+            "\(pairing.vino.produttore) \(pairing.vino.nome) - \(pairing.portata)"
+        }.joined(separator: "\n")
+
+        let systemPrompt = """
+        Sei un executive chef e sommelier italiano con esperienza in eventi di alto livello.
+        Devi generare un documento completo e dettagliato per la gestione di una cena.
+        """
+
+        let userPrompt = """
+        DATI CENA:
+        - Titolo: \(dinner.title)
+        - Data: \(dateFormatter.string(from: dinner.date))
+        - Ospiti: \(dinner.guestCount) persone
+        - Occasione: \(dinner.occasion ?? "Cena")
+        \(dinner.notes.map { "- Note: \($0)" } ?? "")
+
+        MENU COMPLETO:
+        \(menuContext)
+
+        VINI ABBINATI:
+        \(winesContext.isEmpty ? "Nessun vino selezionato" : winesContext)
+
+        Genera un documento JSON completo con:
+
+        1. PORTATE DETTAGLIATE: Per ogni piatto, ricetta completa con:
+           - Ingredienti categorizzati (verdure, carni, latticini, ecc.)
+           - Quantità calibrate per \(dinner.guestCount) persone
+           - Procedimento dettagliato passo-passo
+           - Consigli dello chef
+
+        2. TIMELINE: Cronoprogramma delle preparazioni in minuti prima della cena:
+           - Cosa preparare il giorno prima
+           - Preparazioni mattutine
+           - Ultime ore prima del servizio
+           - Momenti di servizio
+
+        3. SHOPPING LIST: Lista spesa organizzata per categoria:
+           - Verdure/Ortaggi
+           - Carni
+           - Pesce (se presente)
+           - Latticini
+           - Pane e prodotti da forno
+           - Spezie e aromi
+           - Vini
+           - Altro
+
+        4. SERVIZIO VINI: Per ogni vino:
+           - Temperatura di servizio
+           - Tempo di decantazione (se necessario)
+           - Tipo di bicchiere
+           - Ordine di servizio
+           - Abbinamento specifico
+
+        5. MISE EN PLACE:
+           - Disposizione tavola
+           - Ordine di servizio delle portate
+           - Consigli generali
+
+        6. ETIQUETTE: 3-5 consigli di galateo per l'occasione
+
+        Rispondi SOLO con JSON valido seguendo questo schema:
+        {
+          "dinner_title": "\(dinner.title)",
+          "dinner_date": "\(ISO8601DateFormatter().string(from: dinner.date))",
+          "guest_count": \(dinner.guestCount),
+          "portate": [
+            {
+              "course_name": "Antipasti",
+              "dish_name": "Nome piatto",
+              "recipe": {
+                "ingredients": [
+                  {"name": "ingrediente", "quantity": "100", "unit": "g", "category": "verdure"}
+                ],
+                "servings": \(dinner.guestCount),
+                "prep_time": 30,
+                "cook_time": 15,
+                "procedure": ["Passo 1", "Passo 2"],
+                "chef_tips": ["Consiglio 1"]
+              },
+              "wine_note": "Abbinamento consigliato..."
+            }
+          ],
+          "timeline": [
+            {"time_offset": -1440, "description": "Preparare X", "related_dish": "Nome piatto"},
+            {"time_offset": -60, "description": "Iniziare Y", "related_dish": null},
+            {"time_offset": 0, "description": "Servire antipasti", "related_dish": "Antipasti"}
+          ],
+          "shopping_list": [
+            {
+              "category": "Verdure",
+              "items": [
+                {"name": "Pomodori", "quantity": "500g", "search_query": "pomodori san marzano"}
+              ]
+            }
+          ],
+          "wine_service": [
+            {
+              "wine_name": "Nome Vino",
+              "serving_temp": "16-18",
+              "decant_time": "30 minuti",
+              "glass_type": "Bordeaux",
+              "serving_order": 1,
+              "paired_with": "Primi piatti"
+            }
+          ],
+          "mise_en_place": {
+            "table_settings": ["Consiglio disposizione 1"],
+            "serving_order": ["Prima si serve...", "Poi..."],
+            "general_tips": ["Tip 1"]
+          },
+          "etiquette": ["Consiglio galateo 1", "Consiglio galateo 2"]
+        }
+        """
+
+        // Intercept prompt if debug mode enabled
+        let finalPrompt: String
+        if debugEnabled {
+            guard let config = await PromptInterceptionService.shared.interceptPrompt(
+                identifier: .detailedMenu,
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                debugEnabled: true
+            ) else {
+                throw PromptInterceptionError.cancelled
+            }
+            finalPrompt = config.combinedPrompt
+        } else {
+            finalPrompt = systemPrompt + "\n\n" + userPrompt
+        }
+
+        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: finalPrompt)
+        return try parseDetailedMenu(responseText)
+    }
+
+    /// Parse the detailed menu response
+    private func parseDetailedMenu(_ text: String) throws -> DettaglioMenuCompleto {
+        var cleanJson = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if cleanJson.hasPrefix("```json") {
+            cleanJson = String(cleanJson.dropFirst(7))
+        } else if cleanJson.hasPrefix("```") {
+            cleanJson = String(cleanJson.dropFirst(3))
+        }
+
+        if cleanJson.hasSuffix("```") {
+            cleanJson = String(cleanJson.dropLast(3))
+        }
+
+        cleanJson = cleanJson.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let data = cleanJson.data(using: .utf8) else {
+            throw OpenAIError.parseError
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode(DettaglioMenuCompleto.self, from: data)
+        } catch {
+            print("❌ Detailed Menu Parsing Error: \(error)")
+            throw OpenAIError.parseError
+        }
     }
 }
 

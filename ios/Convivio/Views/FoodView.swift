@@ -269,10 +269,12 @@ struct NewDinnerView: View {
             )
 
             do {
+                // Note: debugEnabled is false for new dinner creation
                 let response = try await MenuGeneratorService.shared.generateMenu(
                     request: request,
                     wines: wines,
-                    bottles: bottles
+                    bottles: bottles,
+                    debugEnabled: false
                 )
 
                 await MainActor.run {
@@ -333,7 +335,14 @@ struct DinnerDetailView: View {
     @State private var showProposalInput = false
     @ObservedObject var cellarManager = CellarManager.shared
 
+    // Debug prompt interception
+    @ObservedObject private var promptInterceptionService = PromptInterceptionService.shared
+
     private var settings: AppSettings? { appSettings.first }
+
+    private var debugEnabled: Bool {
+        settings?.debugModeEnabled ?? false
+    }
 
     private var currentUserId: String {
         CloudKitService.shared.currentUserRecordID?.recordName ?? "local"
@@ -441,6 +450,9 @@ struct DinnerDetailView: View {
                 currentUserId: currentUserId,
                 currentUserName: currentUserName
             )
+        }
+        .sheet(isPresented: $promptInterceptionService.isShowingEditor) {
+            PromptEditorSheet()
         }
         .alert("Elimina piatto", isPresented: $showDeleteConfirmation) {
             Button("Annulla", role: .cancel) {}
@@ -792,6 +804,23 @@ struct DinnerDetailView: View {
                     }
                 }
 
+                // DETTAGLIO MENU - disponibile quando ci sono vini confermati o cena confermata/completata
+                if dinner.status == .winesConfirmed || dinner.status == .confirmed || dinner.status == .completed {
+                    NavigationLink {
+                        DettaglioMenuView(dinner: dinner, menu: menu)
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.text.magnifyingglass")
+                            Text("Dettaglio Menu")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.indigo.opacity(0.15))
+                        .foregroundColor(.indigo)
+                        .cornerRadius(12)
+                    }
+                }
+
                 // RIGENERA MENU - solo in stati editabili (planning, winesConfirmed)
                 if dinner.status.canEditMenu {
                     Button {
@@ -1085,7 +1114,8 @@ struct DinnerDetailView: View {
                     dinner: dinner,
                     wines: wines,
                     bottles: bottles,
-                    tastePreferences: settings?.tastePreferences
+                    tastePreferences: settings?.tastePreferences,
+                    debugEnabled: debugEnabled
                 )
 
                 await MainActor.run {
@@ -1232,7 +1262,8 @@ struct DinnerDetailView: View {
             let response = try await MenuGeneratorService.shared.generateMenu(
                 request: request,
                 wines: wines,
-                bottles: bottles
+                bottles: bottles,
+                debugEnabled: debugEnabled
             )
 
             await MainActor.run {

@@ -59,6 +59,12 @@
 		F000000000000042 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000042 /* HelpView.swift */; };
 		F000000000000043 /* ReleaseNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000043 /* ReleaseNotesView.swift */; };
 		F000000000000044 /* DebugPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000044 /* DebugPanelView.swift */; };
+		F000000000000050 /* PromptModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000050 /* PromptModels.swift */; };
+		F000000000000051 /* DetailedMenuModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000051 /* DetailedMenuModels.swift */; };
+		F000000000000052 /* PromptInterceptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000052 /* PromptInterceptionService.swift */; };
+		F000000000000053 /* PDFGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000053 /* PDFGenerator.swift */; };
+		F000000000000054 /* PromptEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000054 /* PromptEditorSheet.swift */; };
+		F000000000000055 /* DettaglioMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000055 /* DettaglioMenuView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -117,6 +123,12 @@
 		F100000000000042 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		F100000000000043 /* ReleaseNotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseNotesView.swift; sourceTree = "<group>"; };
 		F100000000000044 /* DebugPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPanelView.swift; sourceTree = "<group>"; };
+		F100000000000050 /* PromptModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptModels.swift; sourceTree = "<group>"; };
+		F100000000000051 /* DetailedMenuModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailedMenuModels.swift; sourceTree = "<group>"; };
+		F100000000000052 /* PromptInterceptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptInterceptionService.swift; sourceTree = "<group>"; };
+		F100000000000053 /* PDFGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFGenerator.swift; sourceTree = "<group>"; };
+		F100000000000054 /* PromptEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptEditorSheet.swift; sourceTree = "<group>"; };
+		F100000000000055 /* DettaglioMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DettaglioMenuView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -164,6 +176,8 @@
 				F100000000000020 /* WineRatingModels.swift */,
 				F100000000000030 /* WineConfirmationModels.swift */,
 				F100000000000036 /* StorageModels.swift */,
+				F100000000000050 /* PromptModels.swift */,
+				F100000000000051 /* DetailedMenuModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -190,6 +204,8 @@
 				F100000000000042 /* HelpView.swift */,
 				F100000000000043 /* ReleaseNotesView.swift */,
 				F100000000000044 /* DebugPanelView.swift */,
+				F100000000000054 /* PromptEditorSheet.swift */,
+				F100000000000055 /* DettaglioMenuView.swift */,
 				F400000000000007 /* Components */,
 				F400000000000008 /* Ratings */,
 			);
@@ -211,6 +227,8 @@
 				F100000000000031 /* NotificationService.swift */,
 				F100000000000035 /* WineMatchingService.swift */,
 				F100000000000038 /* LanguageManager.swift */,
+				F100000000000052 /* PromptInterceptionService.swift */,
+				F100000000000053 /* PDFGenerator.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -376,6 +394,12 @@
 				F000000000000042 /* HelpView.swift in Sources */,
 				F000000000000043 /* ReleaseNotesView.swift in Sources */,
 				F000000000000044 /* DebugPanelView.swift in Sources */,
+				F000000000000050 /* PromptModels.swift in Sources */,
+				F000000000000051 /* DetailedMenuModels.swift in Sources */,
+				F000000000000052 /* PromptInterceptionService.swift in Sources */,
+				F000000000000053 /* PDFGenerator.swift in Sources */,
+				F000000000000054 /* PromptEditorSheet.swift in Sources */,
+				F000000000000055 /* DettaglioMenuView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

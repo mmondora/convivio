@@ -10,9 +10,25 @@ struct ReleaseNotesView: View {
 
                 // Current version
                 releaseSection(
-                    version: "1.2.0",
+                    version: "1.3.0",
                     date: "Gennaio 2025",
                     isCurrent: true,
+                    features: [
+                        "Menu Dettagliato: ricette complete, timeline preparazione, lista spesa",
+                        "Esportazione PDF del menu completo per condivisione",
+                        "Debug Prompt Editor: modifica prompt AI prima dell'invio",
+                        "Contesto stagionale nella rigenerazione piatti",
+                        "Servizio vini con temperature e consigli decantazione"
+                    ],
+                    fixes: [
+                        "Migliorato contesto per rigenerazione piatti singoli",
+                        "Compatibilità vini confermati nella sostituzione piatti"
+                    ]
+                )
+
+                releaseSection(
+                    version: "1.2.0",
+                    date: "Gennaio 2025",
                     features: [
                         "Nuovo sistema di stati cena (planning → winesConfirmed → confirmed)",
                         "Toggle debug mode accessibile da Profilo",
