@@ -391,7 +391,7 @@ enum DinnerStatus: String, Codable, CaseIterable {
     /// Can generate invite
     var canGenerateInvite: Bool {
         switch self {
-        case .confirmed, .completed: return true
+        case .winesConfirmed, .confirmed, .completed: return true
         default: return false
         }
     }
