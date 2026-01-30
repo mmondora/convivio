@@ -156,36 +156,45 @@ struct AboutView: View {
                     .font(.title3)
                     .foregroundColor(.purple)
 
-                Text("Novità v1.1")
+                Text("Novità v\(appVersion)")
                     .font(.headline)
             }
 
             VStack(alignment: .leading, spacing: 12) {
                 ReleaseNoteItem(
-                    icon: "📱",
-                    text: "Supporto iPad ottimizzato con layout adattivi"
+                    icon: "📋",
+                    text: "Menu Dettagliato con ricette, timeline e lista spesa"
+                )
+                ReleaseNoteItem(
+                    icon: "📄",
+                    text: "Esportazione PDF del menu completo"
+                )
+                ReleaseNoteItem(
+                    icon: "🧪",
+                    text: "Debug Prompt Editor per modificare prompt AI"
+                )
+                ReleaseNoteItem(
+                    icon: "🍂",
+                    text: "Contesto stagionale nella rigenerazione piatti"
                 )
                 ReleaseNoteItem(
                     icon: "🍷",
-                    text: "Swipe sui vini del menu per rigenerare o eliminare"
-                )
-                ReleaseNoteItem(
-                    icon: "🔔",
-                    text: "Notifiche temperatura vini migliorate"
-                )
-                ReleaseNoteItem(
-                    icon: "🔢",
-                    text: "Stepper quantità bottiglie nella conferma vini"
-                )
-                ReleaseNoteItem(
-                    icon: "🌍",
-                    text: "Supporto multilingua (IT, EN, DE, FR)"
-                )
-                ReleaseNoteItem(
-                    icon: "ℹ️",
-                    text: "Nuova schermata About con info sviluppatore"
+                    text: "Servizio vini con temperature e decantazione"
                 )
             }
+
+            NavigationLink {
+                ReleaseNotesView()
+            } label: {
+                HStack {
+                    Text("Tutte le note di rilascio")
+                        .font(.subheadline)
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                }
+                .foregroundColor(.purple)
+            }
+            .padding(.top, 8)
         }
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
