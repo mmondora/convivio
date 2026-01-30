@@ -354,18 +354,51 @@ final class DinnerEvent {
 }
 
 enum DinnerStatus: String, Codable, CaseIterable {
-    case planning
-    case confirmed
-    case completed
-    case cancelled
+    case planning           // Bozza - menu generato, editabile
+    case winesConfirmed     // Vini confermati - menu ancora editabile
+    case confirmed          // Cena confermata - tutto bloccato, solo consultazione
+    case completed          // Completata - post-cena, scarico bottiglie disponibile
+    case cancelled          // Annullata
 
     var displayName: String {
         switch self {
         case .planning: return "In pianificazione"
+        case .winesConfirmed: return "Vini confermati"
         case .confirmed: return "Confermata"
         case .completed: return "Completata"
         case .cancelled: return "Annullata"
         }
+    }
+
+    /// Can edit menu (regenerate, modify dishes)
+    var canEditMenu: Bool {
+        switch self {
+        case .planning, .winesConfirmed: return true
+        case .confirmed, .completed, .cancelled: return false
+        }
+    }
+
+    /// Can confirm wines
+    var canConfirmWines: Bool {
+        self == .planning
+    }
+
+    /// Can confirm dinner (after wines confirmed)
+    var canConfirmDinner: Bool {
+        self == .winesConfirmed
+    }
+
+    /// Can generate invite
+    var canGenerateInvite: Bool {
+        switch self {
+        case .confirmed, .completed: return true
+        default: return false
+        }
+    }
+
+    /// Can unload bottles (only when completed)
+    var canUnloadBottles: Bool {
+        self == .completed
     }
 }
 

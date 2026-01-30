@@ -453,6 +453,12 @@ struct WineConfirmationView: View {
                 dinner.confirmedWines = updatedWines.filter { $0.quantity > 0 } // Only save active wines
                 dinner.postDinnerNotificationId = result.postDinnerNotificationId
                 dinner.notificationsScheduled = true
+
+                // Aggiorna lo stato a winesConfirmed se era in planning
+                if dinner.status == .planning {
+                    dinner.status = .winesConfirmed
+                }
+
                 dinner.updatedAt = Date()
                 try? modelContext.save()
                 isScheduling = false

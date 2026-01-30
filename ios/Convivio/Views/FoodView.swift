@@ -673,6 +673,7 @@ struct DinnerDetailView: View {
                                         courseName: course.name,
                                         dishIndex: index,
                                         isRegenerating: regeneratingDish?.course == course.name && regeneratingDish?.index == index,
+                                        canEdit: dinner.status.canEditMenu,
                                         onTap: { selectedDish = dish },
                                         onRegenerate: { regenerateDish(course: course.name, index: index) },
                                         onDelete: {
@@ -720,16 +721,33 @@ struct DinnerDetailView: View {
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
 
-            // Action buttons
+            // Action buttons - visibility based on dinner status
             VStack(spacing: 12) {
-                // Bottle unload button for past dinners or debug
-                if dinner.status != .completed && !dinner.confirmedWines.isEmpty {
+                // SCARICO BOTTIGLIE - solo in stato completed, come CTA prominente
+                if dinner.status.canUnloadBottles && !dinner.confirmedWines.isEmpty {
                     Button {
                         showBottleUnload = true
                     } label: {
                         HStack {
-                            Image(systemName: "arrow.down.circle")
+                            Image(systemName: "arrow.down.circle.fill")
                             Text("Scarica Bottiglie")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.orange)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                }
+
+                // CONFERMA VINI - solo in stato planning
+                if dinner.status.canConfirmWines && !menu.abbinamenti.isEmpty {
+                    Button {
+                        showWineConfirmation = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "thermometer.medium")
+                            Text("Conferma Vini")
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -739,65 +757,83 @@ struct DinnerDetailView: View {
                     }
                 }
 
-                // Wine confirmation button
-                if !menu.abbinamenti.isEmpty {
+                // CONFERMA CENA - solo in stato winesConfirmed
+                if dinner.status.canConfirmDinner {
                     Button {
-                        showWineConfirmation = true
+                        confirmDinner()
                     } label: {
                         HStack {
-                            Image(systemName: dinner.notificationsScheduled ? "bell.badge.fill" : "thermometer.medium")
-                            Text(dinner.notificationsScheduled ? "Vini Confermati" : "Conferma Vini")
+                            Image(systemName: "checkmark.seal.fill")
+                            Text("Conferma Cena")
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(dinner.notificationsScheduled ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                        .foregroundColor(dinner.notificationsScheduled ? .green : .orange)
+                        .background(Color.green.opacity(0.15))
+                        .foregroundColor(.green)
                         .cornerRadius(12)
                     }
                 }
 
-                // Invite generator button
-                Button {
-                    showInviteGenerator = true
-                } label: {
-                    HStack {
-                        Image(systemName: "envelope")
-                        Text("Genera Invito")
+                // GENERA INVITO - solo in stato confirmed o completed
+                if dinner.status.canGenerateInvite {
+                    Button {
+                        showInviteGenerator = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "envelope")
+                            Text("Genera Invito")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue.opacity(0.15))
+                        .foregroundColor(.blue)
+                        .cornerRadius(12)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue.opacity(0.15))
-                    .foregroundColor(.blue)
-                    .cornerRadius(12)
                 }
 
-                // Regenerate button
-                Button {
-                    Task { await regenerateMenu() }
-                } label: {
-                    HStack {
-                        if isGenerating {
-                            ProgressView()
-                                .tint(.purple)
-                        } else {
-                            Image(systemName: "arrow.clockwise")
+                // RIGENERA MENU - solo in stati editabili (planning, winesConfirmed)
+                if dinner.status.canEditMenu {
+                    Button {
+                        Task { await regenerateMenu() }
+                    } label: {
+                        HStack {
+                            if isGenerating {
+                                ProgressView()
+                                    .tint(.purple)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            Text(isGenerating ? "Rigenerazione..." : "Rigenera Menu")
                         }
-                        Text(isGenerating ? "Rigenerazione..." : "Rigenera Menu")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.purple.opacity(0.15))
+                        .foregroundColor(.purple)
+                        .cornerRadius(12)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.purple.opacity(0.15))
-                    .foregroundColor(.purple)
-                    .cornerRadius(12)
+                    .disabled(isGenerating || settings?.openAIApiKey == nil)
                 }
-                .disabled(isGenerating || settings?.openAIApiKey == nil)
 
                 #if DEBUG
-                // Debug section
+                // Debug section (TODO: will be controlled by feature flag)
                 debugButtonsSection
                 #endif
 
-                // Completed dinner indicator
+                // Status indicator per stati finali
+                if dinner.status == .confirmed {
+                    HStack {
+                        Image(systemName: "lock.fill")
+                            .foregroundColor(.blue)
+                        Text("Cena confermata")
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(12)
+                }
+
                 if dinner.status == .completed {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
@@ -809,6 +845,21 @@ struct DinnerDetailView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.green.opacity(0.1))
+                    .cornerRadius(12)
+                }
+
+                // Indicator per vini confermati
+                if dinner.status == .winesConfirmed {
+                    HStack {
+                        Image(systemName: "wineglass.fill")
+                            .foregroundColor(.orange)
+                        Text("Vini confermati - conferma la cena per bloccare il menu")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.orange.opacity(0.1))
                     .cornerRadius(12)
                 }
             }
@@ -995,6 +1046,7 @@ struct DinnerDetailView: View {
             vintage: pairing.vino.annata,
             compatibility: pairing.vino.compatibilita?.punteggio,
             isRegenerating: regeneratingWine == pairing.id,
+            canEdit: dinner.status.canEditMenu,
             onTap: { selectedWinePairing = pairing },
             onRegenerate: { regenerateWine(type: "cellar", index: index) },
             onDelete: {
@@ -1012,6 +1064,7 @@ struct DinnerDetailView: View {
             vintage: suggestion.annata,
             compatibility: suggestion.compatibilita?.punteggio,
             isRegenerating: regeneratingWine == suggestion.id,
+            canEdit: dinner.status.canEditMenu,
             onTap: { },
             onRegenerate: { regenerateWine(type: "purchase", index: index) },
             onDelete: {
@@ -1215,6 +1268,12 @@ struct DinnerDetailView: View {
         await generateMenu()
     }
 
+    private func confirmDinner() {
+        dinner.status = .confirmed
+        dinner.updatedAt = Date()
+        try? modelContext.save()
+    }
+
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .full
@@ -1230,6 +1289,7 @@ struct EditableDishRow: View {
     let courseName: String
     let dishIndex: Int
     let isRegenerating: Bool
+    var canEdit: Bool = true
     let onTap: () -> Void
     let onRegenerate: () -> Void
     let onDelete: () -> Void
@@ -1240,32 +1300,38 @@ struct EditableDishRow: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button {
-                onRegenerate()
-            } label: {
-                Label("Rigenera piatto", systemImage: "arrow.clockwise")
-            }
+            if canEdit {
+                Button {
+                    onRegenerate()
+                } label: {
+                    Label("Rigenera piatto", systemImage: "arrow.clockwise")
+                }
 
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Label("Elimina piatto", systemImage: "trash")
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Label("Elimina piatto", systemImage: "trash")
+                }
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Label("Elimina", systemImage: "trash")
+            if canEdit {
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Label("Elimina", systemImage: "trash")
+                }
             }
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            Button {
-                onRegenerate()
-            } label: {
-                Label("Rigenera", systemImage: "arrow.clockwise")
+            if canEdit {
+                Button {
+                    onRegenerate()
+                } label: {
+                    Label("Rigenera", systemImage: "arrow.clockwise")
+                }
+                .tint(.purple)
             }
-            .tint(.purple)
         }
     }
 }
@@ -1278,6 +1344,7 @@ struct EditableWineRow: View {
     let vintage: String?
     let compatibility: Int?
     var isRegenerating: Bool = false
+    var canEdit: Bool = true
     let onTap: () -> Void
     let onRegenerate: () -> Void
     let onDelete: () -> Void
@@ -1323,32 +1390,38 @@ struct EditableWineRow: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button {
-                onRegenerate()
-            } label: {
-                Label("Rigenera vino", systemImage: "arrow.clockwise")
-            }
+            if canEdit {
+                Button {
+                    onRegenerate()
+                } label: {
+                    Label("Rigenera vino", systemImage: "arrow.clockwise")
+                }
 
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Label("Elimina vino", systemImage: "trash")
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Label("Elimina vino", systemImage: "trash")
+                }
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Label("Elimina", systemImage: "trash")
+            if canEdit {
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Label("Elimina", systemImage: "trash")
+                }
             }
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            Button {
-                onRegenerate()
-            } label: {
-                Label("Rigenera", systemImage: "arrow.clockwise")
+            if canEdit {
+                Button {
+                    onRegenerate()
+                } label: {
+                    Label("Rigenera", systemImage: "arrow.clockwise")
+                }
+                .tint(.orange)
             }
-            .tint(.orange)
         }
     }
 }
