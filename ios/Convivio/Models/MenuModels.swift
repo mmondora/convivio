@@ -44,7 +44,7 @@ enum DietType: String, CaseIterable, Identifiable {
         case .pesce: return "fish"
         case .carne: return "flame"
         case .senzaFormaggio: return "drop.triangle"
-        case .senzaGlutine: return "wheat.slash"
+        case .senzaGlutine: return "leaf.circle"
         }
     }
 }
