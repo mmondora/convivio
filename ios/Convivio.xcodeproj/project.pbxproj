@@ -7,6 +7,21 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		272887982F2CEAA300C8514A /* CloudKitModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887962F2CEAA300C8514A /* CloudKitModels.swift */; };
+		272887992F2CEAA300C8514A /* CollaborationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887972F2CEAA300C8514A /* CollaborationModels.swift */; };
+		2728879D2F2CEAB200C8514A /* CollaborativeDishView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2728879A2F2CEAB200C8514A /* CollaborativeDishView.swift */; };
+		2728879E2F2CEAB200C8514A /* ProposalInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2728879B2F2CEAB200C8514A /* ProposalInputView.swift */; };
+		2728879F2F2CEAB200C8514A /* ShareManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2728879C2F2CEAB200C8514A /* ShareManagementView.swift */; };
+		272887A42F2CEAC200C8514A /* CollaborationOnboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887A12F2CEAC200C8514A /* CollaborationOnboarding.swift */; };
+		272887A52F2CEAC200C8514A /* EmptyStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887A22F2CEAC200C8514A /* EmptyStateViews.swift */; };
+		272887A62F2CEAC200C8514A /* SyncStatusIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887A32F2CEAC200C8514A /* SyncStatusIndicator.swift */; };
+		272887A72F2CEAC200C8514A /* CellarSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887A02F2CEAC200C8514A /* CellarSwitcher.swift */; };
+		272887AE2F2CEAD000C8514A /* CellarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887A82F2CEAD000C8514A /* CellarManager.swift */; };
+		272887AF2F2CEAD000C8514A /* CollaborationNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887AA2F2CEAD000C8514A /* CollaborationNotificationService.swift */; };
+		272887B02F2CEAD000C8514A /* CloudKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887A92F2CEAD000C8514A /* CloudKitService.swift */; };
+		272887B12F2CEAD000C8514A /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887AB2F2CEAD000C8514A /* FeatureFlags.swift */; };
+		272887B22F2CEAD000C8514A /* SharingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887AD2F2CEAD000C8514A /* SharingService.swift */; };
+		272887B32F2CEAD000C8514A /* MigrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887AC2F2CEAD000C8514A /* MigrationService.swift */; };
 		F000000000000001 /* ConvivioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000001 /* ConvivioApp.swift */; };
 		F000000000000002 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000002 /* Models.swift */; };
 		F000000000000004 /* CellarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000004 /* CellarView.swift */; };
@@ -43,6 +58,21 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		272887962F2CEAA300C8514A /* CloudKitModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitModels.swift; sourceTree = "<group>"; };
+		272887972F2CEAA300C8514A /* CollaborationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationModels.swift; sourceTree = "<group>"; };
+		2728879A2F2CEAB200C8514A /* CollaborativeDishView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborativeDishView.swift; sourceTree = "<group>"; };
+		2728879B2F2CEAB200C8514A /* ProposalInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProposalInputView.swift; sourceTree = "<group>"; };
+		2728879C2F2CEAB200C8514A /* ShareManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareManagementView.swift; sourceTree = "<group>"; };
+		272887A02F2CEAC200C8514A /* CellarSwitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CellarSwitcher.swift; sourceTree = "<group>"; };
+		272887A12F2CEAC200C8514A /* CollaborationOnboarding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationOnboarding.swift; sourceTree = "<group>"; };
+		272887A22F2CEAC200C8514A /* EmptyStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateViews.swift; sourceTree = "<group>"; };
+		272887A32F2CEAC200C8514A /* SyncStatusIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusIndicator.swift; sourceTree = "<group>"; };
+		272887A82F2CEAD000C8514A /* CellarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CellarManager.swift; sourceTree = "<group>"; };
+		272887A92F2CEAD000C8514A /* CloudKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitService.swift; sourceTree = "<group>"; };
+		272887AA2F2CEAD000C8514A /* CollaborationNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationNotificationService.swift; sourceTree = "<group>"; };
+		272887AB2F2CEAD000C8514A /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
+		272887AC2F2CEAD000C8514A /* MigrationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationService.swift; sourceTree = "<group>"; };
+		272887AD2F2CEAD000C8514A /* SharingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharingService.swift; sourceTree = "<group>"; };
 		F100000000000000 /* Convivio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Convivio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000001 /* ConvivioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvivioApp.swift; sourceTree = "<group>"; };
 		F100000000000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -119,6 +149,8 @@
 		F400000000000003 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				272887962F2CEAA300C8514A /* CloudKitModels.swift */,
+				272887972F2CEAA300C8514A /* CollaborationModels.swift */,
 				F100000000000002 /* Models.swift */,
 				F10000000000000F /* MenuModels.swift */,
 				F100000000000020 /* WineRatingModels.swift */,
@@ -131,6 +163,9 @@
 		F400000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				2728879A2F2CEAB200C8514A /* CollaborativeDishView.swift */,
+				2728879B2F2CEAB200C8514A /* ProposalInputView.swift */,
+				2728879C2F2CEAB200C8514A /* ShareManagementView.swift */,
 				F100000000000004 /* CellarView.swift */,
 				F100000000000005 /* ScanView.swift */,
 				F100000000000028 /* EditScannedWineView.swift */,
@@ -152,6 +187,12 @@
 		F400000000000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				272887A82F2CEAD000C8514A /* CellarManager.swift */,
+				272887A92F2CEAD000C8514A /* CloudKitService.swift */,
+				272887AA2F2CEAD000C8514A /* CollaborationNotificationService.swift */,
+				272887AB2F2CEAD000C8514A /* FeatureFlags.swift */,
+				272887AC2F2CEAD000C8514A /* MigrationService.swift */,
+				272887AD2F2CEAD000C8514A /* SharingService.swift */,
 				F10000000000000C /* OpenAIService.swift */,
 				F10000000000000E /* MenuGeneratorService.swift */,
 				F100000000000027 /* WineRatingService.swift */,
@@ -173,6 +214,10 @@
 		F400000000000007 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				272887A02F2CEAC200C8514A /* CellarSwitcher.swift */,
+				272887A12F2CEAC200C8514A /* CollaborationOnboarding.swift */,
+				272887A22F2CEAC200C8514A /* EmptyStateViews.swift */,
+				272887A32F2CEAC200C8514A /* SyncStatusIndicator.swift */,
 				F100000000000021 /* StarRatingView.swift */,
 				F100000000000022 /* AISParameterPicker.swift */,
 			);
@@ -271,6 +316,9 @@
 			files = (
 				F000000000000001 /* ConvivioApp.swift in Sources */,
 				F000000000000002 /* Models.swift in Sources */,
+				2728879D2F2CEAB200C8514A /* CollaborativeDishView.swift in Sources */,
+				2728879E2F2CEAB200C8514A /* ProposalInputView.swift in Sources */,
+				2728879F2F2CEAB200C8514A /* ShareManagementView.swift in Sources */,
 				F00000000000000F /* MenuModels.swift in Sources */,
 				F000000000000020 /* WineRatingModels.swift in Sources */,
 				F000000000000004 /* CellarView.swift in Sources */,
@@ -288,6 +336,8 @@
 				F000000000000025 /* WineRatingView.swift in Sources */,
 				F000000000000026 /* WineRatingsHistoryView.swift in Sources */,
 				F000000000000027 /* WineRatingService.swift in Sources */,
+				272887982F2CEAA300C8514A /* CloudKitModels.swift in Sources */,
+				272887992F2CEAA300C8514A /* CollaborationModels.swift in Sources */,
 				F000000000000028 /* EditScannedWineView.swift in Sources */,
 				F000000000000030 /* WineConfirmationModels.swift in Sources */,
 				F000000000000031 /* NotificationService.swift in Sources */,
@@ -298,7 +348,17 @@
 				F000000000000036 /* StorageModels.swift in Sources */,
 				F000000000000037 /* StorageConfigurationView.swift in Sources */,
 				F000000000000038 /* LanguageManager.swift in Sources */,
+				272887AE2F2CEAD000C8514A /* CellarManager.swift in Sources */,
+				272887AF2F2CEAD000C8514A /* CollaborationNotificationService.swift in Sources */,
+				272887B02F2CEAD000C8514A /* CloudKitService.swift in Sources */,
+				272887B12F2CEAD000C8514A /* FeatureFlags.swift in Sources */,
+				272887B22F2CEAD000C8514A /* SharingService.swift in Sources */,
+				272887B32F2CEAD000C8514A /* MigrationService.swift in Sources */,
 				F000000000000039 /* OnboardingView.swift in Sources */,
+				272887A42F2CEAC200C8514A /* CollaborationOnboarding.swift in Sources */,
+				272887A52F2CEAC200C8514A /* EmptyStateViews.swift in Sources */,
+				272887A62F2CEAC200C8514A /* SyncStatusIndicator.swift in Sources */,
+				272887A72F2CEAC200C8514A /* CellarSwitcher.swift in Sources */,
 				F000000000000040 /* AboutView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

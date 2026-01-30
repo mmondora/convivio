@@ -24,8 +24,12 @@ struct SyncStatusIndicator: View {
     private var statusIcon: some View {
         switch cloudKit.syncStatus {
         case .syncing:
-            Image(systemName: cloudKit.syncStatus.icon)
-                .symbolEffect(.rotate, options: .repeating)
+            if #available(iOS 18.0, *) {
+                Image(systemName: cloudKit.syncStatus.icon)
+                    .symbolEffect(.rotate, options: .repeating)
+            } else {
+                Image(systemName: cloudKit.syncStatus.icon)
+            }
         default:
             Image(systemName: cloudKit.syncStatus.icon)
         }

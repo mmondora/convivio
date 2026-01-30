@@ -117,20 +117,24 @@ enum CellarRole: String, Codable, CaseIterable, Identifiable {
         self == .owner
     }
 
-    var canVoteOnMenu: Bool {
+    var canVote: Bool {
         true  // All roles can vote
     }
 
-    var canCommentOnMenu: Bool {
+    var canComment: Bool {
         true  // All roles can comment
     }
 
-    var canProposeDishe: Bool {
+    var canPropose: Bool {
         self != .guest
     }
 
     var canManageParticipants: Bool {
         self == .owner
+    }
+
+    var canInviteOthers: Bool {
+        self == .owner || self == .member
     }
 
     var canDeleteCellar: Bool {

@@ -402,7 +402,7 @@ struct DinnerDetailView: View {
                     // Propose dish button (for collaborative dinners)
                     if dinner.isCollaborative &&
                        (dinner.collaborationState == .openForProposals || dinner.collaborationState == .voting) &&
-                       userRole.canProposeDishes {
+                       userRole.canPropose {
                         Button {
                             showProposalInput = true
                         } label: {
@@ -582,7 +582,7 @@ struct DinnerDetailView: View {
 
             // Add proposal button
             if (dinner.collaborationState == .openForProposals || dinner.collaborationState == .voting) &&
-               userRole.canProposeDishes {
+               userRole.canPropose {
                 Button {
                     showProposalInput = true
                 } label: {

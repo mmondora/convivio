@@ -305,17 +305,7 @@ struct CollaborationSummary {
 // MARK: - Collaboration Permissions
 
 extension CellarRole {
-    var canProposeDishes: Bool {
-        self != .guest
-    }
-
-    var canVote: Bool {
-        true  // All roles can vote
-    }
-
-    var canComment: Bool {
-        true  // All roles can comment
-    }
+    // canVote, canComment, canPropose are defined in CloudKitModels.swift
 
     var canAcceptProposals: Bool {
         self == .owner

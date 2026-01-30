@@ -8,7 +8,8 @@ struct CellarView: View {
     private var bottles: [Bottle]
     @Query(sort: \StorageArea.sortOrder) private var storageAreas: [StorageArea]
 
-    @ObservedObject var cellarManager = CellarManager.shared
+    // CellarManager only used when CloudKit is enabled
+    // @ObservedObject var cellarManager = CellarManager.shared
 
     @State private var searchText = ""
     @State private var selectedType: WineType?
@@ -23,12 +24,12 @@ struct CellarView: View {
     var filteredBottles: [Bottle] {
         var result = bottles.filter { $0.quantity > 0 }
 
-        // Filter by selected cellar
-        if let selectedCellar = cellarManager.selectedCellar {
-            result = result.filter { bottle in
-                bottle.wine?.cellar?.id == selectedCellar.id
-            }
-        }
+        // Filter by selected cellar (disabled when CloudKit is off)
+        // if let selectedCellar = cellarManager.selectedCellar {
+        //     result = result.filter { bottle in
+        //         bottle.wine?.cellar?.id == selectedCellar.id
+        //     }
+        // }
 
         // Filter by search (name, producer, vintage, location)
         if !searchText.isEmpty {
@@ -196,13 +197,13 @@ struct CellarView: View {
             .navigationTitle(L10n.cellar)
             .searchable(text: $searchText, prompt: L10n.search)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 12) {
-                        CellarSwitcher()
-
-                        SyncStatusIndicator()
-                    }
-                }
+                // Cellar switcher and sync status (requires CloudKit files)
+                // ToolbarItem(placement: .topBarLeading) {
+                //     HStack(spacing: 12) {
+                //         CellarSwitcher()
+                //         SyncStatusIndicator()
+                //     }
+                // }
 
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
@@ -231,17 +232,18 @@ struct CellarView: View {
                                 Label("Configura Aree", systemImage: "archivebox")
                             }
 
-                            // Share option for owners
-                            if let cellar = cellarManager.selectedCellar,
-                               cellarManager.getUserRole(for: cellar) == .owner {
-                                Divider()
-                                Button {
-                                    showShareManagement = true
-                                } label: {
-                                    Label(cellar.isShared ? "Gestisci Condivisione" : "Condividi Cantina",
-                                          systemImage: cellar.isShared ? "person.2.fill" : "square.and.arrow.up")
-                                }
-                            }
+                            // Share option for owners (requires CloudKit)
+                            // if FeatureFlags.cloudKitEnabled,
+                            //    let cellar = cellarManager.selectedCellar,
+                            //    cellarManager.getUserRole(for: cellar) == .owner {
+                            //     Divider()
+                            //     Button {
+                            //         showShareManagement = true
+                            //     } label: {
+                            //         Label(cellar.isShared ? "Gestisci Condivisione" : "Condividi Cantina",
+                            //               systemImage: cellar.isShared ? "person.2.fill" : "square.and.arrow.up")
+                            //     }
+                            // }
                         } label: {
                             Image(systemName: "line.3.horizontal.decrease.circle")
                         }
@@ -254,9 +256,9 @@ struct CellarView: View {
                     }
                 }
             }
-            .onAppear {
-                cellarManager.loadCellars(from: modelContext)
-            }
+            // .onAppear {
+            //     cellarManager.loadCellars(from: modelContext)
+            // }
             .sheet(isPresented: $showAddBottle) {
                 AddBottleView()
             }
@@ -265,11 +267,12 @@ struct CellarView: View {
                     StorageConfigurationView()
                 }
             }
-            .sheet(isPresented: $showShareManagement) {
-                if let cellar = cellarManager.selectedCellar {
-                    ShareManagementView(cellar: cellar)
-                }
-            }
+            // Share management sheet (requires CloudKit)
+            // .sheet(isPresented: $showShareManagement) {
+            //     if let cellar = cellarManager.selectedCellar {
+            //         ShareManagementView(cellar: cellar)
+            //     }
+            // }
         }
     }
 
