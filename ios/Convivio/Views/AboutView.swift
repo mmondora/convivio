@@ -29,6 +29,9 @@ struct AboutView: View {
                 // Story Section
                 storySection
 
+                // Release Notes Section
+                releaseNotesSection
+
                 // Contact Section
                 contactSection
 
@@ -144,6 +147,51 @@ struct AboutView: View {
         .cornerRadius(12)
     }
 
+    // MARK: - Release Notes Section
+
+    private var releaseNotesSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "sparkles")
+                    .font(.title3)
+                    .foregroundColor(.purple)
+
+                Text("Novità v1.1")
+                    .font(.headline)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                ReleaseNoteItem(
+                    icon: "📱",
+                    text: "Supporto iPad ottimizzato con layout adattivi"
+                )
+                ReleaseNoteItem(
+                    icon: "🍷",
+                    text: "Swipe sui vini del menu per rigenerare o eliminare"
+                )
+                ReleaseNoteItem(
+                    icon: "🔔",
+                    text: "Notifiche temperatura vini migliorate"
+                )
+                ReleaseNoteItem(
+                    icon: "🔢",
+                    text: "Stepper quantità bottiglie nella conferma vini"
+                )
+                ReleaseNoteItem(
+                    icon: "🌍",
+                    text: "Supporto multilingua (IT, EN, DE, FR)"
+                )
+                ReleaseNoteItem(
+                    icon: "ℹ️",
+                    text: "Nuova schermata About con info sviluppatore"
+                )
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(12)
+    }
+
     // MARK: - Contact Section
 
     private var contactSection: some View {
@@ -226,6 +274,23 @@ struct AboutView: View {
                 .padding(.top, 8)
         }
         .padding(.vertical, 20)
+    }
+}
+
+// MARK: - Release Note Item
+
+struct ReleaseNoteItem: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(icon)
+                .font(.body)
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
     }
 }
 
