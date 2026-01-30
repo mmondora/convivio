@@ -155,6 +155,47 @@ class LanguageManager: ObservableObject {
 
 ---
 
+## PARTE 5: Audit Completato - Memory Management
+
+### 5.1 @MainActor Thread Safety (FIXED)
+
+**LanguageManager.swift** - Aggiunto @MainActor per thread safety:
+```swift
+@MainActor
+class LanguageManager: ObservableObject {
+    // Static strings marked as nonisolated
+    nonisolated static let italianStrings: [String: String] = [...]
+}
+```
+
+### 5.2 @Published Arrays (REVIEWED)
+
+| Service | Property | Status | Notes |
+|---------|----------|--------|-------|
+| PaginationService | displayedItems | OK | Intentional for pagination |
+| CellarManager | availableCellars | OK | Cellar switching, limited size |
+| PerformanceMonitor | apiTimings | OK | Capped at 100 entries |
+| SharingService | pendingInvitations | OK | Usually small |
+
+### 5.3 NotificationCenter (REVIEWED)
+
+**CloudKitService.swift** - Corretto uso di [weak self]:
+```swift
+NotificationCenter.default.publisher(for: .CKAccountChanged)
+    .sink { [weak self] _ in
+        Task { await self?.checkiCloudStatus() }
+    }
+    .store(in: &cancellables)
+```
+
+### 5.4 Task Closures in Views
+
+SwiftUI Views use Task {} safely - no retain cycle risk because:
+- View structs don't hold strong references
+- Swift structured concurrency handles cancellation
+
+---
+
 ## Piano di Implementazione
 
 ### Commit 1: Lazy Loading e Paginazione
