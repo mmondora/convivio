@@ -6,13 +6,18 @@ struct ProfileView: View {
     @Query private var settings: [AppSettings]
     @Query private var bottles: [Bottle]
     @Query private var wines: [Wine]
+    @Query private var cellars: [Cellar]
     @ObservedObject private var languageManager = LanguageManager.shared
+    @ObservedObject private var cloudKitService = CloudKitService.shared
+    @ObservedObject private var cellarManager = CellarManager.shared
 
     @State private var showApiKeySheet = false
     @State private var showLogsSheet = false
     @State private var isLoadingSamples = false
     @State private var sampleLoadResult: String?
     @State private var showSampleResult = false
+    @State private var showCollaborationOnboarding = false
+    @State private var showRolesInfo = false
 
     var currentSettings: AppSettings? { settings.first }
 
@@ -34,12 +39,21 @@ struct ProfileView: View {
         return (total, value, byType)
     }
 
-    private var localDataText: String {
-        switch languageManager.currentLanguage {
-        case .italian: return "Dati salvati localmente"
-        case .english: return "Data saved locally"
-        case .german: return "Lokal gespeicherte Daten"
-        case .french: return "Données enregistrées localement"
+    private var syncStatusText: String {
+        if cloudKitService.iCloudAvailable {
+            switch languageManager.currentLanguage {
+            case .italian: return "Sincronizzato con iCloud"
+            case .english: return "Synced with iCloud"
+            case .german: return "Mit iCloud synchronisiert"
+            case .french: return "Synchronisé avec iCloud"
+            }
+        } else {
+            switch languageManager.currentLanguage {
+            case .italian: return "Dati salvati localmente"
+            case .english: return "Data saved locally"
+            case .german: return "Lokal gespeicherte Daten"
+            case .french: return "Données enregistrées localement"
+            }
         }
     }
 
@@ -56,12 +70,168 @@ struct ProfileView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(L10n.myCellar)
                                 .font(.headline)
-                            Text(localDataText)
+                            HStack(spacing: 4) {
+                                if cloudKitService.iCloudAvailable {
+                                    Image(systemName: "icloud.fill")
+                                        .font(.caption2)
+                                        .foregroundColor(.blue)
+                                }
+                                Text(syncStatusText)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+
+                // iCloud Sync Section
+                Section {
+                    // Sync status row
+                    HStack {
+                        Image(systemName: cloudKitService.syncStatus.icon)
+                            .foregroundColor(cloudKitService.syncStatus.color)
+                            .frame(width: 30)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Sincronizzazione iCloud")
+                                .font(.subheadline)
+
+                            Text(cloudKitService.syncStatus.displayName)
+                                .font(.caption)
+                                .foregroundColor(cloudKitService.syncStatus.color)
+                        }
+
+                        Spacer()
+
+                        if case .syncing = cloudKitService.syncStatus {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                    }
+
+                    // Last sync
+                    if let lastSync = cloudKitService.lastSyncDate {
+                        HStack {
+                            Image(systemName: "clock")
+                                .foregroundColor(.secondary)
+                                .frame(width: 30)
+
+                            Text("Ultimo sync")
+
+                            Spacer()
+
+                            Text(lastSync, style: .relative)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
-                    .padding(.vertical, 8)
+
+                    // Manual sync button
+                    Button {
+                        Task {
+                            await cloudKitService.triggerSync()
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .foregroundColor(.blue)
+                                .frame(width: 30)
+
+                            Text("Sincronizza ora")
+
+                            Spacer()
+                        }
+                    }
+                    .disabled(!cloudKitService.iCloudAvailable)
+
+                    // iCloud account status
+                    if !cloudKitService.iCloudAvailable {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle")
+                                .foregroundColor(.orange)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("iCloud non disponibile")
+                                    .font(.subheadline)
+                                Text("Accedi a iCloud nelle Impostazioni")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("iCloud")
+                } footer: {
+                    Text("I tuoi vini e cene vengono sincronizzati automaticamente su tutti i tuoi dispositivi")
+                }
+
+                // Collaboration Section
+                Section {
+                    // Shared cellars count
+                    let sharedCellars = cellars.filter { $0.isShared }
+                    HStack {
+                        Image(systemName: "person.2.fill")
+                            .foregroundColor(.purple)
+                            .frame(width: 30)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Cantine condivise")
+                            Text(sharedCellars.isEmpty ? "Nessuna" : "\(sharedCellars.count) cantina/e")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+                    }
+
+                    // Learn about collaboration
+                    Button {
+                        showCollaborationOnboarding = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "person.3.fill")
+                                .foregroundColor(.blue)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Collabora con amici")
+                                Text("Condividi la cantina e pianifica cene insieme")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .foregroundColor(.primary)
+
+                    // Roles info
+                    Button {
+                        showRolesInfo = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "person.badge.shield.checkmark")
+                                .foregroundColor(.green)
+                                .frame(width: 30)
+
+                            Text("Ruoli e permessi")
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .foregroundColor(.primary)
+                } header: {
+                    Text("Collaborazione")
                 }
 
                 // Stats
@@ -277,6 +447,15 @@ struct ProfileView: View {
                 Button("OK") {}
             } message: {
                 Text(sampleLoadResult ?? "")
+            }
+            .sheet(isPresented: $showCollaborationOnboarding) {
+                CollaborationOnboardingView()
+            }
+            .sheet(isPresented: $showRolesInfo) {
+                RolesOverviewView()
+            }
+            .task {
+                await cloudKitService.checkiCloudStatus()
             }
         }
     }

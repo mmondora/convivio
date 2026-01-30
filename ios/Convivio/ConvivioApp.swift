@@ -63,12 +63,29 @@ struct ConvivioApp: App {
                 ChatMessage.self,
                 AppSettings.self,
                 QuickRating.self,
-                SchedaAIS.self
+                SchedaAIS.self,
+                StorageArea.self,
+                StorageContainer.self,
+                Cellar.self,
+                DishProposal.self,
+                Vote.self,
+                Comment.self
             ])
+
+            // Configure CloudKit sync for production, local-only for development
+            #if DEBUG
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
                 isStoredInMemoryOnly: false
             )
+            #else
+            let modelConfiguration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                cloudKitDatabase: .private("iCloud.com.mikesoft.convivio")
+            )
+            #endif
+
             modelContainer = try ModelContainer(
                 for: schema,
                 configurations: [modelConfiguration]
@@ -81,8 +98,17 @@ struct ConvivioApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onOpenURL { url in
+                    // Handle CloudKit share URLs
+                    handleIncomingURL(url)
+                }
         }
         .modelContainer(modelContainer)
+    }
+
+    private func handleIncomingURL(_ url: URL) {
+        // CloudKit share URLs will be handled by SharingService in Phase 2
+        print("Received URL: \(url)")
     }
 }
 
@@ -131,6 +157,12 @@ struct ContentView: View {
         if let savedLanguage = settings.first?.preferredLanguage,
            let language = AppLanguage(rawValue: savedLanguage) {
             languageManager.setLanguage(language)
+        }
+
+        // Check iCloud status and run migration if needed
+        await CloudKitService.shared.checkiCloudStatus()
+        if MigrationService.shared.needsMigration {
+            try? await MigrationService.shared.migrateLocalDataToCloudKit(context: modelContext)
         }
 
         // Load API key if it exists

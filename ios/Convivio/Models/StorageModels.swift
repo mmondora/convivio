@@ -11,6 +11,9 @@ final class StorageArea {
     var createdAt: Date
     var updatedAt: Date
 
+    // CloudKit relationships
+    var cellar: Cellar?
+
     @Relationship(deleteRule: .cascade, inverse: \StorageContainer.area)
     var containers: [StorageContainer]?
 

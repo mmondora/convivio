@@ -39,6 +39,9 @@ final class Wine {
     var createdAt: Date
     var updatedAt: Date
 
+    // CloudKit relationships
+    var cellar: Cellar?
+
     @Relationship(deleteRule: .cascade, inverse: \Bottle.wine)
     var bottles: [Bottle]?
 
@@ -248,10 +251,33 @@ final class DinnerEvent {
     var createdAt: Date
     var updatedAt: Date
 
+    // CloudKit relationships
+    var cellar: Cellar?
+
     // Wine confirmation data
     var confirmedWinesData: Data?
     var notificationsScheduled: Bool = false
     var postDinnerNotificationId: String?  // Notification for bottle unloading reminder
+
+    // Collaboration data
+    var collaborationStateRaw: String = "draft"
+    @Relationship(deleteRule: .cascade, inverse: \DishProposal.dinner)
+    var proposals: [DishProposal] = []
+
+    var collaborationState: CollaborationState {
+        get { CollaborationState(rawValue: collaborationStateRaw) ?? .draft }
+        set { collaborationStateRaw = newValue.rawValue }
+    }
+
+    /// Check if collaboration is enabled (shared cellar)
+    var isCollaborative: Bool {
+        cellar?.isShared == true
+    }
+
+    /// Get collaboration summary
+    var collaborationSummary: CollaborationSummary {
+        CollaborationSummary(proposals: proposals, state: collaborationState)
+    }
 
     var status: DinnerStatus {
         get { DinnerStatus(rawValue: statusRaw) ?? .planning }

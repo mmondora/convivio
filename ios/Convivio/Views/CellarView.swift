@@ -8,6 +8,8 @@ struct CellarView: View {
     private var bottles: [Bottle]
     @Query(sort: \StorageArea.sortOrder) private var storageAreas: [StorageArea]
 
+    @ObservedObject var cellarManager = CellarManager.shared
+
     @State private var searchText = ""
     @State private var selectedType: WineType?
     @State private var selectedArea: StorageArea?
@@ -16,9 +18,17 @@ struct CellarView: View {
     @State private var showAddBottle = false
     @State private var showLocationView = false
     @State private var showStorageConfig = false
+    @State private var showShareManagement = false
 
     var filteredBottles: [Bottle] {
         var result = bottles.filter { $0.quantity > 0 }
+
+        // Filter by selected cellar
+        if let selectedCellar = cellarManager.selectedCellar {
+            result = result.filter { bottle in
+                bottle.wine?.cellar?.id == selectedCellar.id
+            }
+        }
 
         // Filter by search (name, producer, vintage, location)
         if !searchText.isEmpty {
@@ -187,42 +197,65 @@ struct CellarView: View {
             .searchable(text: $searchText, prompt: L10n.search)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        Section("Ordina per") {
-                            ForEach(CellarSortOption.allCases, id: \.self) { option in
-                                Button {
-                                    sortBy = option
-                                } label: {
-                                    HStack {
-                                        Image(systemName: option.icon)
-                                        Text(option.rawValue)
-                                        if sortBy == option {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    HStack(spacing: 12) {
+                        CellarSwitcher()
 
-                        Divider()
-
-                        Button {
-                            showStorageConfig = true
-                        } label: {
-                            Label("Configura Aree", systemImage: "archivebox")
-                        }
-                    } label: {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
+                        SyncStatusIndicator()
                     }
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showAddBottle = true
-                    } label: {
-                        Image(systemName: "plus")
+                    HStack(spacing: 12) {
+                        Menu {
+                            Section("Ordina per") {
+                                ForEach(CellarSortOption.allCases, id: \.self) { option in
+                                    Button {
+                                        sortBy = option
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: option.icon)
+                                            Text(option.rawValue)
+                                            if sortBy == option {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Divider()
+
+                            Button {
+                                showStorageConfig = true
+                            } label: {
+                                Label("Configura Aree", systemImage: "archivebox")
+                            }
+
+                            // Share option for owners
+                            if let cellar = cellarManager.selectedCellar,
+                               cellarManager.getUserRole(for: cellar) == .owner {
+                                Divider()
+                                Button {
+                                    showShareManagement = true
+                                } label: {
+                                    Label(cellar.isShared ? "Gestisci Condivisione" : "Condividi Cantina",
+                                          systemImage: cellar.isShared ? "person.2.fill" : "square.and.arrow.up")
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                        }
+
+                        Button {
+                            showAddBottle = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
+            }
+            .onAppear {
+                cellarManager.loadCellars(from: modelContext)
             }
             .sheet(isPresented: $showAddBottle) {
                 AddBottleView()
@@ -230,6 +263,11 @@ struct CellarView: View {
             .sheet(isPresented: $showStorageConfig) {
                 NavigationStack {
                     StorageConfigurationView()
+                }
+            }
+            .sheet(isPresented: $showShareManagement) {
+                if let cellar = cellarManager.selectedCellar {
+                    ShareManagementView(cellar: cellar)
                 }
             }
         }

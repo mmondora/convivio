@@ -97,6 +97,19 @@ struct DinnerRowView: View {
                         .foregroundColor(.green)
                 }
             }
+
+            // Collaboration info for shared cellars
+            if dinner.isCollaborative {
+                HStack {
+                    CollaborationStateBadge(state: dinner.collaborationState)
+
+                    if dinner.proposals.count > 0 {
+                        Text("\(dinner.proposals.count) proposte")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
         }
         .padding(.vertical, 4)
     }
@@ -315,7 +328,24 @@ struct DinnerDetailView: View {
     @State private var showDeleteWineConfirmation = false
     @State private var wineToDelete: (type: String, index: Int)? // "cellar" or "purchase", index
 
+    // Collaboration states
+    @State private var showProposalInput = false
+    @ObservedObject var cellarManager = CellarManager.shared
+
     private var settings: AppSettings? { appSettings.first }
+
+    private var currentUserId: String {
+        CloudKitService.shared.currentUserRecordID?.recordName ?? "local"
+    }
+
+    private var currentUserName: String {
+        CloudKitService.shared.currentUserName ?? "Utente"
+    }
+
+    private var userRole: CellarRole {
+        guard let cellar = dinner.cellar else { return .owner }
+        return cellarManager.getUserRole(for: cellar)
+    }
 
     // Max width for content on iPad
     private var maxContentWidth: CGFloat? {
@@ -327,6 +357,11 @@ struct DinnerDetailView: View {
             VStack(spacing: 20) {
                 // Header info
                 dinnerInfoSection
+
+                // Proposals section (for collaborative dinners)
+                if dinner.isCollaborative && !dinner.proposals.isEmpty {
+                    proposalsSection
+                }
 
                 // Menu section
                 if let menuResponse = dinner.menuResponse {
@@ -345,9 +380,39 @@ struct DinnerDetailView: View {
         }
         .navigationTitle(dinner.title)
         .toolbar {
+            // Collaboration state (for shared cellars)
+            if dinner.isCollaborative {
+                ToolbarItem(placement: .topBarLeading) {
+                    CollaborationStatePicker(
+                        state: Binding(
+                            get: { dinner.collaborationState },
+                            set: { newState in
+                                dinner.collaborationState = newState
+                                dinner.updatedAt = Date()
+                                try? modelContext.save()
+                            }
+                        ),
+                        canChange: userRole.canChangeCollaborationState
+                    )
+                }
+            }
+
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Modifica") {
-                    showEditSheet = true
+                HStack {
+                    // Propose dish button (for collaborative dinners)
+                    if dinner.isCollaborative &&
+                       (dinner.collaborationState == .openForProposals || dinner.collaborationState == .voting) &&
+                       userRole.canProposeDishes {
+                        Button {
+                            showProposalInput = true
+                        } label: {
+                            Image(systemName: "plus.bubble")
+                        }
+                    }
+
+                    Button("Modifica") {
+                        showEditSheet = true
+                    }
                 }
             }
         }
@@ -368,6 +433,13 @@ struct DinnerDetailView: View {
         }
         .sheet(isPresented: $showBottleUnload) {
             BottleUnloadView(dinner: dinner)
+        }
+        .sheet(isPresented: $showProposalInput) {
+            ProposalInputView(
+                dinner: dinner,
+                currentUserId: currentUserId,
+                currentUserName: currentUserName
+            )
         }
         .alert("Elimina piatto", isPresented: $showDeleteConfirmation) {
             Button("Annulla", role: .cancel) {}
@@ -461,6 +533,71 @@ struct DinnerDetailView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Proposals Section
+
+    private var proposalsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Section header
+            HStack {
+                Image(systemName: "plus.bubble")
+                    .foregroundColor(.purple)
+                Text("Proposte dei partecipanti")
+                    .font(.headline)
+                Spacer()
+                Text("\(dinner.proposals.count)")
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.purple.opacity(0.1))
+                    .cornerRadius(12)
+            }
+
+            // Group proposals by course
+            ForEach(CourseType.allCases, id: \.self) { course in
+                let courseProposals = dinner.proposals.filter { $0.course == course }
+                if !courseProposals.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        // Course header
+                        HStack {
+                            Text(course.icon)
+                            Text(course.displayName)
+                                .font(.subheadline.bold())
+                        }
+                        .foregroundColor(.secondary)
+
+                        // Proposals for this course
+                        ForEach(courseProposals.sorted { $0.score > $1.score }) { proposal in
+                            CollaborativeDishView(
+                                proposal: proposal,
+                                currentUserId: currentUserId,
+                                currentUserName: currentUserName,
+                                userRole: userRole
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Add proposal button
+            if (dinner.collaborationState == .openForProposals || dinner.collaborationState == .voting) &&
+               userRole.canProposeDishes {
+                Button {
+                    showProposalInput = true
+                } label: {
+                    Label("Proponi un piatto", systemImage: "plus")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.purple.opacity(0.1))
+                        .foregroundColor(.purple)
+                        .cornerRadius(12)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(16)
     }
 
     // MARK: - Generate Menu Section

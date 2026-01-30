@@ -17,9 +17,9 @@
 		F00000000000000C /* OpenAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000C /* OpenAIService.swift */; };
 		F00000000000000E /* MenuGeneratorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000E /* MenuGeneratorService.swift */; };
 		F00000000000000F /* MenuModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000F /* MenuModels.swift */; };
-		F000000000000012 /* FoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000014 /* FoodView.swift */; };
 		F000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000010 /* Assets.xcassets */; };
 		F000000000000011 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000011 /* GoogleService-Info.plist */; };
+		F000000000000012 /* FoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000014 /* FoodView.swift */; };
 		F000000000000020 /* WineRatingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000020 /* WineRatingModels.swift */; };
 		F000000000000021 /* StarRatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000021 /* StarRatingView.swift */; };
 		F000000000000022 /* AISParameterPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000022 /* AISParameterPicker.swift */; };
@@ -51,13 +51,13 @@
 		F100000000000006 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		F100000000000009 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		F10000000000000B /* AppIconGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconGenerator.swift; sourceTree = "<group>"; };
+		F10000000000000C /* OpenAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIService.swift; sourceTree = "<group>"; };
+		F10000000000000E /* MenuGeneratorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuGeneratorService.swift; sourceTree = "<group>"; };
+		F10000000000000F /* MenuModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuModels.swift; sourceTree = "<group>"; };
 		F100000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F100000000000011 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		F100000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F100000000000013 /* Convivio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Convivio.entitlements; sourceTree = "<group>"; };
-		F10000000000000C /* OpenAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIService.swift; sourceTree = "<group>"; };
-		F10000000000000E /* MenuGeneratorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuGeneratorService.swift; sourceTree = "<group>"; };
-		F10000000000000F /* MenuModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuModels.swift; sourceTree = "<group>"; };
 		F100000000000014 /* FoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodView.swift; sourceTree = "<group>"; };
 		F100000000000020 /* WineRatingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineRatingModels.swift; sourceTree = "<group>"; };
 		F100000000000021 /* StarRatingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarRatingView.swift; sourceTree = "<group>"; };
@@ -226,7 +226,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1540;
-				LastUpgradeCheck = 1540;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					F500000000000001 = {
 						CreatedOnToolsVersion = 15.4;
@@ -311,6 +311,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -341,6 +342,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 5NZADC9YQ2;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -364,6 +366,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -374,6 +377,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -404,6 +408,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 5NZADC9YQ2;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -420,6 +425,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -433,7 +439,6 @@
 				CODE_SIGN_ENTITLEMENTS = Convivio/Convivio.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 5NZADC9YQ2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Convivio/Info.plist;
@@ -466,7 +471,6 @@
 				CODE_SIGN_ENTITLEMENTS = Convivio/Convivio.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 5NZADC9YQ2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Convivio/Info.plist;
