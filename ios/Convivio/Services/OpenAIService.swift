@@ -163,8 +163,8 @@ actor OpenAIService {
 
     // MARK: - Menu Generation (for MenuGeneratorService)
 
-    func generateMenuWithGPT(prompt: String) async throws -> String {
-        return try await callGPT(prompt: prompt)
+    func generateMenuWithGPT(prompt: String, model: OpenAIModel = .gpt4o) async throws -> String {
+        return try await callGPT(prompt: prompt, model: model)
     }
 
     // MARK: - Menu Proposal
@@ -316,7 +316,7 @@ actor OpenAIService {
 
     // MARK: - API Calls
 
-    private func callGPT(prompt: String) async throws -> String {
+    private func callGPT(prompt: String, model: OpenAIModel = .gpt4o) async throws -> String {
         guard let apiKey = apiKey else { throw OpenAIError.noApiKey }
 
         let startTime = Date()
@@ -325,15 +325,18 @@ actor OpenAIService {
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 180 // 3 minutes for complex menu generation
+
+        // Adjust timeout based on model - mini is faster
+        let timeout: TimeInterval = model == .gpt4oMini ? 60 : 180
+        request.timeoutInterval = timeout
 
         let body: [String: Any] = [
-            "model": "gpt-4o",
+            "model": model.rawValue,
             "messages": [
                 ["role": "user", "content": prompt]
             ],
             "temperature": 0.7,
-            "max_tokens": 16000
+            "max_tokens": model.maxTokens
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -448,7 +451,7 @@ actor OpenAIService {
         }
     }
 
-    private func callGPTChat(messages: [[String: String]]) async throws -> String {
+    private func callGPTChat(messages: [[String: String]], model: OpenAIModel = .gpt4oMini) async throws -> String {
         guard let apiKey = apiKey else { throw OpenAIError.noApiKey }
 
         let startTime = Date()
@@ -464,11 +467,12 @@ actor OpenAIService {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // Chat uses mini by default - faster for conversational responses
         let body: [String: Any] = [
-            "model": "gpt-4o",
+            "model": model.rawValue,
             "messages": messages,
             "temperature": 0.8,
-            "max_tokens": 1000
+            "max_tokens": min(model.maxTokens, 2000)  // Cap chat responses
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)

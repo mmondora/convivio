@@ -47,8 +47,11 @@ actor MenuGeneratorService {
             finalPrompt = systemPrompt + "\n\n" + userPrompt
         }
 
-        // Call OpenAI API
-        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: finalPrompt)
+        // Call OpenAI API with gpt-4o for complex menu generation
+        let responseText = try await OpenAIService.shared.generateMenuWithGPT(
+            prompt: finalPrompt,
+            model: .gpt4o  // Full menu generation requires best model
+        )
 
         // Parse response
         return try parseMenuResponse(responseText)
@@ -617,7 +620,11 @@ extension MenuGeneratorService {
             finalPrompt = systemPrompt + "\n\n" + userPrompt
         }
 
-        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: finalPrompt)
+        // Use gpt-4o-mini for single dish regeneration - faster and cheaper
+        let responseText = try await OpenAIService.shared.generateMenuWithGPT(
+            prompt: finalPrompt,
+            model: .gpt4oMini  // Simple task: single dish replacement
+        )
         let newDish = try parseSingleDish(responseText)
 
         // Create updated menu with the new dish
@@ -954,7 +961,11 @@ extension MenuGeneratorService {
         """)
         """
 
-        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: prompt)
+        // Use gpt-4o-mini for single wine regeneration - faster and cheaper
+        let responseText = try await OpenAIService.shared.generateMenuWithGPT(
+            prompt: prompt,
+            model: .gpt4oMini  // Simple task: single wine suggestion
+        )
 
         if isCellar {
             let newPairing = try parseSingleWinePairing(responseText)
@@ -1140,7 +1151,11 @@ extension MenuGeneratorService {
         Rispondi SOLO con il testo del messaggio.
         """
 
-        let response = try await OpenAIService.shared.generateMenuWithGPT(prompt: prompt)
+        // Use gpt-4o-mini for invite generation - simple text task
+        let response = try await OpenAIService.shared.generateMenuWithGPT(
+            prompt: prompt,
+            model: .gpt4oMini  // Simple task: text generation
+        )
         return response.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -1341,7 +1356,11 @@ extension MenuGeneratorService {
             finalPrompt = systemPrompt + "\n\n" + userPrompt
         }
 
-        let responseText = try await OpenAIService.shared.generateMenuWithGPT(prompt: finalPrompt)
+        // Use gpt-4o for detailed menu - complex task with recipes and timeline
+        let responseText = try await OpenAIService.shared.generateMenuWithGPT(
+            prompt: finalPrompt,
+            model: .gpt4o  // Complex task: detailed recipes and timeline
+        )
         return try parseDetailedMenu(responseText)
     }
 

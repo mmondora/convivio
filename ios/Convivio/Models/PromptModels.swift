@@ -1,5 +1,31 @@
 import Foundation
 
+// MARK: - OpenAI Model
+
+/// Available OpenAI models with different capabilities and costs
+enum OpenAIModel: String, CaseIterable {
+    case gpt4o = "gpt-4o"           // Best quality, higher cost
+    case gpt4oMini = "gpt-4o-mini"  // Faster, cheaper, good for simple tasks
+
+    var displayName: String {
+        switch self {
+        case .gpt4o: return "GPT-4o (Alta qualità)"
+        case .gpt4oMini: return "GPT-4o Mini (Veloce)"
+        }
+    }
+
+    var maxTokens: Int {
+        switch self {
+        case .gpt4o: return 16000     // For complex tasks
+        case .gpt4oMini: return 4000  // Sufficient for simple tasks
+        }
+    }
+
+    var isExpensive: Bool {
+        self == .gpt4o
+    }
+}
+
 // MARK: - Prompt Identifier
 
 /// Identifies different types of prompts used in the app
@@ -19,6 +45,25 @@ enum PromptIdentifier: String, CaseIterable {
         case .inviteGeneration: return "Generazione Invito"
         case .detailedMenu: return "Menu Dettagliato"
         case .sommelierChat: return "Chat Sommelier"
+        }
+    }
+
+    /// Recommended model for this task type
+    /// Complex tasks use gpt-4o, simple tasks use gpt-4o-mini
+    var recommendedModel: OpenAIModel {
+        switch self {
+        case .menuGeneration:
+            return .gpt4o          // Complex: full menu with pairings
+        case .detailedMenu:
+            return .gpt4o          // Complex: detailed recipes and timeline
+        case .dishRegeneration:
+            return .gpt4oMini      // Simple: single dish replacement
+        case .wineRegeneration:
+            return .gpt4oMini      // Simple: single wine suggestion
+        case .inviteGeneration:
+            return .gpt4oMini      // Simple: text generation
+        case .sommelierChat:
+            return .gpt4oMini      // Simple: conversational responses
         }
     }
 }
