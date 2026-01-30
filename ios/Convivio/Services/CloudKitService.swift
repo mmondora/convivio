@@ -70,13 +70,25 @@ class CloudKitService: ObservableObject {
     // MARK: - Initialization
 
     private init() {
-        setupNotifications()
+        // Only setup notifications if CloudKit is enabled
+        if FeatureFlags.cloudKitEnabled {
+            setupNotifications()
+        } else {
+            syncStatus = .offline
+        }
     }
 
     // MARK: - Public Methods
 
     /// Check iCloud account status
     func checkiCloudStatus() async {
+        // Skip if CloudKit is disabled
+        guard FeatureFlags.cloudKitEnabled else {
+            iCloudAvailable = false
+            syncStatus = .offline
+            return
+        }
+
         do {
             let status = try await container.accountStatus()
             switch status {

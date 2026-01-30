@@ -87,84 +87,119 @@ struct ProfileView: View {
 
                 // iCloud Sync Section
                 Section {
-                    // Sync status row
-                    HStack {
-                        Image(systemName: cloudKitService.syncStatus.icon)
-                            .foregroundColor(cloudKitService.syncStatus.color)
-                            .frame(width: 30)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Sincronizzazione iCloud")
-                                .font(.subheadline)
-
-                            Text(cloudKitService.syncStatus.displayName)
-                                .font(.caption)
+                    if FeatureFlags.cloudKitEnabled {
+                        // Sync status row
+                        HStack {
+                            Image(systemName: cloudKitService.syncStatus.icon)
                                 .foregroundColor(cloudKitService.syncStatus.color)
-                        }
-
-                        Spacer()
-
-                        if case .syncing = cloudKitService.syncStatus {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        }
-                    }
-
-                    // Last sync
-                    if let lastSync = cloudKitService.lastSyncDate {
-                        HStack {
-                            Image(systemName: "clock")
-                                .foregroundColor(.secondary)
-                                .frame(width: 30)
-
-                            Text("Ultimo sync")
-
-                            Spacer()
-
-                            Text(lastSync, style: .relative)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    // Manual sync button
-                    Button {
-                        Task {
-                            await cloudKitService.triggerSync()
-                        }
-                    } label: {
-                        HStack {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .foregroundColor(.blue)
-                                .frame(width: 30)
-
-                            Text("Sincronizza ora")
-
-                            Spacer()
-                        }
-                    }
-                    .disabled(!cloudKitService.iCloudAvailable)
-
-                    // iCloud account status
-                    if !cloudKitService.iCloudAvailable {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle")
-                                .foregroundColor(.orange)
                                 .frame(width: 30)
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("iCloud non disponibile")
+                                Text("Sincronizzazione iCloud")
                                     .font(.subheadline)
-                                Text("Accedi a iCloud nelle Impostazioni")
+
+                                Text(cloudKitService.syncStatus.displayName)
+                                    .font(.caption)
+                                    .foregroundColor(cloudKitService.syncStatus.color)
+                            }
+
+                            Spacer()
+
+                            if case .syncing = cloudKitService.syncStatus {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            }
+                        }
+
+                        // Last sync
+                        if let lastSync = cloudKitService.lastSyncDate {
+                            HStack {
+                                Image(systemName: "clock")
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 30)
+
+                                Text("Ultimo sync")
+
+                                Spacer()
+
+                                Text(lastSync, style: .relative)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
+                        // Manual sync button
+                        Button {
+                            Task {
+                                await cloudKitService.triggerSync()
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .foregroundColor(.blue)
+                                    .frame(width: 30)
+
+                                Text("Sincronizza ora")
+
+                            Spacer()
+                        }
+                    }
+                        .disabled(!cloudKitService.iCloudAvailable)
+
+                        // iCloud account status
+                        if !cloudKitService.iCloudAvailable {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .foregroundColor(.orange)
+                                    .frame(width: 30)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("iCloud non disponibile")
+                                        .font(.subheadline)
+                                    Text("Accedi a iCloud nelle Impostazioni")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    } else {
+                        // CloudKit disabled via feature flag
+                        HStack {
+                            Image(systemName: "externaldrive")
+                                .foregroundColor(.secondary)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Archiviazione Locale")
+                                    .font(.subheadline)
+                                Text("I dati sono salvati solo su questo dispositivo")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
+                        HStack {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.blue)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("iCloud in arrivo")
+                                    .font(.subheadline)
+                                Text("La sincronizzazione cloud sarà disponibile presto")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
                         }
                     }
                 } header: {
-                    Text("iCloud")
+                    Text("Archiviazione")
                 } footer: {
-                    Text("I tuoi vini e cene vengono sincronizzati automaticamente su tutti i tuoi dispositivi")
+                    if FeatureFlags.cloudKitEnabled {
+                        Text("I tuoi vini e cene vengono sincronizzati automaticamente su tutti i tuoi dispositivi")
+                    } else {
+                        Text("Attiva iCloud per sincronizzare i dati tra i tuoi dispositivi")
+                    }
                 }
 
                 // Collaboration Section

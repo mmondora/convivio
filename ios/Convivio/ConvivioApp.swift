@@ -72,19 +72,20 @@ struct ConvivioApp: App {
                 Comment.self
             ])
 
-            // Configure CloudKit sync for production, local-only for development
-            #if DEBUG
-            let modelConfiguration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: false
-            )
-            #else
-            let modelConfiguration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: false,
-                cloudKitDatabase: .private("iCloud.com.mikesoft.convivio")
-            )
-            #endif
+            // Configure CloudKit sync based on feature flag
+            let modelConfiguration: ModelConfiguration
+            if FeatureFlags.cloudKitEnabled {
+                modelConfiguration = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: false,
+                    cloudKitDatabase: .private("iCloud.com.mikesoft.convivio")
+                )
+            } else {
+                modelConfiguration = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: false
+                )
+            }
 
             modelContainer = try ModelContainer(
                 for: schema,
@@ -159,10 +160,12 @@ struct ContentView: View {
             languageManager.setLanguage(language)
         }
 
-        // Check iCloud status and run migration if needed
-        await CloudKitService.shared.checkiCloudStatus()
-        if MigrationService.shared.needsMigration {
-            try? await MigrationService.shared.migrateLocalDataToCloudKit(context: modelContext)
+        // Check iCloud status and run migration if CloudKit is enabled
+        if FeatureFlags.cloudKitEnabled {
+            await CloudKitService.shared.checkiCloudStatus()
+            if MigrationService.shared.needsMigration {
+                try? await MigrationService.shared.migrateLocalDataToCloudKit(context: modelContext)
+            }
         }
 
         // Load API key if it exists
