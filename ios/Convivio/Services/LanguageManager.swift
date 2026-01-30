@@ -188,6 +188,7 @@ enum L10n {
 
 // MARK: - Language Manager
 
+@MainActor
 class LanguageManager: ObservableObject {
     static let shared = LanguageManager()
 
@@ -225,7 +226,7 @@ class LanguageManager: ObservableObject {
     ]
 
     // MARK: - Italian
-    static let italianStrings: [String: String] = [
+    nonisolated static let italianStrings: [String: String] = [
         // Tab Bar
         "tab.cellar": "Cantina",
         "tab.scan": "Scansiona",
@@ -373,7 +374,7 @@ class LanguageManager: ObservableObject {
     ]
 
     // MARK: - English
-    static let englishStrings: [String: String] = [
+    nonisolated static let englishStrings: [String: String] = [
         // Tab Bar
         "tab.cellar": "Cellar",
         "tab.scan": "Scan",
@@ -521,7 +522,7 @@ class LanguageManager: ObservableObject {
     ]
 
     // MARK: - German
-    static let germanStrings: [String: String] = [
+    nonisolated static let germanStrings: [String: String] = [
         // Tab Bar
         "tab.cellar": "Weinkeller",
         "tab.scan": "Scannen",
@@ -669,7 +670,7 @@ class LanguageManager: ObservableObject {
     ]
 
     // MARK: - French
-    static let frenchStrings: [String: String] = [
+    nonisolated static let frenchStrings: [String: String] = [
         // Tab Bar
         "tab.cellar": "Cave",
         "tab.scan": "Scanner",

@@ -7,6 +7,7 @@ struct FoodView: View {
     @Query(sort: \DinnerEvent.date, order: .reverse) private var dinners: [DinnerEvent]
 
     @State private var showNewDinner = false
+    @StateObject private var paginationState = PaginationState<DinnerEvent>(config: .default)
 
     var body: some View {
         NavigationStack {
@@ -19,12 +20,30 @@ struct FoodView: View {
                     )
                 } else {
                     List {
-                        ForEach(dinners) { dinner in
+                        ForEach(paginationState.displayedItems) { dinner in
                             NavigationLink(destination: DinnerDetailView(dinner: dinner)) {
                                 DinnerRowView(dinner: dinner)
                             }
+                            .onAppear {
+                                paginationState.onItemAppear(dinner)
+                            }
                         }
                         .onDelete(perform: deleteDinners)
+
+                        // Load more indicator
+                        if paginationState.hasMore {
+                            LoadMoreView(
+                                remainingCount: paginationState.remainingCount,
+                                isLoading: paginationState.isLoading,
+                                action: { paginationState.loadNextPage() }
+                            )
+                        }
+                    }
+                    .onAppear {
+                        paginationState.reset(with: dinners)
+                    }
+                    .onChange(of: dinners.count) { _, _ in
+                        paginationState.reset(with: dinners)
                     }
                 }
             }
@@ -46,7 +65,8 @@ struct FoodView: View {
 
     private func deleteDinners(at offsets: IndexSet) {
         for index in offsets {
-            modelContext.delete(dinners[index])
+            // Use displayed items from pagination state
+            modelContext.delete(paginationState.displayedItems[index])
         }
         try? modelContext.save()
     }
@@ -689,34 +709,35 @@ struct DinnerDetailView: View {
             DisclosureGroup(
                 isExpanded: bindingFor("menu"),
                 content: {
-                    List {
+                    LazyVStack(alignment: .leading, spacing: 8) {
                         ForEach(menu.menu.allCourses, id: \.name) { course in
-                            Section {
-                                ForEach(Array(course.dishes.enumerated()), id: \.element.id) { index, dish in
-                                    EditableDishRow(
-                                        dish: dish,
-                                        courseName: course.name,
-                                        dishIndex: index,
-                                        isRegenerating: regeneratingDish?.course == course.name && regeneratingDish?.index == index,
-                                        canEdit: dinner.status.canEditMenu,
-                                        onTap: { selectedDish = dish },
-                                        onRegenerate: { regenerateDish(course: course.name, index: index) },
-                                        onDelete: {
-                                            dishToDelete = (course.name, index)
-                                            showDeleteConfirmation = true
-                                        }
-                                    )
-                                }
-                            } header: {
-                                Text(course.name)
-                                    .font(.subheadline.bold())
-                                    .foregroundColor(.purple)
+                            // Course header
+                            Text(course.name)
+                                .font(.subheadline.bold())
+                                .foregroundColor(.purple)
+                                .padding(.top, 8)
+
+                            // Course dishes
+                            ForEach(Array(course.dishes.enumerated()), id: \.element.id) { index, dish in
+                                EditableDishRow(
+                                    dish: dish,
+                                    courseName: course.name,
+                                    dishIndex: index,
+                                    isRegenerating: regeneratingDish?.course == course.name && regeneratingDish?.index == index,
+                                    canEdit: dinner.status.canEditMenu,
+                                    onTap: { selectedDish = dish },
+                                    onRegenerate: { regenerateDish(course: course.name, index: index) },
+                                    onDelete: {
+                                        dishToDelete = (course.name, index)
+                                        showDeleteConfirmation = true
+                                    }
+                                )
                             }
+
+                            Divider()
                         }
                     }
-                    .listStyle(.plain)
-                    .frame(minHeight: CGFloat(menu.menu.allCourses.reduce(0) { $0 + $1.dishes.count }) * 130 + CGFloat(menu.menu.allCourses.count) * 50)
-                    .scrollDisabled(true)
+                    .padding(.vertical, 8)
                 },
                 label: {
                     Label("Menu", systemImage: "menucard")
@@ -1050,36 +1071,36 @@ struct DinnerDetailView: View {
 
     @ViewBuilder
     private func wineListSection(cellarWines: [MenuWinePairing], purchaseSuggestions: [WineSuggestion], wineCount: Int) -> some View {
-        List {
+        LazyVStack(alignment: .leading, spacing: 8) {
             // Wines from cellar
             if !cellarWines.isEmpty {
-                Section {
-                    ForEach(Array(cellarWines.enumerated()), id: \.element.id) { index, pairing in
-                        cellarWineRow(pairing: pairing, index: index)
-                    }
-                } header: {
-                    Text("Dalla Cantina")
-                        .font(.subheadline.bold())
-                        .foregroundColor(.green)
+                Text("Dalla Cantina")
+                    .font(.subheadline.bold())
+                    .foregroundColor(.green)
+                    .padding(.top, 4)
+
+                ForEach(Array(cellarWines.enumerated()), id: \.element.id) { index, pairing in
+                    cellarWineRow(pairing: pairing, index: index)
+                }
+
+                if !purchaseSuggestions.isEmpty {
+                    Divider()
+                        .padding(.vertical, 4)
                 }
             }
 
             // Purchase suggestions
             if !purchaseSuggestions.isEmpty {
-                Section {
-                    ForEach(Array(purchaseSuggestions.enumerated()), id: \.element.id) { index, suggestion in
-                        purchaseWineRow(suggestion: suggestion, index: index)
-                    }
-                } header: {
-                    Text("Da Acquistare")
-                        .font(.subheadline.bold())
-                        .foregroundColor(.blue)
+                Text("Da Acquistare")
+                    .font(.subheadline.bold())
+                    .foregroundColor(.blue)
+                    .padding(.top, cellarWines.isEmpty ? 4 : 0)
+
+                ForEach(Array(purchaseSuggestions.enumerated()), id: \.element.id) { index, suggestion in
+                    purchaseWineRow(suggestion: suggestion, index: index)
                 }
             }
         }
-        .listStyle(.plain)
-        .frame(minHeight: CGFloat(wineCount) * 80 + CGFloat(cellarWines.isEmpty || purchaseSuggestions.isEmpty ? 50 : 100))
-        .scrollDisabled(true)
         .animation(.easeInOut(duration: 0.2), value: wineCount)
     }
 

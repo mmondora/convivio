@@ -21,6 +21,9 @@ struct CellarView: View {
     @State private var showStorageConfig = false
     @State private var showShareManagement = false
 
+    // Pagination
+    @StateObject private var paginationState = PaginationState<Bottle>(config: .default)
+
     var filteredBottles: [Bottle] {
         var result = bottles.filter { $0.quantity > 0 }
 
@@ -171,16 +174,28 @@ struct CellarView: View {
                 if showLocationView {
                     CellarByLocationView(bottles: filteredBottles, areas: storageAreas)
                 } else {
-                    // Wine list - compact view
+                    // Wine list - compact view with pagination
                     List {
-                        ForEach(filteredBottles) { bottle in
+                        ForEach(paginationState.displayedItems) { bottle in
                             NavigationLink {
                                 BottleDetailView(bottle: bottle)
                             } label: {
                                 CompactBottleRow(bottle: bottle)
                             }
+                            .onAppear {
+                                paginationState.onItemAppear(bottle)
+                            }
                         }
                         .onDelete(perform: deleteBottles)
+
+                        // Load more indicator
+                        if paginationState.hasMore {
+                            LoadMoreView(
+                                remainingCount: paginationState.remainingCount,
+                                isLoading: paginationState.isLoading,
+                                action: { paginationState.loadNextPage() }
+                            )
+                        }
                     }
                     .listStyle(.plain)
                     .overlay {
@@ -191,6 +206,27 @@ struct CellarView: View {
                                 description: Text("Aggiungi la tua prima bottiglia scansionando un'etichetta o manualmente")
                             )
                         }
+                    }
+                    .onAppear {
+                        paginationState.reset(with: filteredBottles)
+                    }
+                    .onChange(of: filteredBottles.count) { _, _ in
+                        paginationState.reset(with: filteredBottles)
+                    }
+                    .onChange(of: searchText) { _, _ in
+                        paginationState.reset(with: filteredBottles)
+                    }
+                    .onChange(of: selectedType) { _, _ in
+                        paginationState.reset(with: filteredBottles)
+                    }
+                    .onChange(of: selectedArea) { _, _ in
+                        paginationState.reset(with: filteredBottles)
+                    }
+                    .onChange(of: showLowStock) { _, _ in
+                        paginationState.reset(with: filteredBottles)
+                    }
+                    .onChange(of: sortBy) { _, _ in
+                        paginationState.reset(with: filteredBottles)
                     }
                 }
             }
@@ -278,7 +314,8 @@ struct CellarView: View {
 
     private func deleteBottles(at offsets: IndexSet) {
         for index in offsets {
-            let bottle = filteredBottles[index]
+            // Use displayed items from pagination state
+            let bottle = paginationState.displayedItems[index]
             modelContext.delete(bottle)
         }
         try? modelContext.save()
