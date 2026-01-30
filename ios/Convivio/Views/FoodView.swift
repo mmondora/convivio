@@ -815,10 +815,10 @@ struct DinnerDetailView: View {
                     .disabled(isGenerating || settings?.openAIApiKey == nil)
                 }
 
-                #if DEBUG
-                // Debug section (TODO: will be controlled by feature flag)
-                debugButtonsSection
-                #endif
+                // Debug section - controlled by feature toggle in Profile
+                if appSettings.first?.debugModeEnabled == true {
+                    debugButtonsSection
+                }
 
                 // Status indicator per stati finali
                 if dinner.status == .confirmed {
@@ -869,7 +869,6 @@ struct DinnerDetailView: View {
 
     // MARK: - Debug Section
 
-    #if DEBUG
     private var debugButtonsSection: some View {
         VStack(spacing: 8) {
             Divider()
@@ -938,7 +937,6 @@ struct DinnerDetailView: View {
             }
         }
     }
-    #endif
 
     private func bindingFor(_ section: String) -> Binding<Bool> {
         Binding(
