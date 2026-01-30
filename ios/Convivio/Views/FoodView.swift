@@ -941,36 +941,41 @@ struct DinnerDetailView: View {
 
     @ViewBuilder
     private func wineListSection(cellarWines: [MenuWinePairing], purchaseSuggestions: [WineSuggestion], wineCount: Int) -> some View {
-        List {
+        VStack(spacing: 0) {
             // Wines from cellar
             if !cellarWines.isEmpty {
-                Section {
-                    ForEach(Array(cellarWines.enumerated()), id: \.element.id) { index, pairing in
-                        cellarWineRow(pairing: pairing, index: index)
-                    }
-                } header: {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Dalla Cantina")
                         .font(.subheadline.bold())
                         .foregroundColor(.green)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
+                    ForEach(Array(cellarWines.enumerated()), id: \.element.id) { index, pairing in
+                        cellarWineRow(pairing: pairing, index: index)
+                            .padding(.horizontal)
+                    }
                 }
             }
 
             // Purchase suggestions
             if !purchaseSuggestions.isEmpty {
-                Section {
-                    ForEach(Array(purchaseSuggestions.enumerated()), id: \.element.id) { index, suggestion in
-                        purchaseWineRow(suggestion: suggestion, index: index)
-                    }
-                } header: {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Da Acquistare")
                         .font(.subheadline.bold())
                         .foregroundColor(.blue)
+                        .padding(.horizontal)
+                        .padding(.top, cellarWines.isEmpty ? 8 : 16)
+
+                    ForEach(Array(purchaseSuggestions.enumerated()), id: \.element.id) { index, suggestion in
+                        purchaseWineRow(suggestion: suggestion, index: index)
+                            .padding(.horizontal)
+                    }
                 }
             }
         }
-        .listStyle(.plain)
-        .frame(minHeight: CGFloat(wineCount) * 80 + (cellarWines.isEmpty || purchaseSuggestions.isEmpty ? 30 : 60))
-        .scrollDisabled(true)
+        .padding(.bottom, 8)
+        .animation(.easeInOut(duration: 0.2), value: wineCount)
     }
 
     @ViewBuilder
@@ -1109,17 +1114,43 @@ struct DinnerDetailView: View {
     private func deleteWine(type: String, index: Int) {
         guard let currentMenu = dinner.menuResponse else { return }
 
+        // Get the wine info before deleting to match in confirmedWines
+        var deletedWineName: String?
+        var deletedProducer: String?
+        if type == "cellar" && index < currentMenu.abbinamenti.count {
+            let pairing = currentMenu.abbinamenti[index]
+            deletedWineName = pairing.vino.nome
+            deletedProducer = pairing.vino.produttore
+        } else if type == "purchase" && index < currentMenu.suggerimentiAcquisto.count {
+            let suggestion = currentMenu.suggerimentiAcquisto[index]
+            deletedWineName = suggestion.vino
+            deletedProducer = suggestion.produttore
+        }
+
         let updatedMenu = MenuGeneratorService.shared.deleteWine(
             wineType: type,
             wineIndex: index,
             from: currentMenu
         )
 
-        if let jsonData = try? JSONEncoder().encode(updatedMenu) {
-            dinner.menuData = jsonData
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if let jsonData = try? JSONEncoder().encode(updatedMenu) {
+                dinner.menuData = jsonData
+            }
+
+            // Also remove from confirmed wines if present (match by name and producer)
+            if let wineName = deletedWineName {
+                var confirmed = dinner.confirmedWines
+                confirmed.removeAll { wine in
+                    wine.wineName == wineName &&
+                    (deletedProducer == nil || wine.producer == deletedProducer)
+                }
+                dinner.confirmedWines = confirmed
+            }
+
+            dinner.updatedAt = Date()
+            try? modelContext.save()
         }
-        dinner.updatedAt = Date()
-        try? modelContext.save()
         wineToDelete = nil
     }
 
