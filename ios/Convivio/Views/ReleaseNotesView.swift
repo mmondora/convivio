@@ -10,9 +10,22 @@ struct ReleaseNotesView: View {
 
                 // Current version
                 releaseSection(
-                    version: "1.6.0",
+                    version: "1.6.1",
                     date: "Gennaio 2026",
                     isCurrent: true,
+                    features: [
+                        "UI più pulita: rimossi titoli ridondanti dalle tab principali",
+                        "Più spazio per i contenuti in tutte le schermate"
+                    ],
+                    fixes: [
+                        "Note Cucina ora funzionano correttamente",
+                        "Parsing JSON più robusto per risposte AI variabili"
+                    ]
+                )
+
+                releaseSection(
+                    version: "1.6.0",
+                    date: "Gennaio 2026",
                     features: [
                         "Tre bottoni note separati: Cucina, Vini, Accoglienza",
                         "Viste dedicate per ogni tipo di nota con sezioni espandibili",
