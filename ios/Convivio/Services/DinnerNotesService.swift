@@ -49,6 +49,17 @@ class DinnerNotesService: ObservableObject {
         settings: AppSettings?,
         context: ModelContext
     ) async throws {
+        _ = try await generateAndReturnJSON(type: type, dinner: dinner, menu: menu, settings: settings, context: context)
+    }
+
+    /// Generate note and return the JSON string (also saves to database)
+    func generateAndReturnJSON(
+        type: DinnerNoteType,
+        dinner: DinnerEvent,
+        menu: MenuResponse?,
+        settings: AppSettings?,
+        context: ModelContext
+    ) async throws -> String {
         let dinnerUUID = dinner.stableUUID
 
         // Mark as generating
@@ -86,6 +97,8 @@ class DinnerNotesService: ObservableObject {
         try context.save()
         print("✅ [DinnerNotesService] Saved \(type.rawValue) note for dinner \(dinnerUUID)")
         print("✅ [DinnerNotesService] JSON length: \(contentJSON.count) chars")
+
+        return contentJSON
     }
 
     func deleteNote(dinnerID: UUID, type: DinnerNoteType, from context: ModelContext) {
@@ -404,6 +417,7 @@ class DinnerNotesService: ObservableObject {
     private func cleanJSONResponse(_ text: String) -> String {
         var cleanJson = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // Remove markdown code blocks
         if cleanJson.hasPrefix("```json") {
             cleanJson = String(cleanJson.dropFirst(7))
         } else if cleanJson.hasPrefix("```") {
@@ -414,7 +428,22 @@ class DinnerNotesService: ObservableObject {
             cleanJson = String(cleanJson.dropLast(3))
         }
 
-        return cleanJson.trimmingCharacters(in: .whitespacesAndNewlines)
+        cleanJson = cleanJson.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Validate it starts with { and ends with }
+        if !cleanJson.hasPrefix("{") {
+            if let startIndex = cleanJson.firstIndex(of: "{") {
+                cleanJson = String(cleanJson[startIndex...])
+            }
+        }
+        if !cleanJson.hasSuffix("}") {
+            if let endIndex = cleanJson.lastIndex(of: "}") {
+                cleanJson = String(cleanJson[...endIndex])
+            }
+        }
+
+        print("🧹 [cleanJSON] Cleaned JSON length: \(cleanJson.count), starts with '{': \(cleanJson.hasPrefix("{"))")
+        return cleanJson
     }
 }
 

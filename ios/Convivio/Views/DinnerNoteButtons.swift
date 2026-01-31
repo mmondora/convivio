@@ -130,6 +130,11 @@ struct DinnerNoteButtonsWithNavigation: View {
     @State private var selectedNoteType: DinnerNoteType?
     @State private var showNoteView = false
 
+    // Store parsed content directly to avoid SwiftData sync timing issues
+    @State private var ricetteContent: NoteRicetteContent?
+    @State private var viniContent: NoteViniContent?
+    @State private var accoglienzaContent: NoteAccoglienzaContent?
+
     private var settings: AppSettings? { appSettings.first }
 
     /// Filter notes for this dinner
@@ -171,29 +176,46 @@ struct DinnerNoteButtonsWithNavigation: View {
         print("🔵 [NoteButtons] Tapped \(type.rawValue) for dinner \(dinner.stableUUID)")
         print("🔵 [NoteButtons] Total notes in query: \(allNotes.count), for this dinner: \(notes.count)")
 
-        if hasNote(for: type) {
-            print("🔵 [NoteButtons] Note exists, showing sheet")
+        // Check if we already have parsed content in memory
+        if hasParsedContent(for: type) {
+            print("🔵 [NoteButtons] Content already in memory, showing sheet")
             selectedNoteType = type
             showNoteView = true
             return
+        }
+
+        // Check if note exists in database
+        if let note = getNote(for: type) {
+            print("🔵 [NoteButtons] Note exists in DB, parsing...")
+            if parseAndStoreContent(note: note, type: type) {
+                selectedNoteType = type
+                showNoteView = true
+                return
+            }
         }
 
         print("🔵 [NoteButtons] Note doesn't exist, generating...")
         // Generate note
         Task {
             do {
-                try await notesService.generateNote(
+                let contentJSON = try await notesService.generateAndReturnJSON(
                     type: type,
                     dinner: dinner,
                     menu: dinner.menuResponse,
                     settings: settings,
                     context: modelContext
                 )
-                print("🔵 [NoteButtons] Generation complete, showing sheet")
-                // After generation, show the note
+                print("🔵 [NoteButtons] Generation complete, parsing content...")
+
+                // Parse content immediately from the returned JSON
                 await MainActor.run {
-                    selectedNoteType = type
-                    showNoteView = true
+                    if parseAndStoreContentFromJSON(json: contentJSON, type: type) {
+                        print("✅ [NoteButtons] Content parsed successfully, showing sheet")
+                        selectedNoteType = type
+                        showNoteView = true
+                    } else {
+                        print("❌ [NoteButtons] Failed to parse generated content")
+                    }
                 }
             } catch {
                 print("❌ [NoteButtons] Error generating note: \(error)")
@@ -201,55 +223,80 @@ struct DinnerNoteButtonsWithNavigation: View {
         }
     }
 
+    private func hasParsedContent(for type: DinnerNoteType) -> Bool {
+        switch type {
+        case .cucina: return ricetteContent != nil
+        case .vini: return viniContent != nil
+        case .accoglienza: return accoglienzaContent != nil
+        }
+    }
+
+    private func parseAndStoreContent(note: DinnerNote, type: DinnerNoteType) -> Bool {
+        return parseAndStoreContentFromJSON(json: note.contentJSON, type: type)
+    }
+
+    private func parseAndStoreContentFromJSON(json: String, type: DinnerNoteType) -> Bool {
+        guard let data = json.data(using: .utf8) else {
+            print("❌ [NoteButtons] Failed to convert JSON to data")
+            return false
+        }
+
+        do {
+            switch type {
+            case .cucina:
+                ricetteContent = try JSONDecoder().decode(NoteRicetteContent.self, from: data)
+                print("✅ [NoteButtons] Parsed ricette content with \(ricetteContent?.ricette.count ?? 0) recipes")
+                return true
+            case .vini:
+                viniContent = try JSONDecoder().decode(NoteViniContent.self, from: data)
+                print("✅ [NoteButtons] Parsed vini content with \(viniContent?.schedeVino.count ?? 0) wine cards")
+                return true
+            case .accoglienza:
+                accoglienzaContent = try JSONDecoder().decode(NoteAccoglienzaContent.self, from: data)
+                print("✅ [NoteButtons] Parsed accoglienza content")
+                return true
+            }
+        } catch {
+            print("❌ [NoteButtons] JSON decode error for \(type.rawValue): \(error)")
+            print("❌ [NoteButtons] JSON preview: \(String(json.prefix(500)))")
+            return false
+        }
+    }
+
     @ViewBuilder
     private func noteViewSheet(for type: DinnerNoteType) -> some View {
         NavigationStack {
             Group {
-                // Debug: fetch note directly from context to ensure fresh data
-                let freshNote = notesService.getNote(dinnerID: dinner.stableUUID, type: type, from: modelContext)
-
                 switch type {
                 case .cucina:
-                    if let note = freshNote ?? getNote(for: .cucina) {
-                        if let content = notesService.parseNoteRicette(note) {
-                            NoteRicetteView(
-                                dinner: dinner,
-                                content: content,
-                                onRegenerate: { regenerateNote(.cucina) }
-                            )
-                        } else {
-                            noteParseErrorView(type: type, noteExists: true)
-                        }
+                    if let content = ricetteContent {
+                        NoteRicetteView(
+                            dinner: dinner,
+                            content: content,
+                            onRegenerate: { regenerateNote(.cucina) }
+                        )
                     } else {
                         noteParseErrorView(type: type, noteExists: false)
                     }
 
                 case .vini:
-                    if let note = freshNote ?? getNote(for: .vini) {
-                        if let content = notesService.parseNoteVini(note) {
-                            NoteViniView(
-                                dinner: dinner,
-                                content: content,
-                                onRegenerate: { regenerateNote(.vini) }
-                            )
-                        } else {
-                            noteParseErrorView(type: type, noteExists: true)
-                        }
+                    if let content = viniContent {
+                        NoteViniView(
+                            dinner: dinner,
+                            content: content,
+                            onRegenerate: { regenerateNote(.vini) }
+                        )
                     } else {
                         noteParseErrorView(type: type, noteExists: false)
                     }
 
                 case .accoglienza:
-                    if let note = freshNote ?? getNote(for: .accoglienza) {
-                        if let content = notesService.parseNoteAccoglienza(note) {
-                            NoteAccoglienzaView(
-                                dinner: dinner,
-                                content: content,
-                                onRegenerate: { regenerateNote(.accoglienza) }
-                            )
-                        } else {
-                            noteParseErrorView(type: type, noteExists: true)
-                        }
+                    if let content = accoglienzaContent {
+                        NoteAccoglienzaView(
+                            dinner: dinner,
+                            content: content,
+                            onRegenerate: { regenerateNote(.accoglienza) }
+                        )
                     } else {
                         noteParseErrorView(type: type, noteExists: false)
                     }
@@ -285,6 +332,13 @@ struct DinnerNoteButtonsWithNavigation: View {
     }
 
     private func regenerateNote(_ type: DinnerNoteType) {
+        // Clear cached content
+        switch type {
+        case .cucina: ricetteContent = nil
+        case .vini: viniContent = nil
+        case .accoglienza: accoglienzaContent = nil
+        }
+
         // Delete existing note
         if let existingNote = getNote(for: type) {
             modelContext.delete(existingNote)
@@ -294,15 +348,21 @@ struct DinnerNoteButtonsWithNavigation: View {
         // Generate new note
         Task {
             do {
-                try await notesService.generateNote(
+                let contentJSON = try await notesService.generateAndReturnJSON(
                     type: type,
                     dinner: dinner,
                     menu: dinner.menuResponse,
                     settings: settings,
                     context: modelContext
                 )
+
+                await MainActor.run {
+                    if parseAndStoreContentFromJSON(json: contentJSON, type: type) {
+                        // Content is already showing, will update automatically
+                    }
+                }
             } catch {
-                print("Error regenerating note: \(error)")
+                print("❌ [NoteButtons] Error regenerating note: \(error)")
             }
         }
     }
