@@ -1,6 +1,40 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Wine Label Grouping Model
+
+/// Represents a wine grouped by name + producer, with all available vintages
+struct WineLabelGroup: Identifiable {
+    let id: String // normalized "name_producer"
+    let name: String
+    let producer: String?
+    let wineType: WineType
+    let vintages: [VintageGroup]
+
+    var totalQuantity: Int {
+        vintages.reduce(0) { $0 + $1.totalQuantity }
+    }
+
+    var isLowStock: Bool {
+        totalQuantity <= 2
+    }
+}
+
+/// Represents a specific vintage within a wine label group
+struct VintageGroup: Identifiable {
+    let id: String // vintage string or "NV"
+    let vintage: String?
+    let bottles: [Bottle]
+
+    var totalQuantity: Int {
+        bottles.reduce(0) { $0 + $1.quantity }
+    }
+
+    var locations: [String] {
+        bottles.compactMap { $0.shortLocation }.filter { !$0.isEmpty }
+    }
+}
+
 struct CellarView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<Bottle> { $0.statusRaw == "available" },
@@ -20,8 +54,9 @@ struct CellarView: View {
     @State private var showLocationView = false
     @State private var showStorageConfig = false
     @State private var showShareManagement = false
+    @State private var expandedLabels: Set<String> = []
 
-    // Pagination
+    // Pagination for grouped view
     @StateObject private var paginationState = PaginationState<Bottle>(config: .default)
 
     var filteredBottles: [Bottle] {
@@ -80,6 +115,79 @@ struct CellarView: View {
             case .recentlyAdded:
                 return b1.createdAt > b2.createdAt
             }
+        }
+
+        return result
+    }
+
+    /// Groups filtered bottles by wine label (name + producer)
+    var groupedWines: [WineLabelGroup] {
+        // Group bottles by normalized key: "name_producer"
+        var groups: [String: (name: String, producer: String?, type: WineType, bottles: [Bottle])] = [:]
+
+        for bottle in filteredBottles {
+            guard let wine = bottle.wine else { continue }
+
+            let normalizedKey = "\(wine.name.lowercased())_\(wine.producer?.lowercased() ?? "")"
+
+            if groups[normalizedKey] == nil {
+                groups[normalizedKey] = (
+                    name: wine.name,
+                    producer: wine.producer,
+                    type: wine.type,
+                    bottles: []
+                )
+            }
+            groups[normalizedKey]?.bottles.append(bottle)
+        }
+
+        // Convert to WineLabelGroup with vintages
+        var result: [WineLabelGroup] = groups.map { key, value in
+            // Group bottles by vintage within this label
+            var vintageGroups: [String: [Bottle]] = [:]
+            for bottle in value.bottles {
+                let vintageKey = bottle.wine?.vintage ?? "NV"
+                vintageGroups[vintageKey, default: []].append(bottle)
+            }
+
+            let vintages = vintageGroups.map { vintageKey, bottles in
+                VintageGroup(
+                    id: "\(key)_\(vintageKey)",
+                    vintage: vintageKey == "NV" ? nil : vintageKey,
+                    bottles: bottles
+                )
+            }.sorted { ($0.vintage ?? "") > ($1.vintage ?? "") } // Newest vintages first
+
+            return WineLabelGroup(
+                id: key,
+                name: value.name,
+                producer: value.producer,
+                wineType: value.type,
+                vintages: vintages
+            )
+        }
+
+        // Sort groups
+        result.sort { g1, g2 in
+            switch sortBy {
+            case .quantity:
+                return g1.totalQuantity > g2.totalQuantity
+            case .name:
+                return g1.name < g2.name
+            case .vintage:
+                let v1 = g1.vintages.first?.vintage ?? ""
+                let v2 = g2.vintages.first?.vintage ?? ""
+                return v1 > v2
+            case .type:
+                return g1.wineType.rawValue < g2.wineType.rawValue
+            case .location, .recentlyAdded:
+                return g1.name < g2.name // Default to name for these
+            }
+        }
+
+        // Apply low stock filter at group level
+        if showLowStock {
+            result = result.filter { $0.totalQuantity <= 2 }
         }
 
         return result
@@ -174,59 +282,33 @@ struct CellarView: View {
                 if showLocationView {
                     CellarByLocationView(bottles: filteredBottles, areas: storageAreas)
                 } else {
-                    // Wine list - compact view with pagination
+                    // Wine list - grouped by label
                     List {
-                        ForEach(paginationState.displayedItems) { bottle in
-                            NavigationLink {
-                                BottleDetailView(bottle: bottle)
-                            } label: {
-                                CompactBottleRow(bottle: bottle)
-                            }
-                            .onAppear {
-                                paginationState.onItemAppear(bottle)
-                            }
-                        }
-                        .onDelete(perform: deleteBottles)
-
-                        // Load more indicator
-                        if paginationState.hasMore {
-                            LoadMoreView(
-                                remainingCount: paginationState.remainingCount,
-                                isLoading: paginationState.isLoading,
-                                action: { paginationState.loadNextPage() }
+                        ForEach(groupedWines) { group in
+                            WineLabelSection(
+                                group: group,
+                                isExpanded: expandedLabels.contains(group.id),
+                                onToggle: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        if expandedLabels.contains(group.id) {
+                                            expandedLabels.remove(group.id)
+                                        } else {
+                                            expandedLabels.insert(group.id)
+                                        }
+                                    }
+                                }
                             )
                         }
                     }
                     .listStyle(.plain)
                     .overlay {
-                        if filteredBottles.isEmpty {
+                        if groupedWines.isEmpty {
                             ContentUnavailableView(
                                 "Nessuna bottiglia",
                                 systemImage: "wineglass",
                                 description: Text("Aggiungi la tua prima bottiglia scansionando un'etichetta o manualmente")
                             )
                         }
-                    }
-                    .onAppear {
-                        paginationState.reset(with: filteredBottles)
-                    }
-                    .onChange(of: filteredBottles.count) { _, _ in
-                        paginationState.reset(with: filteredBottles)
-                    }
-                    .onChange(of: searchText) { _, _ in
-                        paginationState.reset(with: filteredBottles)
-                    }
-                    .onChange(of: selectedType) { _, _ in
-                        paginationState.reset(with: filteredBottles)
-                    }
-                    .onChange(of: selectedArea) { _, _ in
-                        paginationState.reset(with: filteredBottles)
-                    }
-                    .onChange(of: showLowStock) { _, _ in
-                        paginationState.reset(with: filteredBottles)
-                    }
-                    .onChange(of: sortBy) { _, _ in
-                        paginationState.reset(with: filteredBottles)
                     }
                 }
             }
@@ -318,6 +400,126 @@ struct CellarView: View {
             modelContext.delete(bottle)
         }
         try? modelContext.save()
+    }
+}
+
+// MARK: - Wine Label Section (Grouped View)
+
+struct WineLabelSection: View {
+    let group: WineLabelGroup
+    let isExpanded: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Main label row
+            Button(action: onToggle) {
+                HStack(spacing: 10) {
+                    // Wine type icon
+                    Text(group.wineType.icon)
+                        .font(.title3)
+
+                    // Wine info
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(group.name)
+                            .font(.subheadline.bold())
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+
+                        if let producer = group.producer {
+                            Text(producer)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Vintages count badge (if multiple)
+                    if group.vintages.count > 1 {
+                        Text("\(group.vintages.count) annate")
+                            .font(.caption2)
+                            .foregroundColor(.purple)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.purple.opacity(0.1))
+                            .cornerRadius(4)
+                    }
+
+                    // Total quantity badge
+                    Text("\(group.totalQuantity)")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                        .frame(width: 28, height: 28)
+                        .background(group.isLowStock ? Color.orange : Color.purple)
+                        .clipShape(Circle())
+
+                    // Chevron
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(.plain)
+
+            // Expanded vintages
+            if isExpanded {
+                VStack(spacing: 0) {
+                    ForEach(group.vintages) { vintage in
+                        VintageRow(vintage: vintage, wineType: group.wineType)
+                    }
+                }
+                .padding(.leading, 32)
+                .background(Color(.secondarySystemBackground).opacity(0.5))
+            }
+        }
+    }
+}
+
+// MARK: - Vintage Row
+
+struct VintageRow: View {
+    let vintage: VintageGroup
+    let wineType: WineType
+
+    var body: some View {
+        ForEach(vintage.bottles) { bottle in
+            NavigationLink {
+                BottleDetailView(bottle: bottle)
+            } label: {
+                HStack(spacing: 8) {
+                    // Vintage indicator
+                    Text(vintage.vintage ?? "NV")
+                        .font(.caption.bold())
+                        .foregroundColor(.purple)
+                        .frame(width: 40, alignment: .leading)
+
+                    // Location if available
+                    if let location = bottle.shortLocation {
+                        Text(location)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    // Quantity for this bottle entry
+                    Text("\(bottle.quantity) bott.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(.plain)
+
+            if bottle.id != vintage.bottles.last?.id {
+                Divider()
+                    .padding(.leading, 40)
+            }
+        }
     }
 }
 
