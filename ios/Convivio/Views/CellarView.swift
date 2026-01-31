@@ -230,7 +230,6 @@ struct CellarView: View {
                     }
                 }
             }
-            .navigationTitle(L10n.cellar)
             .searchable(text: $searchText, prompt: L10n.search)
             .toolbar {
                 // Cellar switcher and sync status (requires CloudKit files)

@@ -35,7 +35,6 @@ struct ScanView: View {
                     )
                 }
             }
-            .navigationTitle("Scansiona Etichetta")
             .onChange(of: selectedItem) { _, newItem in
                 Task {
                     if let data = try? await newItem?.loadTransferable(type: Data.self),

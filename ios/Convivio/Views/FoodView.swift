@@ -47,7 +47,6 @@ struct FoodView: View {
                     }
                 }
             }
-            .navigationTitle(L10n.convivio)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

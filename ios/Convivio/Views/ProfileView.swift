@@ -617,7 +617,6 @@ struct ProfileView: View {
                     }
                 }
             }
-            .navigationTitle(L10n.profile)
             .sheet(isPresented: $showApiKeySheet) {
                 ApiKeyConfigView(settings: currentSettings ?? createSettings())
             }

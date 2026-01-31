@@ -112,7 +112,6 @@ struct ChatView: View {
                 .frame(maxWidth: .infinity)
                 .background(Color(.systemBackground))
             }
-            .navigationTitle(L10n.sommelier)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
