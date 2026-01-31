@@ -135,6 +135,15 @@ enum L10n {
     static var sommelierPlaceholder: String { "sommelier.placeholder".localized }
     static var inCellar: String { "sommelier.in_cellar".localized }
     static var suggestedWines: String { "sommelier.suggested_wines".localized }
+    static var suggestions: String { "sommelier.suggestions".localized }
+    static var goToWine: String { "sommelier.go_to_wine".localized }
+    static var alternativesFromCellar: String { "sommelier.alternatives".localized }
+
+    // MARK: - Quick Suggestions
+    static var suggestFish: String { "quick.fish".localized }
+    static var suggestChardonnay: String { "quick.chardonnay".localized }
+    static var suggestBestWine: String { "quick.best_wine".localized }
+    static var suggestRedWine: String { "quick.red_wine".localized }
 
     // MARK: - Profile
     static var settings: String { "profile.settings".localized }
@@ -322,6 +331,15 @@ class LanguageManager: ObservableObject {
         "sommelier.placeholder": "Chiedi un consiglio...",
         "sommelier.in_cellar": "In cantina",
         "sommelier.suggested_wines": "Vini suggeriti",
+        "sommelier.suggestions": "Suggerimenti",
+        "sommelier.go_to_wine": "Vai alla scheda vino",
+        "sommelier.alternatives": "Alternative dalla tua cantina:",
+
+        // Quick Suggestions
+        "quick.fish": "Cosa mi consigli per una cena di pesce?",
+        "quick.chardonnay": "Ho uno Chardonnay, con cosa lo abbino?",
+        "quick.best_wine": "Qual è il vino migliore nella mia cantina?",
+        "quick.red_wine": "Suggeriscimi un vino rosso corposo",
 
         // Profile
         "profile.settings": "Impostazioni",
@@ -470,6 +488,15 @@ class LanguageManager: ObservableObject {
         "sommelier.placeholder": "Ask for advice...",
         "sommelier.in_cellar": "In cellar",
         "sommelier.suggested_wines": "Suggested wines",
+        "sommelier.suggestions": "Suggestions",
+        "sommelier.go_to_wine": "Go to wine card",
+        "sommelier.alternatives": "Alternatives from your cellar:",
+
+        // Quick Suggestions
+        "quick.fish": "What do you suggest for a seafood dinner?",
+        "quick.chardonnay": "I have a Chardonnay, what to pair with?",
+        "quick.best_wine": "What's the best wine in my cellar?",
+        "quick.red_wine": "Suggest a full-bodied red wine",
 
         // Profile
         "profile.settings": "Settings",
@@ -618,6 +645,15 @@ class LanguageManager: ObservableObject {
         "sommelier.placeholder": "Fragen Sie nach einem Rat...",
         "sommelier.in_cellar": "Im Keller",
         "sommelier.suggested_wines": "Empfohlene Weine",
+        "sommelier.suggestions": "Vorschläge",
+        "sommelier.go_to_wine": "Zur Weinkarte",
+        "sommelier.alternatives": "Alternativen aus Ihrem Keller:",
+
+        // Quick Suggestions
+        "quick.fish": "Was empfehlen Sie für ein Fischessen?",
+        "quick.chardonnay": "Ich habe einen Chardonnay, wozu passt er?",
+        "quick.best_wine": "Was ist der beste Wein in meinem Keller?",
+        "quick.red_wine": "Empfehlen Sie mir einen vollmundigen Rotwein",
 
         // Profile
         "profile.settings": "Einstellungen",
@@ -766,6 +802,15 @@ class LanguageManager: ObservableObject {
         "sommelier.placeholder": "Demandez un conseil...",
         "sommelier.in_cellar": "En cave",
         "sommelier.suggested_wines": "Vins suggérés",
+        "sommelier.suggestions": "Suggestions",
+        "sommelier.go_to_wine": "Voir la fiche du vin",
+        "sommelier.alternatives": "Alternatives de votre cave:",
+
+        // Quick Suggestions
+        "quick.fish": "Que me conseillez-vous pour un dîner de fruits de mer?",
+        "quick.chardonnay": "J'ai un Chardonnay, avec quoi l'accorder?",
+        "quick.best_wine": "Quel est le meilleur vin de ma cave?",
+        "quick.red_wine": "Suggérez-moi un vin rouge corsé",
 
         // Profile
         "profile.settings": "Paramètres",

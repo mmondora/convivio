@@ -212,6 +212,8 @@ struct MainTabView: View {
                     Label(L10n.profile, systemImage: "person.circle")
                 }
         }
+        // Force complete re-render when language changes
+        .id(languageManager.currentLanguage.rawValue)
         .modifier(AdaptiveTabStyle())
         .tint(.purple)
     }

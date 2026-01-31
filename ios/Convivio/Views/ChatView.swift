@@ -9,10 +9,17 @@ struct ChatView: View {
     @Query(filter: #Predicate<Bottle> { $0.quantity > 0 }) private var bottles: [Bottle]
     @Query private var settings: [AppSettings]
 
+    // Observe language changes for UI refresh
+    @ObservedObject private var languageManager = LanguageManager.shared
+
     @State private var inputText = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
     @FocusState private var isInputFocused: Bool
+
+    private var currentSettings: AppSettings? {
+        settings.first
+    }
 
     // Max width for content on iPad
     private var maxContentWidth: CGFloat? {
@@ -66,7 +73,7 @@ struct ChatView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Spacer()
-                        Button("Chiudi") {
+                        Button(L10n.close) {
                             errorMessage = nil
                         }
                         .font(.caption)
@@ -90,7 +97,7 @@ struct ChatView: View {
 
                 // Input area
                 HStack(spacing: 12) {
-                    TextField("Chiedi al sommelier...", text: $inputText, axis: .vertical)
+                    TextField(L10n.sommelierPlaceholder, text: $inputText, axis: .vertical)
                         .textFieldStyle(.plain)
                         .padding(12)
                         .background(Color(.secondarySystemBackground))
@@ -150,7 +157,8 @@ struct ChatView: View {
                 message: message,
                 history: Array(messages),
                 wines: wines,
-                bottles: bottles
+                bottles: bottles,
+                settings: currentSettings
             )
 
             let assistantMessage = ChatMessage(role: .assistant, content: response)
@@ -257,7 +265,7 @@ struct WineSuggestionsSection: View {
                 Image(systemName: "wineglass.fill")
                     .font(.caption)
                     .foregroundColor(.purple)
-                Text("Vini suggeriti")
+                Text(L10n.suggestedWines)
                     .font(.caption.bold())
                     .foregroundColor(.secondary)
             }
@@ -317,7 +325,7 @@ struct WineSuggestionCard: View {
                             .foregroundColor(.purple)
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Vai alla scheda vino")
+                            Text(L10n.goToWine)
                                 .font(.caption.bold())
                             Text(match.matchReason)
                                 .font(.caption2)
@@ -340,7 +348,7 @@ struct WineSuggestionCard: View {
             // Show alternatives if no direct match
             if matchResult?.match == nil, let alternatives = matchResult?.alternatives, !alternatives.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Alternative dalla tua cantina:")
+                    Text(L10n.alternativesFromCellar)
                         .font(.caption.bold())
                         .foregroundColor(.secondary)
 
@@ -394,7 +402,7 @@ struct WineSuggestionCard: View {
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.caption)
-                    Text("In cantina")
+                    Text(L10n.inCellar)
                         .font(.caption.bold())
                 }
                 .foregroundColor(.green)
@@ -418,7 +426,7 @@ struct WineSuggestionCard: View {
             HStack(spacing: 4) {
                 Image(systemName: "cart")
                     .font(.caption)
-                Text("Da acquistare")
+                Text(L10n.toBuy)
                     .font(.caption.bold())
             }
             .foregroundColor(.blue)
@@ -435,16 +443,21 @@ struct WineSuggestionCard: View {
 struct QuickSuggestionsView: View {
     let onSelect: (String) -> Void
 
-    let suggestions = [
-        "Cosa mi consigli per una cena di pesce?",
-        "Ho uno Chardonnay, con cosa lo abbino?",
-        "Qual è il vino migliore nella mia cantina?",
-        "Suggeriscimi un vino rosso corposo"
-    ]
+    // Observe language changes for UI refresh
+    @ObservedObject private var languageManager = LanguageManager.shared
+
+    var suggestions: [String] {
+        [
+            L10n.suggestFish,
+            L10n.suggestChardonnay,
+            L10n.suggestBestWine,
+            L10n.suggestRedWine
+        ]
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Suggerimenti")
+            Text(L10n.suggestions)
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.horizontal)

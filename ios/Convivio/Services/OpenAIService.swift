@@ -250,51 +250,59 @@ actor OpenAIService {
         message: String,
         history: [ChatMessage],
         wines: [Wine],
-        bottles: [Bottle]
+        bottles: [Bottle],
+        settings: AppSettings? = nil
     ) async throws -> String {
         guard let apiKey = apiKey, !apiKey.isEmpty else {
             throw OpenAIError.noApiKey
         }
+
+        // Build locale context from settings
+        let localeContext = LocaleContext.from(settings: settings)
 
         // Build context
         let wineInventory = bottles.compactMap { bottle -> String? in
             guard let wine = bottle.wine, bottle.quantity > 0 else { return nil }
             var info = "\(wine.displayName) - \(wine.type.displayName)"
             if let region = wine.region { info += ", \(region)" }
-            info += " (\(bottle.quantity) bottiglie)"
-            if let location = bottle.location { info += " [Posizione: \(location)]" }
+            info += " (\(bottle.quantity) bottles)"
+            if let location = bottle.location { info += " [Location: \(location)]" }
             return info
         }.joined(separator: "\n")
 
+        // Build localized system prompt
         let systemPrompt = """
-        Sei Convivio, un sommelier AI esperto e amichevole. Aiuti l'utente a gestire la sua cantina personale.
+        LANGUAGE: Always respond in \(localeContext.language).
 
-        CANTINA DELL'UTENTE:
-        \(wineInventory.isEmpty ? "La cantina è vuota." : wineInventory)
+        You are Convivio, an expert and friendly AI sommelier. You help the user manage their personal wine cellar.
 
-        CAPACITÀ:
-        - Consigliare vini per occasioni specifiche
-        - Suggerire abbinamenti cibo-vino
-        - Fornire informazioni su vini specifici
-        - Aiutare a organizzare la cantina
-        - Rispondere a domande sul vino in generale
+        USER'S CELLAR:
+        \(wineInventory.isEmpty ? "The cellar is empty." : wineInventory)
 
-        FORMATO RISPOSTA:
-        Quando suggerisci vini specifici nella tua risposta, DEVI includere alla fine del messaggio un blocco JSON con i dettagli dei vini suggeriti.
-        Usa questo formato esatto:
+        CAPABILITIES:
+        - Recommend wines for specific occasions
+        - Suggest food-wine pairings
+        - Provide information about specific wines
+        - Help organize the cellar
+        - Answer general wine questions
 
-        [Il tuo messaggio normale in italiano qui...]
+        RESPONSE FORMAT:
+        When suggesting specific wines in your response, you MUST include at the end of the message a JSON block with the suggested wine details.
+        Use this exact format:
 
-        [WINE_SUGGESTIONS]{"suggestions":[{"wine_name":"Nome del vino","producer":"Produttore (se noto)","wine_type":"red|white|rosé|sparkling|dessert|fortified","region":"Regione (se nota)","grapes":["vitigno1","vitigno2"],"reason":"Breve motivazione dell'abbinamento"}]}[/WINE_SUGGESTIONS]
+        [Your normal message in \(localeContext.language) here...]
 
-        IMPORTANTE:
-        - Includi il blocco [WINE_SUGGESTIONS] SOLO se stai suggerendo vini specifici
-        - NON includere il blocco se stai solo rispondendo a domande generali
-        - Se suggerisci vini dalla cantina dell'utente, usa i nomi ESATTI come appaiono nella lista sopra
-        - Se suggerisci vini da acquistare, includi comunque i dettagli completi
-        - Il campo "reason" deve spiegare perché questo vino è adatto (abbinamento, occasione, etc.)
+        [WINE_SUGGESTIONS]{"suggestions":[{"wine_name":"Wine name","producer":"Producer (if known)","wine_type":"red|white|rosé|sparkling|dessert|fortified","region":"Region (if known)","grapes":["grape1","grape2"],"reason":"Brief reason for the pairing"}]}[/WINE_SUGGESTIONS]
 
-        Rispondi sempre in italiano, in modo cordiale e competente.
+        IMPORTANT:
+        - Include the [WINE_SUGGESTIONS] block ONLY if you are suggesting specific wines
+        - DO NOT include the block if you are just answering general questions
+        - If suggesting wines from the user's cellar, use the EXACT names as they appear in the list above
+        - If suggesting wines to purchase, still include full details
+        - The "reason" field should explain why this wine is suitable (pairing, occasion, etc.)
+
+        Always respond in \(localeContext.language), in a friendly and competent manner.
+        Adapt cultural references, typical ingredients, and advice to the context of \(localeContext.locationForPrompts).
         """
 
         var messages: [[String: String]] = [

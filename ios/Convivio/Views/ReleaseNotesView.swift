@@ -10,9 +10,23 @@ struct ReleaseNotesView: View {
 
                 // Current version
                 releaseSection(
-                    version: "1.6.1",
+                    version: "1.6.2",
                     date: "Gennaio 2026",
                     isCurrent: true,
+                    features: [
+                        "Sommelier AI risponde nella lingua scelta",
+                        "Suggerimenti rapidi localizzati in 4 lingue",
+                        "UI si aggiorna automaticamente al cambio lingua"
+                    ],
+                    fixes: [
+                        "Localizzazione completa dell'interfaccia Sommelier",
+                        "Stringhe Chat tradotte in italiano, inglese, tedesco e francese"
+                    ]
+                )
+
+                releaseSection(
+                    version: "1.6.1",
+                    date: "Gennaio 2026",
                     features: [
                         "UI più pulita: rimossi titoli ridondanti dalle tab principali",
                         "Più spazio per i contenuti in tutte le schermate"
