@@ -552,6 +552,8 @@ enum MessageRole: String, Codable {
 final class AppSettings {
     var openAIApiKey: String?
     var preferredLanguage: String
+    var userCity: String?
+    var userCountry: String?
     var debugModeEnabled: Bool = false  // Toggle per mostrare bottoni di debug
     var createdAt: Date
     var updatedAt: Date
@@ -566,6 +568,29 @@ final class AppSettings {
         }
         set {
             tastePreferencesData = try? JSONEncoder().encode(newValue)
+        }
+    }
+
+    /// Get the effective language for prompts (resolves "auto" to device language)
+    var effectiveLanguage: String {
+        if preferredLanguage == "auto" {
+            return Locale.current.language.languageCode?.identifier ?? "en"
+        }
+        return preferredLanguage
+    }
+
+    /// Get the language display name for prompts
+    var languageForPrompts: String {
+        switch effectiveLanguage {
+        case "it": return "italiano"
+        case "en": return "English"
+        case "fr": return "français"
+        case "de": return "Deutsch"
+        case "es": return "español"
+        case "pt": return "português"
+        case "ja": return "日本語"
+        case "zh": return "中文"
+        default: return "English"
         }
     }
 

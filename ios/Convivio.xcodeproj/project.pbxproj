@@ -70,6 +70,8 @@
 		C4729E2BCE574619A95EED01 /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF39EF8E28C450298E8BE21 /* PerformanceMonitor.swift */; };
 		F3505C74BBD642BFB049BD5D /* LoadingComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50BCB42FC95F43E780CA4042 /* LoadingComponents.swift */; };
 		ACC262AACAA84D488AA212EF /* DebugPerformanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D9C78906BF46049CB282D7 /* DebugPerformanceView.swift */; };
+		697DB8E2BB930A00FDED096B /* LocaleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697DB8E216B5A5567BA50D90 /* LocaleService.swift */; };
+		697DB8E2FCBA346D743A588A /* PromptTemplateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697DB8E2E75830AD8445AA89 /* PromptTemplateService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -139,6 +141,8 @@
 		7FF39EF8E28C450298E8BE21 /* PerformanceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceMonitor.swift; sourceTree = "<group>"; };
 		50BCB42FC95F43E780CA4042 /* LoadingComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingComponents.swift; sourceTree = "<group>"; };
 		F6D9C78906BF46049CB282D7 /* DebugPerformanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPerformanceView.swift; sourceTree = "<group>"; };
+		697DB8E216B5A5567BA50D90 /* LocaleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocaleService.swift; sourceTree = "<group>"; };
+		697DB8E2E75830AD8445AA89 /* PromptTemplateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplateService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -236,6 +240,8 @@
 				272887AC2F2CEAD000C8514A /* MigrationService.swift */,
 				272887AD2F2CEAD000C8514A /* SharingService.swift */,
 				F10000000000000C /* OpenAIService.swift */,
+				697DB8E216B5A5567BA50D90 /* LocaleService.swift */,
+				697DB8E2E75830AD8445AA89 /* PromptTemplateService.swift */,
 				F10000000000000E /* MenuGeneratorService.swift */,
 				F100000000000027 /* WineRatingService.swift */,
 				F100000000000031 /* NotificationService.swift */,
@@ -377,6 +383,8 @@
 				F000000000000009 /* ChatView.swift in Sources */,
 				F00000000000000B /* AppIconGenerator.swift in Sources */,
 				F00000000000000C /* OpenAIService.swift in Sources */,
+				697DB8E2BB930A00FDED096B /* LocaleService.swift in Sources */,
+				697DB8E2FCBA346D743A588A /* PromptTemplateService.swift in Sources */,
 				F00000000000000E /* MenuGeneratorService.swift in Sources */,
 				F000000000000012 /* FoodView.swift in Sources */,
 				F000000000000021 /* StarRatingView.swift in Sources */,

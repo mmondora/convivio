@@ -13,6 +13,7 @@ actor MenuGeneratorService {
         request: MenuRequest,
         wines: [Wine],
         bottles: [Bottle],
+        localeContext: LocaleContext? = nil,
         debugEnabled: Bool = false
     ) async throws -> MenuResponse {
         // Filter available bottles (quantity > 0)
@@ -24,11 +25,12 @@ actor MenuGeneratorService {
         // Build taste preferences string
         let tastePrefsString = buildTastePreferences(request.tastePreferences)
 
-        // Build prompts
+        // Build prompts with locale context
         let (systemPrompt, userPrompt) = buildMenuPrompts(
             request: request,
             wineInventory: wineInventory,
-            tastePreferences: tastePrefsString
+            tastePreferences: tastePrefsString,
+            locale: localeContext
         )
 
         // Intercept prompt if debug mode enabled
@@ -130,15 +132,30 @@ actor MenuGeneratorService {
 
     // MARK: - Prompt Builder
 
+    /// Builds localization header for prompts
+    private func buildLocalizationHeader(_ locale: LocaleContext?) -> String {
+        guard let locale = locale else { return "" }
+        return """
+        Rispondi SEMPRE in \(locale.language).
+        Adatta riferimenti culturali, ingredienti tipici, tradizioni e consigli al contesto di \(locale.locationForPrompts).
+        Privilegia ingredienti locali, stagionali e facilmente reperibili in \(locale.country ?? "questo paese").
+        Rispetta le tradizioni gastronomiche e di ospitalità tipiche di \(locale.country ?? "questo paese").
+
+        """
+    }
+
     /// Builds separate system and user prompts for menu generation
-    private func buildMenuPrompts(request: MenuRequest, wineInventory: String, tastePreferences: String) -> (systemPrompt: String, userPrompt: String) {
+    private func buildMenuPrompts(request: MenuRequest, wineInventory: String, tastePreferences: String, locale: LocaleContext? = nil) -> (systemPrompt: String, userPrompt: String) {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .full
-        dateFormatter.locale = Locale(identifier: "it_IT")
+        dateFormatter.locale = Locale(identifier: locale?.languageCode ?? "it")
         let dataFormattata = dateFormatter.string(from: request.data)
 
+        // Build localization header
+        let localeHeader = buildLocalizationHeader(locale)
+
         let systemPrompt = """
-        Sei un sommelier professionista, chef consulente e maestro di cerimonie italiano. Genera un menu completo con ricette dettagliate, abbinamenti vino e consigli di galateo per inviti e ricevimento.
+        \(localeHeader)Sei un sommelier professionista, chef consulente e maestro di cerimonie. Genera un menu completo con ricette dettagliate, abbinamenti vino e consigli di galateo per inviti e ricevimento.
 
         ⚠️ REGOLA PRIORITARIA - LEGGERE ATTENTAMENTE:
         Le "Note specifiche dell'utente" hanno MASSIMA PRIORITÀ ASSOLUTA.
@@ -484,6 +501,7 @@ extension MenuGeneratorService {
         cuisineType: String = "Italiana",
         dietType: DietType = .normale,
         substitutionReason: String? = nil,
+        localeContext: LocaleContext? = nil,
         debugEnabled: Bool = false
     ) async throws -> MenuResponse {
         // Get current dishes for context
@@ -543,9 +561,10 @@ extension MenuGeneratorService {
             confirmedWinesContext = "Nessun vino ancora confermato"
         }
 
-        // Build system and user prompts separately
+        // Build system and user prompts separately with locale context
+        let localeHeader = buildLocalizationHeader(localeContext)
         let systemPrompt = """
-        Sei un chef italiano esperto e sommelier professionista.
+        \(localeHeader)Sei un chef esperto e sommelier professionista.
         Il tuo compito è generare UN SOLO piatto alternativo che si integri perfettamente nel menu esistente.
         """
 
@@ -844,7 +863,8 @@ extension MenuGeneratorService {
         dinner: DinnerEvent,
         wines: [Wine],
         bottles: [Bottle],
-        tastePreferences: TastePreferences?
+        tastePreferences: TastePreferences?,
+        localeContext: LocaleContext? = nil
     ) async throws -> MenuResponse {
         let wineInventory = buildWineInventory(bottles: bottles.filter { $0.quantity > 0 })
         let tastePrefsString = buildTastePreferences(tastePreferences)
@@ -891,8 +911,9 @@ extension MenuGeneratorService {
         }
 
         let isCellar = wineType == "cellar"
+        let localeHeader = buildLocalizationHeader(localeContext)
         let prompt = """
-        Sei un sommelier professionista italiano.
+        \(localeHeader)Sei un sommelier professionista.
         Devi suggerire UN SOLO vino alternativo per sostituire "\(currentWineName)".
 
         TIPO DI SUGGERIMENTO RICHIESTO: \(isCellar ? "VINO DALLA CANTINA" : "VINO DA ACQUISTARE")
@@ -1094,10 +1115,14 @@ extension MenuGeneratorService {
 
 extension MenuGeneratorService {
     /// Generate an elegant invite message for the dinner
-    func generateInviteMessage(for dinner: DinnerEvent, menu: MenuResponse?) async throws -> String {
+    func generateInviteMessage(
+        for dinner: DinnerEvent,
+        menu: MenuResponse?,
+        localeContext: LocaleContext? = nil
+    ) async throws -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .full
-        dateFormatter.locale = Locale(identifier: "it_IT")
+        dateFormatter.locale = Locale(identifier: localeContext?.languageCode ?? "it")
 
         let timeFormatter = DateFormatter()
         timeFormatter.dateFormat = "HH:mm"
@@ -1123,9 +1148,10 @@ extension MenuGeneratorService {
 
         let occasion = dinner.occasion ?? "Cena informale"
         let toneDescription = getInviteTone(for: occasion)
+        let localeHeader = buildLocalizationHeader(localeContext)
 
         let prompt = """
-        Genera un messaggio di invito per questa cena.
+        \(localeHeader)Genera un messaggio di invito per questa cena.
 
         DETTAGLI CENA:
         - Data: \(dateFormatter.string(from: dinner.date))
@@ -1203,11 +1229,12 @@ extension MenuGeneratorService {
     func generateDetailedMenu(
         for dinner: DinnerEvent,
         menu: MenuResponse,
+        localeContext: LocaleContext? = nil,
         debugEnabled: Bool = false
     ) async throws -> DettaglioMenuCompleto {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .full
-        dateFormatter.locale = Locale(identifier: "it_IT")
+        dateFormatter.locale = Locale(identifier: localeContext?.languageCode ?? "it")
 
         // Build menu context
         let menuContext = menu.menu.allCourses.map { course in
@@ -1229,8 +1256,9 @@ extension MenuGeneratorService {
             "\(pairing.vino.produttore) \(pairing.vino.nome) - \(pairing.portata)"
         }.joined(separator: "\n")
 
+        let localeHeader = buildLocalizationHeader(localeContext)
         let systemPrompt = """
-        Sei un executive chef e sommelier italiano con esperienza in eventi di alto livello.
+        \(localeHeader)Sei un executive chef e sommelier con esperienza in eventi di alto livello.
         Devi generare un documento completo e dettagliato per la gestione di una cena.
         """
 

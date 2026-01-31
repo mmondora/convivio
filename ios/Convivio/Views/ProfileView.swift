@@ -352,8 +352,9 @@ struct ProfileView: View {
                     }
                 }
 
-                // Language - system style picker
+                // Language & Locale
                 Section {
+                    // Language picker
                     Picker(selection: Binding(
                         get: { currentSettings?.preferredLanguage ?? "auto" },
                         set: { newValue in
@@ -387,9 +388,59 @@ struct ProfileView: View {
                             Text(L10n.language)
                         }
                     }
+
+                    // City text field
+                    HStack {
+                        Image(systemName: "building.2")
+                            .foregroundColor(.orange)
+                            .frame(width: 30)
+
+                        TextField("Città", text: Binding(
+                            get: { currentSettings?.userCity ?? "" },
+                            set: { newValue in
+                                if let settings = currentSettings {
+                                    settings.userCity = newValue.isEmpty ? nil : newValue
+                                    settings.updatedAt = Date()
+                                    try? modelContext.save()
+                                }
+                            }
+                        ))
+                    }
+
+                    // Country picker
+                    Picker(selection: Binding(
+                        get: { currentSettings?.userCountry ?? "" },
+                        set: { newValue in
+                            if let settings = currentSettings {
+                                settings.userCountry = newValue.isEmpty ? nil : newValue
+                                settings.updatedAt = Date()
+                                try? modelContext.save()
+                            }
+                        }
+                    )) {
+                        Text("Non specificato")
+                            .tag("")
+
+                        ForEach(LocaleService.SupportedCountry.all) { country in
+                            Text("\(country.nativeName)")
+                                .tag(country.id)
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "flag")
+                                .foregroundColor(.green)
+                                .frame(width: 30)
+
+                            Text("Paese")
+                        }
+                    }
+                } header: {
+                    Text("Lingua e Località")
                 } footer: {
                     if currentSettings?.preferredLanguage == "auto" {
-                        Text("Usa la lingua del dispositivo (\(AppLanguage.fromDeviceLanguage().displayName))")
+                        Text("Lingua automatica: \(AppLanguage.fromDeviceLanguage().displayName). La località personalizza i suggerimenti AI.")
+                    } else {
+                        Text("La località personalizza i suggerimenti AI per ingredienti, tradizioni e cultura locale.")
                     }
                 }
 
