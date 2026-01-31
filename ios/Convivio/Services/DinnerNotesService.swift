@@ -406,7 +406,7 @@ extension DinnerNotesService {
 
         // Ricette
         text += "\n### RICETTE\n"
-        for ricetta in content.cucina {
+        for ricetta in content.ricette {
             text += "\n#### \(ricetta.nome) (\(ricetta.categoria))\n"
             text += "Difficoltà: \(ricetta.difficolta) | Prep: \(ricetta.tempoPreparazione)min | Cottura: \(ricetta.tempoCottura)min\n"
             if ricetta.preparabileAnticipo {
