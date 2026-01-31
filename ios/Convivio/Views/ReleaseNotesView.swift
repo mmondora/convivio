@@ -10,9 +10,25 @@ struct ReleaseNotesView: View {
 
                 // Current version
                 releaseSection(
-                    version: "1.4.0",
+                    version: "1.5.0",
                     date: "Gennaio 2025",
                     isCurrent: true,
+                    features: [
+                        "Sistema di localizzazione: prompt AI adattati a lingua e cultura",
+                        "Nuovo profilo: impostazioni città e paese per suggerimenti personalizzati",
+                        "8 lingue supportate: IT, EN, FR, DE, ES, PT, JA, ZH",
+                        "30+ paesi con adattamento culturale automatico",
+                        "7 template prompt centralizzati e configurabili"
+                    ],
+                    fixes: [
+                        "Prompt AI più rispettosi della cultura locale",
+                        "Ingredienti suggeriti adattati al paese dell'utente"
+                    ]
+                )
+
+                releaseSection(
+                    version: "1.4.0",
+                    date: "Gennaio 2025",
                     features: [
                         "Ottimizzazione performance: liste con paginazione (20 elementi)",
                         "Selezione modello AI intelligente: GPT-4o-mini per task semplici",

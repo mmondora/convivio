@@ -162,24 +162,20 @@ struct AboutView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 ReleaseNoteItem(
-                    icon: "🚀",
-                    text: "Performance ottimizzate con paginazione liste"
+                    icon: "🌍",
+                    text: "Sistema di localizzazione per prompt AI"
                 )
                 ReleaseNoteItem(
-                    icon: "🤖",
-                    text: "Selezione modello AI intelligente per risposte veloci"
+                    icon: "🏠",
+                    text: "Impostazioni città e paese nel profilo"
                 )
                 ReleaseNoteItem(
-                    icon: "💾",
-                    text: "Cache risposte API per evitare chiamate ridondanti"
+                    icon: "🗣️",
+                    text: "8 lingue supportate con adattamento culturale"
                 )
                 ReleaseNoteItem(
-                    icon: "📊",
-                    text: "Monitor performance nel pannello Debug"
-                )
-                ReleaseNoteItem(
-                    icon: "⏳",
-                    text: "Nuovi componenti UX per stati di caricamento"
+                    icon: "📝",
+                    text: "Template prompt centralizzati e configurabili"
                 )
             }
 
