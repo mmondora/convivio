@@ -2164,16 +2164,19 @@ struct ScheduledNotificationsSheet: View {
     let dinner: DinnerEvent
     @Environment(\.dismiss) private var dismiss
 
+    private var winesWithNotifications: [ConfirmedWine] {
+        dinner.confirmedWines.filter { $0.putInFridgeNotificationId != nil || $0.takeOutNotificationId != nil }
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                if dinner.confirmedWines.isEmpty {
+                if winesWithNotifications.isEmpty {
                     Text("Nessuna notifica programmata")
                         .foregroundColor(.secondary)
                 } else {
-                    ForEach(dinner.confirmedWines) { wine in
-                        if wine.putInFridgeNotificationId != nil || wine.takeOutNotificationId != nil {
-                            Section {
+                    ForEach(winesWithNotifications) { wine in
+                        Section {
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack {
                                         Text(wine.temperatureCategory.icon)
@@ -2236,7 +2239,6 @@ struct ScheduledNotificationsSheet: View {
                                 }
                                 .padding(.vertical, 4)
                             }
-                        }
                     }
                 }
             }
