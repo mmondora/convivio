@@ -77,6 +77,11 @@ struct FoodView: View {
 struct DinnerRowView: View {
     let dinner: DinnerEvent
 
+    /// Show note buttons only for confirmed/completed dinners (not winesConfirmed)
+    private var showNoteButtons: Bool {
+        dinner.status.showNotes && dinner.menu != nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -128,6 +133,12 @@ struct DinnerRowView: View {
                         }
                     }
                 }
+            }
+
+            // Note buttons for confirmed/completed dinners
+            if showNoteButtons {
+                DinnerNoteButtonsWithNavigation(dinner: dinner)
+                    .padding(.top, 4)
             }
 
             // Collaboration info for shared cellars
@@ -724,7 +735,7 @@ struct DinnerDetailView: View {
                                     courseName: course.name,
                                     dishIndex: index,
                                     isRegenerating: regeneratingDish?.course == course.name && regeneratingDish?.index == index,
-                                    canEdit: dinner.status.canEditMenu,
+                                    canEdit: dinner.status.canEditDishes,
                                     onTap: { selectedDish = dish },
                                     onRegenerate: { regenerateDish(course: course.name, index: index) },
                                     onDelete: {
@@ -769,18 +780,20 @@ struct DinnerDetailView: View {
 
             // Action buttons - visibility based on dinner status
             VStack(spacing: 12) {
-                // SCARICO BOTTIGLIE - solo in stato completed, come CTA prominente
-                if dinner.status.canUnloadBottles && !dinner.confirmedWines.isEmpty {
+                // CENA COMPLETATA - banner prominente in stato confirmed
+                // Apre sheet scarico bottiglie → transizione a completed
+                if dinner.status.canCompleteDinner && !dinner.confirmedWines.isEmpty {
                     Button {
                         showBottleUnload = true
                     } label: {
                         HStack {
-                            Image(systemName: "arrow.down.circle.fill")
-                            Text("Scarica Bottiglie")
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Cena completata!")
                         }
+                        .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.orange)
+                        .background(Color.green)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
@@ -837,8 +850,8 @@ struct DinnerDetailView: View {
                     }
                 }
 
-                // DETTAGLIO MENU - disponibile quando ci sono vini confermati o cena confermata/completata
-                if dinner.status == .winesConfirmed || dinner.status == .confirmed || dinner.status == .completed {
+                // DETTAGLIO MENU - disponibile quando vini confermati o cena confermata/completata
+                if dinner.status.showDetailedMenu {
                     NavigationLink {
                         DettaglioMenuView(dinner: dinner, menu: menu)
                     } label: {
@@ -863,8 +876,8 @@ struct DinnerDetailView: View {
                     }
                 }
 
-                // RIGENERA MENU - solo in stati editabili (planning, winesConfirmed)
-                if dinner.status.canEditMenu {
+                // RIGENERA MENU - SOLO in stato planning (NON in winesConfirmed)
+                if dinner.status.canRegenerateMenu {
                     Button {
                         Task { await regenerateMenu() }
                     } label: {
@@ -1091,7 +1104,7 @@ struct DinnerDetailView: View {
             vintage: pairing.vino.annata,
             compatibility: pairing.vino.compatibilita?.punteggio,
             isRegenerating: regeneratingWine == pairing.id,
-            canEdit: dinner.status.canEditMenu,
+            canEdit: dinner.status.canEditWines,  // Wine editing only in planning state
             onTap: { selectedWinePairing = pairing },
             onRegenerate: { regenerateWine(type: "cellar", index: index) },
             onDelete: {
@@ -1109,7 +1122,7 @@ struct DinnerDetailView: View {
             vintage: suggestion.annata,
             compatibility: suggestion.compatibilita?.punteggio,
             isRegenerating: regeneratingWine == suggestion.id,
-            canEdit: dinner.status.canEditMenu,
+            canEdit: dinner.status.canEditWines,  // Wine editing only in planning state
             onTap: { },
             onRegenerate: { regenerateWine(type: "purchase", index: index) },
             onDelete: {
