@@ -13,6 +13,7 @@ struct DettaglioMenuView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var expandedSections: Set<String> = ["ricette", "timeline"]
+    @State private var pdfData: Data?
 
     @ObservedObject private var promptInterceptionService = PromptInterceptionService.shared
 
@@ -34,10 +35,10 @@ struct DettaglioMenuView: View {
         .navigationTitle("Dettaglio Menu")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if let dettaglio = dettaglio {
+            if dettaglio != nil, let pdfData = pdfData {
                 ToolbarItem(placement: .primaryAction) {
                     ShareLink(
-                        item: PDFGenerator.generateMenuPDF(from: dettaglio, dinner: dinner),
+                        item: pdfData,
                         preview: SharePreview(
                             "Menu - \(dinner.title)",
                             image: Image(systemName: "doc.richtext")
@@ -53,6 +54,7 @@ struct DettaglioMenuView: View {
                 ToolbarItem(placement: .secondaryAction) {
                     Button {
                         dettaglio = nil
+                        pdfData = nil
                         Task { await generateDetailedMenu() }
                     } label: {
                         Label("Rigenera", systemImage: "arrow.clockwise")
@@ -67,6 +69,8 @@ struct DettaglioMenuView: View {
             // Load existing detailed menu if available
             if let existing = dinner.detailedMenu {
                 dettaglio = existing
+                // Pre-generate PDF for sharing
+                pdfData = PDFGenerator.generateMenuPDF(from: existing, dinner: dinner)
             }
         }
     }
@@ -309,8 +313,10 @@ struct DettaglioMenuView: View {
     // MARK: - Generate Action
 
     private func generateDetailedMenu() async {
-        isLoading = true
-        errorMessage = nil
+        await MainActor.run {
+            isLoading = true
+            errorMessage = nil
+        }
 
         do {
             let result = try await MenuGeneratorService.shared.generateDetailedMenu(
@@ -321,6 +327,8 @@ struct DettaglioMenuView: View {
 
             await MainActor.run {
                 dettaglio = result
+                // Pre-generate PDF for sharing
+                pdfData = PDFGenerator.generateMenuPDF(from: result, dinner: dinner)
                 // Save to dinner for persistence
                 dinner.detailedMenu = result
                 dinner.updatedAt = Date()
