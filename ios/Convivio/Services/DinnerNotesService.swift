@@ -84,6 +84,8 @@ class DinnerNotesService: ObservableObject {
         let note = DinnerNote(dinnerID: dinnerUUID, noteType: type, contentJSON: contentJSON)
         context.insert(note)
         try context.save()
+        print("✅ [DinnerNotesService] Saved \(type.rawValue) note for dinner \(dinnerUUID)")
+        print("✅ [DinnerNotesService] JSON length: \(contentJSON.count) chars")
     }
 
     func deleteNote(dinnerID: UUID, type: DinnerNoteType, from context: ModelContext) {
@@ -104,18 +106,51 @@ class DinnerNotesService: ObservableObject {
     // MARK: - Note Parsing
 
     func parseNoteRicette(_ note: DinnerNote) -> NoteRicetteContent? {
-        guard let data = note.contentJSON.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode(NoteRicetteContent.self, from: data)
+        guard let data = note.contentJSON.data(using: .utf8) else {
+            print("❌ [NoteRicette] Failed to convert contentJSON to data")
+            return nil
+        }
+        do {
+            let content = try JSONDecoder().decode(NoteRicetteContent.self, from: data)
+            print("✅ [NoteRicette] Successfully parsed note with \(content.ricette.count) recipes")
+            return content
+        } catch {
+            print("❌ [NoteRicette] JSON decode error: \(error)")
+            print("❌ [NoteRicette] Raw JSON (first 500 chars): \(String(note.contentJSON.prefix(500)))")
+            return nil
+        }
     }
 
     func parseNoteVini(_ note: DinnerNote) -> NoteViniContent? {
-        guard let data = note.contentJSON.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode(NoteViniContent.self, from: data)
+        guard let data = note.contentJSON.data(using: .utf8) else {
+            print("❌ [NoteVini] Failed to convert contentJSON to data")
+            return nil
+        }
+        do {
+            let content = try JSONDecoder().decode(NoteViniContent.self, from: data)
+            print("✅ [NoteVini] Successfully parsed note with \(content.schedeVino.count) wine cards")
+            return content
+        } catch {
+            print("❌ [NoteVini] JSON decode error: \(error)")
+            print("❌ [NoteVini] Raw JSON (first 500 chars): \(String(note.contentJSON.prefix(500)))")
+            return nil
+        }
     }
 
     func parseNoteAccoglienza(_ note: DinnerNote) -> NoteAccoglienzaContent? {
-        guard let data = note.contentJSON.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode(NoteAccoglienzaContent.self, from: data)
+        guard let data = note.contentJSON.data(using: .utf8) else {
+            print("❌ [NoteAccoglienza] Failed to convert contentJSON to data")
+            return nil
+        }
+        do {
+            let content = try JSONDecoder().decode(NoteAccoglienzaContent.self, from: data)
+            print("✅ [NoteAccoglienza] Successfully parsed note")
+            return content
+        } catch {
+            print("❌ [NoteAccoglienza] JSON decode error: \(error)")
+            print("❌ [NoteAccoglienza] Raw JSON (first 500 chars): \(String(note.contentJSON.prefix(500)))")
+            return nil
+        }
     }
 
     // MARK: - Private Generation Methods

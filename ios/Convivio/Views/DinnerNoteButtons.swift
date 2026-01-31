@@ -168,12 +168,17 @@ struct DinnerNoteButtonsWithNavigation: View {
     }
 
     private func handleNoteTap(_ type: DinnerNoteType) {
+        print("🔵 [NoteButtons] Tapped \(type.rawValue) for dinner \(dinner.stableUUID)")
+        print("🔵 [NoteButtons] Total notes in query: \(allNotes.count), for this dinner: \(notes.count)")
+
         if hasNote(for: type) {
+            print("🔵 [NoteButtons] Note exists, showing sheet")
             selectedNoteType = type
             showNoteView = true
             return
         }
 
+        print("🔵 [NoteButtons] Note doesn't exist, generating...")
         // Generate note
         Task {
             do {
@@ -184,13 +189,14 @@ struct DinnerNoteButtonsWithNavigation: View {
                     settings: settings,
                     context: modelContext
                 )
+                print("🔵 [NoteButtons] Generation complete, showing sheet")
                 // After generation, show the note
                 await MainActor.run {
                     selectedNoteType = type
                     showNoteView = true
                 }
             } catch {
-                print("Error generating note: \(error)")
+                print("❌ [NoteButtons] Error generating note: \(error)")
             }
         }
     }
@@ -199,53 +205,53 @@ struct DinnerNoteButtonsWithNavigation: View {
     private func noteViewSheet(for type: DinnerNoteType) -> some View {
         NavigationStack {
             Group {
+                // Debug: fetch note directly from context to ensure fresh data
+                let freshNote = notesService.getNote(dinnerID: dinner.stableUUID, type: type, from: modelContext)
+
                 switch type {
                 case .cucina:
-                    if let note = getNote(for: .cucina),
-                       let content = notesService.parseNoteRicette(note) {
-                        NoteRicetteView(
-                            dinner: dinner,
-                            content: content,
-                            onRegenerate: { regenerateNote(.cucina) }
-                        )
+                    if let note = freshNote ?? getNote(for: .cucina) {
+                        if let content = notesService.parseNoteRicette(note) {
+                            NoteRicetteView(
+                                dinner: dinner,
+                                content: content,
+                                onRegenerate: { regenerateNote(.cucina) }
+                            )
+                        } else {
+                            noteParseErrorView(type: type, noteExists: true)
+                        }
                     } else {
-                        ContentUnavailableView(
-                            "Note non disponibili",
-                            systemImage: "book",
-                            description: Text("Impossibile caricare le note ricette")
-                        )
+                        noteParseErrorView(type: type, noteExists: false)
                     }
 
                 case .vini:
-                    if let note = getNote(for: .vini),
-                       let content = notesService.parseNoteVini(note) {
-                        NoteViniView(
-                            dinner: dinner,
-                            content: content,
-                            onRegenerate: { regenerateNote(.vini) }
-                        )
+                    if let note = freshNote ?? getNote(for: .vini) {
+                        if let content = notesService.parseNoteVini(note) {
+                            NoteViniView(
+                                dinner: dinner,
+                                content: content,
+                                onRegenerate: { regenerateNote(.vini) }
+                            )
+                        } else {
+                            noteParseErrorView(type: type, noteExists: true)
+                        }
                     } else {
-                        ContentUnavailableView(
-                            "Note non disponibili",
-                            systemImage: "wineglass",
-                            description: Text("Impossibile caricare le note vini")
-                        )
+                        noteParseErrorView(type: type, noteExists: false)
                     }
 
                 case .accoglienza:
-                    if let note = getNote(for: .accoglienza),
-                       let content = notesService.parseNoteAccoglienza(note) {
-                        NoteAccoglienzaView(
-                            dinner: dinner,
-                            content: content,
-                            onRegenerate: { regenerateNote(.accoglienza) }
-                        )
+                    if let note = freshNote ?? getNote(for: .accoglienza) {
+                        if let content = notesService.parseNoteAccoglienza(note) {
+                            NoteAccoglienzaView(
+                                dinner: dinner,
+                                content: content,
+                                onRegenerate: { regenerateNote(.accoglienza) }
+                            )
+                        } else {
+                            noteParseErrorView(type: type, noteExists: true)
+                        }
                     } else {
-                        ContentUnavailableView(
-                            "Note non disponibili",
-                            systemImage: "person.2",
-                            description: Text("Impossibile caricare le note accoglienza")
-                        )
+                        noteParseErrorView(type: type, noteExists: false)
                     }
                 }
             }
@@ -255,6 +261,25 @@ struct DinnerNoteButtonsWithNavigation: View {
                         showNoteView = false
                     }
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func noteParseErrorView(type: DinnerNoteType, noteExists: Bool) -> some View {
+        VStack(spacing: 16) {
+            ContentUnavailableView(
+                noteExists ? "Errore nel formato delle note" : "Note non disponibili",
+                systemImage: type.icon,
+                description: Text(noteExists ? "Prova a rigenerare le note" : "Impossibile caricare le note")
+            )
+
+            if noteExists {
+                Button("Rigenera Note") {
+                    regenerateNote(type)
+                    showNoteView = false
+                }
+                .buttonStyle(.bordered)
             }
         }
     }
