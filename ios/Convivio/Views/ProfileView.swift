@@ -492,6 +492,23 @@ struct ProfileView: View {
                         }
                     }
                     .foregroundColor(.primary)
+
+                    NavigationLink {
+                        PromptConfigurationListView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "text.bubble")
+                                .foregroundColor(.orange)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading) {
+                                Text("Configurazione Prompt")
+                                Text("Personalizza i prompt AI")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
                 }
 
                 // Informazioni section

@@ -72,6 +72,8 @@
 		ACC262AACAA84D488AA212EF /* DebugPerformanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D9C78906BF46049CB282D7 /* DebugPerformanceView.swift */; };
 		697DB8E2BB930A00FDED096B /* LocaleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697DB8E216B5A5567BA50D90 /* LocaleService.swift */; };
 		697DB8E2FCBA346D743A588A /* PromptTemplateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697DB8E2E75830AD8445AA89 /* PromptTemplateService.swift */; };
+		697DBBD389725A7A554ADDCE /* PromptConfigurationListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697DBBD3E164442019554E9D /* PromptConfigurationListView.swift */; };
+		697DBBD34FFE1597167E08C1 /* PromptEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697DBBD38364A0EC079DAEF2 /* PromptEditorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -143,6 +145,8 @@
 		F6D9C78906BF46049CB282D7 /* DebugPerformanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPerformanceView.swift; sourceTree = "<group>"; };
 		697DB8E216B5A5567BA50D90 /* LocaleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocaleService.swift; sourceTree = "<group>"; };
 		697DB8E2E75830AD8445AA89 /* PromptTemplateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplateService.swift; sourceTree = "<group>"; };
+		697DBBD3E164442019554E9D /* PromptConfigurationListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptConfigurationListView.swift; sourceTree = "<group>"; };
+		697DBBD38364A0EC079DAEF2 /* PromptEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptEditorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -221,6 +225,8 @@
 				F100000000000044 /* DebugPanelView.swift */,
 				F100000000000054 /* PromptEditorSheet.swift */,
 				F100000000000055 /* DettaglioMenuView.swift */,
+				697DBBD3E164442019554E9D /* PromptConfigurationListView.swift */,
+				697DBBD38364A0EC079DAEF2 /* PromptEditorView.swift */,
 				F400000000000007 /* Components */,
 				F400000000000008 /* Ratings */,
 			);
@@ -428,6 +434,8 @@
 				F000000000000053 /* PDFGenerator.swift in Sources */,
 				F000000000000054 /* PromptEditorSheet.swift in Sources */,
 				F000000000000055 /* DettaglioMenuView.swift in Sources */,
+				697DBBD389725A7A554ADDCE /* PromptConfigurationListView.swift in Sources */,
+				697DBBD34FFE1597167E08C1 /* PromptEditorView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
