@@ -499,7 +499,7 @@ struct DinnerDetailView: View {
             PromptEditorSheet()
         }
         .sheet(isPresented: $showScheduledNotifications) {
-            ScheduledNotificationsSheet(dinner: dinner)
+            ScheduledNotificationsSheet(wines: dinner.confirmedWines)
         }
         .alert("Elimina piatto", isPresented: $showDeleteConfirmation) {
             Button("Annulla", role: .cancel) {}
@@ -2161,96 +2161,125 @@ struct OccasionPicker: View {
 // MARK: - Scheduled Notifications Sheet
 
 struct ScheduledNotificationsSheet: View {
-    let dinner: DinnerEvent
+    let wines: [ConfirmedWine]
     @Environment(\.dismiss) private var dismiss
-
-    private var winesWithNotifications: [ConfirmedWine] {
-        dinner.confirmedWines.filter { $0.putInFridgeNotificationId != nil || $0.takeOutNotificationId != nil }
-    }
 
     var body: some View {
         NavigationStack {
-            List {
+            ScheduledNotificationsContent(wines: wines)
+                .navigationTitle("Notifiche Vini")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Chiudi") {
+                            dismiss()
+                        }
+                    }
+                }
+        }
+    }
+}
+
+struct ScheduledNotificationsContent: View {
+    let wines: [ConfirmedWine]
+
+    private var winesWithNotifications: [ConfirmedWine] {
+        wines.filter { $0.putInFridgeNotificationId != nil || $0.takeOutNotificationId != nil }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
                 if winesWithNotifications.isEmpty {
                     Text("Nessuna notifica programmata")
                         .foregroundColor(.secondary)
+                        .padding(.top, 40)
                 } else {
-                    ForEach(winesWithNotifications) { wine in
-                        Section {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack {
-                                        Text(wine.temperatureCategory.icon)
-                                            .font(.title2)
-                                        VStack(alignment: .leading) {
-                                            Text("\(wine.producer ?? "") \(wine.wineName)")
-                                                .font(.headline)
-                                            Text(wine.course)
-                                                .font(.caption)
-                                                .foregroundColor(.purple)
-                                        }
-                                    }
-
-                                    Divider()
-
-                                    // Put in fridge notification
-                                    if wine.putInFridgeNotificationId != nil {
-                                        HStack {
-                                            Image(systemName: "thermometer.snowflake")
-                                                .foregroundColor(.blue)
-                                            VStack(alignment: .leading) {
-                                                Text("Metti in frigo")
-                                                    .font(.subheadline)
-                                                Text("\(wine.temperatureCategory.fridgeTimeMinutes) min prima")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                            Spacer()
-                                            Image(systemName: "bell.fill")
-                                                .foregroundColor(.orange)
-                                        }
-                                    }
-
-                                    // Take out notification
-                                    if wine.takeOutNotificationId != nil {
-                                        HStack {
-                                            Image(systemName: "thermometer.sun")
-                                                .foregroundColor(.orange)
-                                            VStack(alignment: .leading) {
-                                                Text("Togli dal frigo")
-                                                    .font(.subheadline)
-                                                Text("\(wine.temperatureCategory.takeOutBeforeMinutes) min prima")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                            Spacer()
-                                            Image(systemName: "bell.fill")
-                                                .foregroundColor(.orange)
-                                        }
-                                    }
-
-                                    // Target temperature
-                                    HStack {
-                                        Image(systemName: "thermometer.medium")
-                                            .foregroundColor(.green)
-                                        Text("Temperatura servizio: \(wine.temperatureCategory.servingTemperature)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
+                    ForEach(Array(winesWithNotifications.enumerated()), id: \.offset) { _, wine in
+                        WineNotificationCard(wine: wine)
                     }
                 }
             }
-            .navigationTitle("Notifiche Vini")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Chiudi") {
-                        dismiss()
-                    }
-                }
+            .padding()
+        }
+    }
+}
+
+struct WineNotificationCard: View {
+    let wine: ConfirmedWine
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            wineHeader
+            Divider()
+            if wine.putInFridgeNotificationId != nil {
+                fridgeNotification
             }
+            if wine.takeOutNotificationId != nil {
+                takeOutNotification
+            }
+            temperatureInfo
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    private var wineHeader: some View {
+        HStack {
+            Text(wine.temperatureCategory.icon)
+                .font(.title2)
+            VStack(alignment: .leading) {
+                Text("\(wine.producer ?? "") \(wine.wineName)")
+                    .font(.headline)
+                Text(wine.course)
+                    .font(.caption)
+                    .foregroundColor(.purple)
+            }
+        }
+    }
+
+    private var fridgeNotification: some View {
+        HStack {
+            Image(systemName: "thermometer.snowflake")
+                .foregroundColor(.blue)
+            VStack(alignment: .leading) {
+                Text("Metti in frigo")
+                    .font(.subheadline)
+                Text("\(wine.temperatureCategory.fridgeMinutes) min prima")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Image(systemName: "bell.fill")
+                .foregroundColor(.orange)
+        }
+    }
+
+    private var takeOutNotification: some View {
+        HStack {
+            Image(systemName: "thermometer.sun")
+                .foregroundColor(.orange)
+            VStack(alignment: .leading) {
+                Text("Togli dal frigo")
+                    .font(.subheadline)
+                Text("\(wine.temperatureCategory.takeOutMinutes) min prima")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Image(systemName: "bell.fill")
+                .foregroundColor(.orange)
+        }
+    }
+
+    private var temperatureInfo: some View {
+        HStack {
+            Image(systemName: "thermometer.medium")
+                .foregroundColor(.green)
+            Text("Temperatura servizio: \(wine.temperatureCategory.servingTemperature)")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
 }
