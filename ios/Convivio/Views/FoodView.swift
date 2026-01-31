@@ -373,6 +373,7 @@ struct DinnerDetailView: View {
     @State private var regeneratingWine: String? // Wine ID being regenerated
     @State private var showDeleteWineConfirmation = false
     @State private var wineToDelete: (type: String, index: Int)? // "cellar" or "purchase", index
+    @State private var showScheduledNotifications = false  // Show wine notification schedule
 
     // Collaboration states
     @State private var showProposalInput = false
@@ -497,6 +498,9 @@ struct DinnerDetailView: View {
         .sheet(isPresented: $promptInterceptionService.isShowingEditor) {
             PromptEditorSheet()
         }
+        .sheet(isPresented: $showScheduledNotifications) {
+            ScheduledNotificationsSheet(dinner: dinner)
+        }
         .alert("Elimina piatto", isPresented: $showDeleteConfirmation) {
             Button("Annulla", role: .cancel) {}
             Button("Elimina", role: .destructive) {
@@ -534,6 +538,32 @@ struct DinnerDetailView: View {
                 .font(.subheadline)
 
                 Spacer()
+
+                // Notification bell - visible in winesConfirmed and confirmed states
+                if dinner.status.showNotifications && dinner.notificationsScheduled {
+                    Button {
+                        showScheduledNotifications = true
+                    } label: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "bell.fill")
+                                .font(.title2)
+                                .foregroundColor(.orange)
+
+                            // Badge with notification count
+                            let notificationCount = dinner.confirmedWines.filter { $0.putInFridgeNotificationId != nil || $0.takeOutNotificationId != nil }.count
+                            if notificationCount > 0 {
+                                Text("\(notificationCount)")
+                                    .font(.caption2.bold())
+                                    .foregroundColor(.white)
+                                    .padding(4)
+                                    .background(Color.red)
+                                    .clipShape(Circle())
+                                    .offset(x: 8, y: -8)
+                            }
+                        }
+                    }
+                    .padding(.trailing, 8)
+                }
 
                 StatusBadge(status: dinner.status)
             }
@@ -1039,15 +1069,18 @@ struct DinnerDetailView: View {
 
     @ViewBuilder
     private func wineSection(for menu: MenuResponse) -> some View {
-        let cellarWines = menu.abbinamenti.filter { $0.vino.provenienza == .cantina }
-        let wineCount = cellarWines.count + menu.suggerimentiAcquisto.count
-
         DisclosureGroup(
             isExpanded: bindingFor("vini"),
             content: {
                 VStack(spacing: 16) {
-                    // Wine list
-                    wineListSection(cellarWines: cellarWines, purchaseSuggestions: menu.suggerimentiAcquisto, wineCount: wineCount)
+                    // In planning state: show proposed wines (editable)
+                    // After wine confirmation: show only confirmed wines (read-only)
+                    if dinner.status == .planning {
+                        let cellarWines = menu.abbinamenti.filter { $0.vino.provenienza == .cantina }
+                        wineListSection(cellarWines: cellarWines, purchaseSuggestions: menu.suggerimentiAcquisto, wineCount: cellarWines.count + menu.suggerimentiAcquisto.count)
+                    } else {
+                        confirmedWinesSection()
+                    }
                 }
                 .padding(.top, 8)
             },
@@ -1059,6 +1092,74 @@ struct DinnerDetailView: View {
         .padding()
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
+    }
+
+    // MARK: - Confirmed Wines Section (read-only, after wine confirmation)
+
+    @ViewBuilder
+    private func confirmedWinesSection() -> some View {
+        if dinner.confirmedWines.isEmpty {
+            Text("Nessun vino confermato")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .padding()
+        } else {
+            LazyVStack(alignment: .leading, spacing: 8) {
+                Text("Vini Confermati")
+                    .font(.subheadline.bold())
+                    .foregroundColor(.green)
+                    .padding(.top, 4)
+
+                ForEach(dinner.confirmedWines) { wine in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(wine.isFromCellar ? "Cantina" : "Acquisto")
+                                    .font(.caption.bold())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(wine.isFromCellar ? Color.green.opacity(0.2) : Color.blue.opacity(0.2))
+                                    .foregroundColor(wine.isFromCellar ? .green : .blue)
+                                    .cornerRadius(4)
+
+                                Text("\(wine.quantity) bott.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Text("\(wine.producer ?? "") \(wine.wineName)")
+                                .font(.subheadline)
+
+                            if let vintage = wine.vintage {
+                                Text(vintage)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Text(wine.course)
+                                .font(.caption)
+                                .foregroundColor(.purple)
+                        }
+
+                        Spacer()
+
+                        // Temperature indicator
+                        VStack {
+                            Text(wine.temperatureCategory.icon)
+                                .font(.title2)
+                            Text(wine.temperatureCategory.displayName)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+
+                    if wine.id != dinner.confirmedWines.last?.id {
+                        Divider()
+                    }
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -2050,6 +2151,101 @@ struct OccasionPicker: View {
                                 .cornerRadius(16)
                         }
                         .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Scheduled Notifications Sheet
+
+struct ScheduledNotificationsSheet: View {
+    let dinner: DinnerEvent
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if dinner.confirmedWines.isEmpty {
+                    Text("Nessuna notifica programmata")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(dinner.confirmedWines) { wine in
+                        if wine.putInFridgeNotificationId != nil || wine.takeOutNotificationId != nil {
+                            Section {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Text(wine.temperatureCategory.icon)
+                                            .font(.title2)
+                                        VStack(alignment: .leading) {
+                                            Text("\(wine.producer ?? "") \(wine.wineName)")
+                                                .font(.headline)
+                                            Text(wine.course)
+                                                .font(.caption)
+                                                .foregroundColor(.purple)
+                                        }
+                                    }
+
+                                    Divider()
+
+                                    // Put in fridge notification
+                                    if wine.putInFridgeNotificationId != nil {
+                                        HStack {
+                                            Image(systemName: "thermometer.snowflake")
+                                                .foregroundColor(.blue)
+                                            VStack(alignment: .leading) {
+                                                Text("Metti in frigo")
+                                                    .font(.subheadline)
+                                                Text("\(wine.temperatureCategory.fridgeTimeMinutes) min prima")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            Spacer()
+                                            Image(systemName: "bell.fill")
+                                                .foregroundColor(.orange)
+                                        }
+                                    }
+
+                                    // Take out notification
+                                    if wine.takeOutNotificationId != nil {
+                                        HStack {
+                                            Image(systemName: "thermometer.sun")
+                                                .foregroundColor(.orange)
+                                            VStack(alignment: .leading) {
+                                                Text("Togli dal frigo")
+                                                    .font(.subheadline)
+                                                Text("\(wine.temperatureCategory.takeOutBeforeMinutes) min prima")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            Spacer()
+                                            Image(systemName: "bell.fill")
+                                                .foregroundColor(.orange)
+                                        }
+                                    }
+
+                                    // Target temperature
+                                    HStack {
+                                        Image(systemName: "thermometer.medium")
+                                            .foregroundColor(.green)
+                                        Text("Temperatura servizio: \(wine.temperatureCategory.servingTemperature)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Notifiche Vini")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Chiudi") {
+                        dismiss()
                     }
                 }
             }
