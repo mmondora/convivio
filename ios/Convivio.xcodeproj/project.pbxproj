@@ -65,6 +65,11 @@
 		F000000000000053 /* PDFGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000053 /* PDFGenerator.swift */; };
 		F000000000000054 /* PromptEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000054 /* PromptEditorSheet.swift */; };
 		F000000000000055 /* DettaglioMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000055 /* DettaglioMenuView.swift */; };
+		CA6FE3C57EA5411BB606454E /* PaginationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB703A0D7E246F7BA537D45 /* PaginationService.swift */; };
+		BE5721CA75764C24A92A9A12 /* APICacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE50BBAB36C4DDBAC673E07 /* APICacheService.swift */; };
+		C4729E2BCE574619A95EED01 /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF39EF8E28C450298E8BE21 /* PerformanceMonitor.swift */; };
+		F3505C74BBD642BFB049BD5D /* LoadingComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50BCB42FC95F43E780CA4042 /* LoadingComponents.swift */; };
+		ACC262AACAA84D488AA212EF /* DebugPerformanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D9C78906BF46049CB282D7 /* DebugPerformanceView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -129,6 +134,11 @@
 		F100000000000053 /* PDFGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFGenerator.swift; sourceTree = "<group>"; };
 		F100000000000054 /* PromptEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptEditorSheet.swift; sourceTree = "<group>"; };
 		F100000000000055 /* DettaglioMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DettaglioMenuView.swift; sourceTree = "<group>"; };
+		8EB703A0D7E246F7BA537D45 /* PaginationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaginationService.swift; sourceTree = "<group>"; };
+		CCE50BBAB36C4DDBAC673E07 /* APICacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APICacheService.swift; sourceTree = "<group>"; };
+		7FF39EF8E28C450298E8BE21 /* PerformanceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceMonitor.swift; sourceTree = "<group>"; };
+		50BCB42FC95F43E780CA4042 /* LoadingComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingComponents.swift; sourceTree = "<group>"; };
+		F6D9C78906BF46049CB282D7 /* DebugPerformanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPerformanceView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -185,6 +195,7 @@
 		F400000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				F6D9C78906BF46049CB282D7 /* DebugPerformanceView.swift */,
 				2728879A2F2CEAB200C8514A /* CollaborativeDishView.swift */,
 				2728879B2F2CEAB200C8514A /* ProposalInputView.swift */,
 				2728879C2F2CEAB200C8514A /* ShareManagementView.swift */,
@@ -215,6 +226,9 @@
 		F400000000000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				8EB703A0D7E246F7BA537D45 /* PaginationService.swift */,
+				CCE50BBAB36C4DDBAC673E07 /* APICacheService.swift */,
+				7FF39EF8E28C450298E8BE21 /* PerformanceMonitor.swift */,
 				272887A82F2CEAD000C8514A /* CellarManager.swift */,
 				272887A92F2CEAD000C8514A /* CloudKitService.swift */,
 				272887AA2F2CEAD000C8514A /* CollaborationNotificationService.swift */,
@@ -244,6 +258,7 @@
 		F400000000000007 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				50BCB42FC95F43E780CA4042 /* LoadingComponents.swift */,
 				272887A02F2CEAC200C8514A /* CellarSwitcher.swift */,
 				272887A12F2CEAC200C8514A /* CollaborationOnboarding.swift */,
 				272887A22F2CEAC200C8514A /* EmptyStateViews.swift */,
@@ -344,6 +359,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CA6FE3C57EA5411BB606454E /* PaginationService.swift in Sources */,
+				BE5721CA75764C24A92A9A12 /* APICacheService.swift in Sources */,
+				C4729E2BCE574619A95EED01 /* PerformanceMonitor.swift in Sources */,
+				F3505C74BBD642BFB049BD5D /* LoadingComponents.swift in Sources */,
+				ACC262AACAA84D488AA212EF /* DebugPerformanceView.swift in Sources */,
 				F000000000000001 /* ConvivioApp.swift in Sources */,
 				F000000000000002 /* Models.swift in Sources */,
 				2728879D2F2CEAB200C8514A /* CollaborativeDishView.swift in Sources */,
