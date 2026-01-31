@@ -472,8 +472,8 @@ extension DinnerNotesService {
         text += "\n### RICETTE\n"
         for ricetta in content.ricette {
             text += "\n#### \(ricetta.nome) (\(ricetta.categoria))\n"
-            text += "Difficoltà: \(ricetta.difficolta) | Prep: \(ricetta.tempoPreparazione)min | Cottura: \(ricetta.tempoCottura)min\n"
-            if ricetta.preparabileAnticipo {
+            text += "Difficoltà: \(ricetta.difficolta) | Prep: \(ricetta.prepTime)min | Cottura: \(ricetta.cookTime)min\n"
+            if ricetta.canPrepareAhead {
                 text += "✓ Preparabile in anticipo\n"
             }
             text += "\nIngredienti:\n"

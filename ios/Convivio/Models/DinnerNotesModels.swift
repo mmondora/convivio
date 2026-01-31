@@ -100,9 +100,9 @@ struct RicettaDettagliata: Codable, Identifiable {
     let nome: String
     let categoria: String
     let difficolta: String
-    let tempoPreparazione: Int
-    let tempoCottura: Int
-    let preparabileAnticipo: Bool
+    let tempoPreparazione: Int?
+    let tempoCottura: Int?
+    let preparabileAnticipo: Bool?
     let ingredienti: [IngredienteRicetta]
     let procedimento: [String]
     let impiattamento: ImpiattamentoInfo?
@@ -115,6 +115,11 @@ struct RicettaDettagliata: Codable, Identifiable {
         case preparabileAnticipo = "preparabile_anticipo"
         case ingredienti, procedimento, impiattamento, consigli
     }
+
+    // Computed properties with defaults for optional Int fields
+    var prepTime: Int { tempoPreparazione ?? 0 }
+    var cookTime: Int { tempoCottura ?? 0 }
+    var canPrepareAhead: Bool { preparabileAnticipo ?? false }
 }
 
 struct IngredienteRicetta: Codable, Identifiable {

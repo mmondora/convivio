@@ -299,7 +299,7 @@ struct RecipeCard: View {
 
                             difficultyBadge
 
-                            if ricetta.preparabileAnticipo {
+                            if ricetta.canPrepareAhead {
                                 Text("Anticipabile")
                                     .font(.caption)
                                     .padding(.horizontal, 8)
@@ -325,8 +325,8 @@ struct RecipeCard: View {
                 VStack(alignment: .leading, spacing: 16) {
                     // Times
                     HStack(spacing: 20) {
-                        Label("\(ricetta.tempoPreparazione) min prep", systemImage: "clock")
-                        Label("\(ricetta.tempoCottura) min cottura", systemImage: "flame")
+                        Label("\(ricetta.prepTime) min prep", systemImage: "clock")
+                        Label("\(ricetta.cookTime) min cottura", systemImage: "flame")
                     }
                     .font(.caption)
                     .foregroundColor(.secondary)
