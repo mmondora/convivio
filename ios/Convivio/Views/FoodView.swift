@@ -880,30 +880,18 @@ struct DinnerDetailView: View {
                     }
                 }
 
-                // DETTAGLIO MENU - disponibile quando vini confermati o cena confermata/completata
-                if dinner.status.showDetailedMenu {
-                    NavigationLink {
-                        DettaglioMenuView(dinner: dinner, menu: menu)
-                    } label: {
-                        HStack {
-                            if dinner.hasDetailedMenu {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-                            } else {
-                                Image(systemName: "doc.text.magnifyingglass")
-                            }
-                            Text(dinner.hasDetailedMenu ? "Vedi Dettaglio Menu" : "Genera Dettaglio Menu")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(dinner.hasDetailedMenu ? Color.green.opacity(0.15) : Color.indigo.opacity(0.15))
-                        .foregroundColor(dinner.hasDetailedMenu ? .green : .indigo)
-                        .cornerRadius(12)
+                // NOTE (Cucina, Vino, Accoglienza) - solo in confirmed/completed
+                if dinner.status.showNotes {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Note")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.secondary)
+
+                        DinnerNoteButtonsWithNavigation(dinner: dinner)
                     }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
                 }
 
                 // RIGENERA MENU - SOLO in stato planning (NON in winesConfirmed)
