@@ -10,9 +10,29 @@ struct ReleaseNotesView: View {
 
                 // Current version
                 releaseSection(
+                    version: "1.6.0",
+                    date: "Gennaio 2026",
+                    isCurrent: true,
+                    features: [
+                        "Tre bottoni note separati: Cucina, Vini, Accoglienza",
+                        "Viste dedicate per ogni tipo di nota con sezioni espandibili",
+                        "Notifiche temperatura vini con campanella interattiva",
+                        "Timeline preparazione e servizio per ogni nota",
+                        "Lista spesa con checklist interattiva",
+                        "Consigli chef, sommelier e host personalizzati"
+                    ],
+                    fixes: [
+                        "Visualizzazione note ora funziona correttamente",
+                        "Risolto blocco UI su 'Genera Dettaglio Menu'",
+                        "Rimossa sezione 'Note di Servizio' duplicata dai vini",
+                        "Corretta visibilità bottoni per ogni stato cena",
+                        "Migliorato parsing JSON delle risposte AI"
+                    ]
+                )
+
+                releaseSection(
                     version: "1.5.0",
                     date: "2026",
-                    isCurrent: true,
                     features: [
                         "Gestione cantina con quantità e posizioni",
                         "Configurazione aree di stoccaggio",
