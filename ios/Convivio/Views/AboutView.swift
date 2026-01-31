@@ -162,20 +162,20 @@ struct AboutView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 ReleaseNoteItem(
-                    icon: "🌍",
-                    text: "Sistema di localizzazione per prompt AI"
+                    icon: "🍷",
+                    text: "Gestione cantina con quantità e posizioni"
                 )
                 ReleaseNoteItem(
-                    icon: "🏠",
-                    text: "Impostazioni città e paese nel profilo"
-                )
-                ReleaseNoteItem(
-                    icon: "🗣️",
-                    text: "8 lingue supportate con adattamento culturale"
+                    icon: "🤖",
+                    text: "Sommelier AI con abbinamenti personalizzati"
                 )
                 ReleaseNoteItem(
                     icon: "📝",
-                    text: "Template prompt centralizzati e configurabili"
+                    text: "Note dettagliate: ricette, vini, accoglienza"
+                )
+                ReleaseNoteItem(
+                    icon: "🌍",
+                    text: "Localizzazione per lingua e cultura"
                 )
             }
 

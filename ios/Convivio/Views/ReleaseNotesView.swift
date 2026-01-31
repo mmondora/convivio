@@ -11,93 +11,31 @@ struct ReleaseNotesView: View {
                 // Current version
                 releaseSection(
                     version: "1.5.0",
-                    date: "Gennaio 2025",
+                    date: "2026",
                     isCurrent: true,
                     features: [
-                        "Sistema di localizzazione: prompt AI adattati a lingua e cultura",
-                        "Nuovo profilo: impostazioni città e paese per suggerimenti personalizzati",
-                        "8 lingue supportate: IT, EN, FR, DE, ES, PT, JA, ZH",
-                        "30+ paesi con adattamento culturale automatico",
-                        "7 template prompt centralizzati e configurabili"
-                    ],
-                    fixes: [
-                        "Prompt AI più rispettosi della cultura locale",
-                        "Ingredienti suggeriti adattati al paese dell'utente"
-                    ]
-                )
-
-                releaseSection(
-                    version: "1.4.0",
-                    date: "Gennaio 2025",
-                    features: [
-                        "Ottimizzazione performance: liste con paginazione (20 elementi)",
-                        "Selezione modello AI intelligente: GPT-4o-mini per task semplici",
-                        "Cache risposte API: evita chiamate ridondanti",
-                        "Monitor performance in pannello Debug",
-                        "Nuovi componenti UX per stati di caricamento"
-                    ],
-                    fixes: [
-                        "Migliorata gestione memoria con @MainActor",
-                        "Rimossi frame height forzati per rendering ottimale",
-                        "Thread safety per LanguageManager"
-                    ]
-                )
-
-                releaseSection(
-                    version: "1.3.0",
-                    date: "Gennaio 2025",
-                    features: [
-                        "Menu Dettagliato: ricette complete, timeline preparazione, lista spesa",
-                        "Esportazione PDF del menu completo per condivisione",
-                        "Debug Prompt Editor: modifica prompt AI prima dell'invio",
-                        "Contesto stagionale nella rigenerazione piatti",
-                        "Servizio vini con temperature e consigli decantazione"
-                    ],
-                    fixes: [
-                        "Migliorato contesto per rigenerazione piatti singoli",
-                        "Compatibilità vini confermati nella sostituzione piatti"
-                    ]
-                )
-
-                releaseSection(
-                    version: "1.2.0",
-                    date: "Gennaio 2025",
-                    features: [
-                        "Nuovo sistema di stati cena (planning → winesConfirmed → confirmed)",
-                        "Toggle debug mode accessibile da Profilo",
-                        "Migliorata sincronizzazione vini tra menu e conferma",
-                        "Fix layout note servizio nella pagina Convivio"
-                    ],
-                    fixes: [
-                        "Risolto problema sovrapposizione pannelli vini",
-                        "Corretto comportamento swipe actions su menu confermato"
-                    ]
-                )
-
-                releaseSection(
-                    version: "1.1.0",
-                    date: "Gennaio 2025",
-                    features: [
-                        "Layout ottimizzato per iPad",
-                        "Sistema di valutazione vini con stelle",
-                        "Notifiche temperatura vini",
-                        "Preparazione per CloudKit sync"
-                    ],
-                    fixes: [
-                        "Migliorata stabilità generazione menu",
-                        "Fix notifiche in foreground"
+                        "Gestione cantina con quantità e posizioni",
+                        "Configurazione aree di stoccaggio",
+                        "Sommelier AI con ricerca in cantina",
+                        "Generazione menu con abbinamenti",
+                        "Editing granulare piatti (rigenera/elimina singoli)",
+                        "Conferma vini e notifiche temperatura servizio",
+                        "Scarico bottiglie post-cena",
+                        "Generazione invito cena",
+                        "Note dettagliate: ricette, vini, accoglienza",
+                        "Valutazione vini (quick e scheda AIS)",
+                        "Sync multi-device con iCloud",
+                        "Cantine collaborative",
+                        "Localizzazione per lingua e cultura",
+                        "Prompt AI completamente personalizzabili"
                     ]
                 )
 
                 releaseSection(
                     version: "1.0.0",
-                    date: "Dicembre 2024",
+                    date: "2026",
                     features: [
-                        "Gestione cantina vini",
-                        "Pianificazione cene con AI",
-                        "Generazione menu con abbinamenti",
-                        "Scansione etichette vino",
-                        "Supporto multilingua (IT, EN, DE, FR)"
+                        "Prima release pubblica"
                     ]
                 )
             }

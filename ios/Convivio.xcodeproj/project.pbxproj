@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		53D978416DE14ED2A5F810DD /* DinnerNotesModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F728EAB8649A488E8BF90033 /* DinnerNotesModels.swift */; };
+		98A74C3C58924CEAB35BF3B4 /* DinnerNotesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA21792193834282A07489BC /* DinnerNotesService.swift */; };
+		B54CF097895B4EFFA5B8DBE6 /* NoteRicetteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC00F2048164BC6BCA080E5 /* NoteRicetteView.swift */; };
+		04D74DCA38EC4765A68EE4BF /* NoteViniView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C11756C553774C8FBBF3527A /* NoteViniView.swift */; };
+		0A02F7FC493E45CC8E393E94 /* NoteAccoglienzaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E57DC3C0F9745109C6BBF24 /* NoteAccoglienzaView.swift */; };
+		878022D5950E4C2398DE5240 /* DinnerNoteButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377DBCCB4ACA4F96802F445C /* DinnerNoteButtons.swift */; };
 		272887982F2CEAA300C8514A /* CloudKitModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887962F2CEAA300C8514A /* CloudKitModels.swift */; };
 		272887992F2CEAA300C8514A /* CollaborationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272887972F2CEAA300C8514A /* CollaborationModels.swift */; };
 		2728879D2F2CEAB200C8514A /* CollaborativeDishView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2728879A2F2CEAB200C8514A /* CollaborativeDishView.swift */; };
@@ -77,6 +83,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		F728EAB8649A488E8BF90033 /* DinnerNotesModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DinnerNotesModels.swift; sourceTree = "<group>"; };
+		DA21792193834282A07489BC /* DinnerNotesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DinnerNotesService.swift; sourceTree = "<group>"; };
+		6AC00F2048164BC6BCA080E5 /* NoteRicetteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRicetteView.swift; sourceTree = "<group>"; };
+		C11756C553774C8FBBF3527A /* NoteViniView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteViniView.swift; sourceTree = "<group>"; };
+		6E57DC3C0F9745109C6BBF24 /* NoteAccoglienzaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteAccoglienzaView.swift; sourceTree = "<group>"; };
+		377DBCCB4ACA4F96802F445C /* DinnerNoteButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DinnerNoteButtons.swift; sourceTree = "<group>"; };
 		272887962F2CEAA300C8514A /* CloudKitModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitModels.swift; sourceTree = "<group>"; };
 		272887972F2CEAA300C8514A /* CollaborationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationModels.swift; sourceTree = "<group>"; };
 		2728879A2F2CEAB200C8514A /* CollaborativeDishView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborativeDishView.swift; sourceTree = "<group>"; };
@@ -196,6 +208,7 @@
 				F100000000000036 /* StorageModels.swift */,
 				F100000000000050 /* PromptModels.swift */,
 				F100000000000051 /* DetailedMenuModels.swift */,
+				F728EAB8649A488E8BF90033 /* DinnerNotesModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -213,6 +226,10 @@
 				F100000000000006 /* ProfileView.swift */,
 				F100000000000009 /* ChatView.swift */,
 				F100000000000014 /* FoodView.swift */,
+				6AC00F2048164BC6BCA080E5 /* NoteRicetteView.swift */,
+				C11756C553774C8FBBF3527A /* NoteViniView.swift */,
+				6E57DC3C0F9745109C6BBF24 /* NoteAccoglienzaView.swift */,
+				377DBCCB4ACA4F96802F445C /* DinnerNoteButtons.swift */,
 				F100000000000032 /* WineConfirmationView.swift */,
 				F100000000000033 /* InviteGeneratorView.swift */,
 				F100000000000034 /* BottleUnloadView.swift */,
@@ -255,6 +272,7 @@
 				F100000000000038 /* LanguageManager.swift */,
 				F100000000000052 /* PromptInterceptionService.swift */,
 				F100000000000053 /* PDFGenerator.swift */,
+				DA21792193834282A07489BC /* DinnerNotesService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -392,7 +410,13 @@
 				697DB8E2BB930A00FDED096B /* LocaleService.swift in Sources */,
 				697DB8E2FCBA346D743A588A /* PromptTemplateService.swift in Sources */,
 				F00000000000000E /* MenuGeneratorService.swift in Sources */,
-				F000000000000012 /* FoodView.swift in Sources */,
+								53D978416DE14ED2A5F810DD /* DinnerNotesModels.swift in Sources */,
+				98A74C3C58924CEAB35BF3B4 /* DinnerNotesService.swift in Sources */,
+				B54CF097895B4EFFA5B8DBE6 /* NoteRicetteView.swift in Sources */,
+				04D74DCA38EC4765A68EE4BF /* NoteViniView.swift in Sources */,
+				0A02F7FC493E45CC8E393E94 /* NoteAccoglienzaView.swift in Sources */,
+				878022D5950E4C2398DE5240 /* DinnerNoteButtons.swift in Sources */,
+F000000000000012 /* FoodView.swift in Sources */,
 				F000000000000021 /* StarRatingView.swift in Sources */,
 				F000000000000022 /* AISParameterPicker.swift in Sources */,
 				F000000000000023 /* QuickRatingView.swift in Sources */,
@@ -590,7 +614,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = it.mikesoft.convivio.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -622,7 +646,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = it.mikesoft.convivio.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
