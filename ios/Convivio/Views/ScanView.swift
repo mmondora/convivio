@@ -95,10 +95,10 @@ struct ScanOptionsView: View {
                 .foregroundColor(.purple.opacity(0.6))
 
             VStack(spacing: 8) {
-                Text("Scansiona un'etichetta")
+                Text(L10n.scanLabel)
                     .font(.title2.bold())
 
-                Text("Fotografa l'etichetta di una bottiglia per aggiungerla automaticamente alla cantina")
+                Text(L10n.scanLabelDesc)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -109,7 +109,7 @@ struct ScanOptionsView: View {
                 Button {
                     showCamera = true
                 } label: {
-                    Label("Scatta Foto", systemImage: "camera.fill")
+                    Label(L10n.takePhoto, systemImage: "camera.fill")
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color.purple)
@@ -118,7 +118,7 @@ struct ScanOptionsView: View {
                 }
 
                 PhotosPicker(selection: $selectedItem, matching: .images) {
-                    Label("Scegli dalla Libreria", systemImage: "photo.on.rectangle")
+                    Label(L10n.choosePhoto, systemImage: "photo.on.rectangle")
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color(.secondarySystemBackground))
@@ -155,7 +155,7 @@ struct ImagePreviewView: View {
                 if isProcessing {
                     VStack(spacing: 12) {
                         ProgressView()
-                        Text("Analizzando l'etichetta...")
+                        Text(L10n.analyzingLabel)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -171,7 +171,7 @@ struct ImagePreviewView: View {
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
 
-                        Button("Riprova") {
+                        Button(L10n.retry) {
                             onRetry()
                         }
                         .buttonStyle(.bordered)
@@ -180,26 +180,26 @@ struct ImagePreviewView: View {
                 } else if let result = extractionResult {
                     // Extraction results
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Informazioni Rilevate")
+                        Text(L10n.detectedInfo)
                             .font(.headline)
 
-                        ExtractionRow(label: "Nome", value: result.name)
-                        ExtractionRow(label: "Produttore", value: result.producer)
-                        ExtractionRow(label: "Annata", value: result.vintage)
-                        ExtractionRow(label: "Tipo", value: result.type)
-                        ExtractionRow(label: "Regione", value: result.region)
-                        ExtractionRow(label: "Paese", value: result.country)
+                        ExtractionRow(label: L10n.name, value: result.name)
+                        ExtractionRow(label: L10n.producer, value: result.producer)
+                        ExtractionRow(label: L10n.vintage, value: result.vintage)
+                        ExtractionRow(label: L10n.type, value: result.type)
+                        ExtractionRow(label: L10n.region, value: result.region)
+                        ExtractionRow(label: L10n.country, value: result.country)
 
                         if let grapes = result.grapes, !grapes.isEmpty {
-                            ExtractionRow(label: "Vitigni", value: grapes.joined(separator: ", "))
+                            ExtractionRow(label: L10n.grapes, value: grapes.joined(separator: ", "))
                         }
 
                         if let alcohol = result.alcohol {
-                            ExtractionRow(label: "Gradazione", value: String(format: "%.1f%%", alcohol))
+                            ExtractionRow(label: L10n.alcohol, value: String(format: "%.1f%%", alcohol))
                         }
 
                         HStack {
-                            Text("Confidenza")
+                            Text(L10n.recognitionConfidence)
                                 .foregroundColor(.secondary)
                             Spacer()
                             Text(String(format: "%.0f%%", result.confidence * 100))
@@ -217,7 +217,7 @@ struct ImagePreviewView: View {
                         Button {
                             onRetry()
                         } label: {
-                            Text("Annulla")
+                            Text(L10n.cancel)
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(Color(.tertiarySystemBackground))
@@ -230,7 +230,7 @@ struct ImagePreviewView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "pencil")
-                                Text("Modifica e Salva")
+                                Text(L10n.editAndSave)
                             }
                             .frame(maxWidth: .infinity)
                             .padding()

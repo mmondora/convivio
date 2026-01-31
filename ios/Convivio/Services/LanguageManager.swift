@@ -61,6 +61,19 @@ enum L10n {
     static var bottles: String { "common.bottles".localized }
     static var wine: String { "common.wine".localized }
     static var wines: String { "common.wines".localized }
+    static var confirm: String { "common.confirm".localized }
+    static var retry: String { "common.retry".localized }
+    static var details: String { "common.details".localized }
+    static var create: String { "common.create".localized }
+    static var generating: String { "common.generating".localized }
+    static var people: String { "common.people".localized }
+    static var name: String { "common.name".localized }
+    static var type: String { "common.type".localized }
+    static var country: String { "common.country".localized }
+    static var alcohol: String { "common.alcohol".localized }
+    static var value: String { "common.value".localized }
+    static var history: String { "common.history".localized }
+    static var none: String { "common.none".localized }
 
     // MARK: - Cellar
     static var myCellar: String { "cellar.title".localized }
@@ -79,6 +92,24 @@ enum L10n {
     static var notes: String { "cellar.notes".localized }
     static var location: String { "cellar.location".localized }
     static var position: String { "cellar.position".localized }
+    static var noBottles: String { "cellar.no_bottles".localized }
+    static var addFirstBottle: String { "cellar.add_first_bottle".localized }
+    static var noMatchingWines: String { "cellar.no_matching".localized }
+    static var vintages: String { "cellar.vintages".localized }
+    static var sortBy: String { "cellar.sort_by".localized }
+    static var configureAreas: String { "cellar.configure_areas".localized }
+    static var view: String { "cellar.view".localized }
+    static var list: String { "cellar.list".localized }
+    static var markAsDrunk: String { "cellar.mark_drunk".localized }
+    static var markAsDrunkConfirm: String { "cellar.mark_drunk_confirm".localized }
+    static var addBottle: String { "cellar.add_bottle".localized }
+    static var notAssigned: String { "cellar.not_assigned".localized }
+    static var addRating: String { "cellar.add_rating".localized }
+    static var noRatingYet: String { "cellar.no_rating_yet".localized }
+    static var averageRating: String { "cellar.average_rating".localized }
+    static var ratingCount: String { "cellar.rating".localized }
+    static var ratingsCount: String { "cellar.ratings".localized }
+    static var wouldBuyAgain: String { "cellar.would_buy_again".localized }
 
     // MARK: - Wine Types
     static var redWine: String { "wine.type.red".localized }
@@ -94,6 +125,12 @@ enum L10n {
     static var scanProcessing: String { "scan.processing".localized }
     static var takePhoto: String { "scan.take_photo".localized }
     static var choosePhoto: String { "scan.choose_photo".localized }
+    static var scanLabel: String { "scan.scan_label".localized }
+    static var scanLabelDesc: String { "scan.scan_label_desc".localized }
+    static var analyzingLabel: String { "scan.analyzing".localized }
+    static var detectedInfo: String { "scan.detected_info".localized }
+    static var editAndSave: String { "scan.edit_save".localized }
+    static var recognitionConfidence: String { "scan.confidence".localized }
 
     // MARK: - Food/Dinner
     static var dinners: String { "food.dinners".localized }
@@ -114,6 +151,40 @@ enum L10n {
     static var confirmWines: String { "food.confirm_wines".localized }
     static var generateInvite: String { "food.generate_invite".localized }
     static var shareInvite: String { "food.share_invite".localized }
+    static var noPlannedMeals: String { "food.no_planned".localized }
+    static var addDinnerToStart: String { "food.add_to_start".localized }
+    static var convivioDetails: String { "food.convivio_details".localized }
+    static var titlePlaceholder: String { "food.title_placeholder".localized }
+    static var dateTime: String { "food.datetime".localized }
+    static var dietaryRestrictions: String { "food.dietary_restrictions".localized }
+    static var diet: String { "food.diet".localized }
+    static var cuisineType: String { "food.cuisine_type".localized }
+    static var cuisine: String { "food.cuisine".localized }
+    static var menuNotes: String { "food.menu_notes".localized }
+    static var menuNotesPlaceholder: String { "food.menu_notes_placeholder".localized }
+    static var newConvivio: String { "food.new_convivio".localized }
+    static var confirmDinner: String { "food.confirm_dinner".localized }
+    static var dinnerConfirmed: String { "food.dinner_confirmed".localized }
+    static var dinnerCompleted: String { "food.dinner_completed".localized }
+    static var winesConfirmedNote: String { "food.wines_confirmed_note".localized }
+    static var deleteDishConfirm: String { "food.delete_dish_confirm".localized }
+    static var deleteWineConfirm: String { "food.delete_wine_confirm".localized }
+    static var deleteWine: String { "food.delete_wine".localized }
+    static var unloadBottles: String { "food.unload_bottles".localized }
+    static var toComplete: String { "food.to_complete".localized }
+    static var proposals: String { "food.proposals".localized }
+    static var proposeADish: String { "food.propose_dish".localized }
+    static var participantsProposals: String { "food.participants_proposals".localized }
+    static var aiWillCreate: String { "food.ai_will_create".localized }
+    static var configureApiKey: String { "food.configure_api".localized }
+    static var etiquette: String { "food.etiquette".localized }
+    static var confirmUnload: String { "food.confirm_unload".localized }
+    static var openBottleUnload: String { "food.open_unload".localized }
+    static var wineNotifications: String { "food.wine_notifications".localized }
+    static var noScheduledNotifications: String { "food.no_notifications".localized }
+    static var putInFridgeMinutes: String { "food.put_fridge_minutes".localized }
+    static var takeOutMinutes: String { "food.take_out_minutes".localized }
+    static var servingTemp: String { "food.serving_temp".localized }
 
     // MARK: - Courses
     static var appetizers: String { "course.appetizers".localized }
@@ -257,6 +328,19 @@ class LanguageManager: ObservableObject {
         "common.bottles": "bottiglie",
         "common.wine": "vino",
         "common.wines": "vini",
+        "common.confirm": "Conferma",
+        "common.retry": "Riprova",
+        "common.details": "Dettagli",
+        "common.create": "Crea",
+        "common.generating": "Generazione...",
+        "common.people": "persone",
+        "common.name": "Nome",
+        "common.type": "Tipo",
+        "common.country": "Paese",
+        "common.alcohol": "Gradazione",
+        "common.value": "Valore",
+        "common.history": "Storico",
+        "common.none": "Nessuno",
 
         // Cellar
         "cellar.title": "La mia Cantina",
@@ -275,6 +359,24 @@ class LanguageManager: ObservableObject {
         "cellar.notes": "Note",
         "cellar.location": "Posizione",
         "cellar.position": "Posizione nel contenitore",
+        "cellar.no_bottles": "Nessuna bottiglia",
+        "cellar.add_first_bottle": "Aggiungi la tua prima bottiglia scansionando un'etichetta o manualmente",
+        "cellar.no_matching": "Nessun vino corrisponde ai filtri selezionati",
+        "cellar.vintages": "annate",
+        "cellar.sort_by": "Ordina per",
+        "cellar.configure_areas": "Configura Aree",
+        "cellar.view": "Vista",
+        "cellar.list": "Lista",
+        "cellar.mark_drunk": "Segna come bevuta",
+        "cellar.mark_drunk_confirm": "Vuoi segnare questa bottiglia come bevuta?",
+        "cellar.add_bottle": "Aggiungi Bottiglia",
+        "cellar.not_assigned": "Non assegnata",
+        "cellar.add_rating": "Aggiungi valutazione",
+        "cellar.no_rating_yet": "Non hai ancora valutato questo vino",
+        "cellar.average_rating": "Valutazione media",
+        "cellar.rating": "valutazione",
+        "cellar.ratings": "valutazioni",
+        "cellar.would_buy_again": "Lo ricomprerei",
 
         // Wine Types
         "wine.type.red": "Rosso",
@@ -290,6 +392,12 @@ class LanguageManager: ObservableObject {
         "scan.processing": "Elaborazione in corso...",
         "scan.take_photo": "Scatta foto",
         "scan.choose_photo": "Scegli dalla libreria",
+        "scan.scan_label": "Scansiona un'etichetta",
+        "scan.scan_label_desc": "Fotografa l'etichetta di una bottiglia per aggiungerla automaticamente alla cantina",
+        "scan.analyzing": "Analizzando l'etichetta...",
+        "scan.detected_info": "Informazioni Rilevate",
+        "scan.edit_save": "Modifica e Salva",
+        "scan.confidence": "Confidenza riconoscimento",
 
         // Food/Dinner
         "food.dinners": "Le mie cene",
@@ -310,6 +418,40 @@ class LanguageManager: ObservableObject {
         "food.confirm_wines": "Conferma vini",
         "food.generate_invite": "Genera invito",
         "food.share_invite": "Condividi invito",
+        "food.no_planned": "Nessun pasto pianificato",
+        "food.add_to_start": "Aggiungi una cena o un pranzo per iniziare",
+        "food.convivio_details": "Dettagli Convivio",
+        "food.title_placeholder": "Titolo (es: Cena di compleanno)",
+        "food.datetime": "Data e ora",
+        "food.dietary_restrictions": "Particolarità alimentari",
+        "food.diet": "Dieta",
+        "food.cuisine_type": "Tipo di cucina",
+        "food.cuisine": "Cucina",
+        "food.menu_notes": "Note per il menu",
+        "food.menu_notes_placeholder": "Es: Menu leggero, no piccante, piatti della tradizione...",
+        "food.new_convivio": "Nuovo Convivio",
+        "food.confirm_dinner": "Conferma Cena",
+        "food.dinner_confirmed": "Cena confermata",
+        "food.dinner_completed": "Cena completata",
+        "food.wines_confirmed_note": "Vini confermati - conferma la cena per bloccare il menu",
+        "food.delete_dish_confirm": "Vuoi eliminare questo piatto dal menu?",
+        "food.delete_wine_confirm": "Vuoi eliminare questo vino dagli abbinamenti?",
+        "food.delete_wine": "Elimina vino",
+        "food.unload_bottles": "Scarico Bottiglie",
+        "food.to_complete": "Da completare - scarica bottiglie",
+        "food.proposals": "proposte",
+        "food.propose_dish": "Proponi un piatto",
+        "food.participants_proposals": "Proposte dei partecipanti",
+        "food.ai_will_create": "L'AI creerà un menu personalizzato con ricette e abbinamenti vino dalla tua cantina",
+        "food.configure_api": "Configura l'API key OpenAI in Profilo",
+        "food.etiquette": "Galateo",
+        "food.confirm_unload": "Conferma Scarico",
+        "food.open_unload": "Apri Scarico Bottiglie",
+        "food.wine_notifications": "Notifiche Vini",
+        "food.no_notifications": "Nessuna notifica programmata",
+        "food.put_fridge_minutes": "min prima - Metti in frigo",
+        "food.take_out_minutes": "min prima - Togli dal frigo",
+        "food.serving_temp": "Temperatura servizio",
 
         // Courses
         "course.appetizers": "Antipasti",
@@ -414,6 +556,19 @@ class LanguageManager: ObservableObject {
         "common.bottles": "bottles",
         "common.wine": "wine",
         "common.wines": "wines",
+        "common.confirm": "Confirm",
+        "common.retry": "Retry",
+        "common.details": "Details",
+        "common.create": "Create",
+        "common.generating": "Generating...",
+        "common.people": "people",
+        "common.name": "Name",
+        "common.type": "Type",
+        "common.country": "Country",
+        "common.alcohol": "Alcohol",
+        "common.value": "Value",
+        "common.history": "History",
+        "common.none": "None",
 
         // Cellar
         "cellar.title": "My Cellar",
@@ -432,6 +587,24 @@ class LanguageManager: ObservableObject {
         "cellar.notes": "Notes",
         "cellar.location": "Location",
         "cellar.position": "Position in container",
+        "cellar.no_bottles": "No bottles",
+        "cellar.add_first_bottle": "Add your first bottle by scanning a label or manually",
+        "cellar.no_matching": "No wines match the selected filters",
+        "cellar.vintages": "vintages",
+        "cellar.sort_by": "Sort by",
+        "cellar.configure_areas": "Configure Areas",
+        "cellar.view": "View",
+        "cellar.list": "List",
+        "cellar.mark_drunk": "Mark as drunk",
+        "cellar.mark_drunk_confirm": "Do you want to mark this bottle as drunk?",
+        "cellar.add_bottle": "Add Bottle",
+        "cellar.not_assigned": "Not assigned",
+        "cellar.add_rating": "Add rating",
+        "cellar.no_rating_yet": "You haven't rated this wine yet",
+        "cellar.average_rating": "Average rating",
+        "cellar.rating": "rating",
+        "cellar.ratings": "ratings",
+        "cellar.would_buy_again": "Would buy again",
 
         // Wine Types
         "wine.type.red": "Red",
@@ -447,6 +620,12 @@ class LanguageManager: ObservableObject {
         "scan.processing": "Processing...",
         "scan.take_photo": "Take photo",
         "scan.choose_photo": "Choose from library",
+        "scan.scan_label": "Scan a label",
+        "scan.scan_label_desc": "Take a photo of a wine label to automatically add it to your cellar",
+        "scan.analyzing": "Analyzing the label...",
+        "scan.detected_info": "Detected Information",
+        "scan.edit_save": "Edit and Save",
+        "scan.confidence": "Recognition confidence",
 
         // Food/Dinner
         "food.dinners": "My dinners",
@@ -467,6 +646,40 @@ class LanguageManager: ObservableObject {
         "food.confirm_wines": "Confirm wines",
         "food.generate_invite": "Generate invite",
         "food.share_invite": "Share invite",
+        "food.no_planned": "No planned meals",
+        "food.add_to_start": "Add a dinner or lunch to get started",
+        "food.convivio_details": "Convivio Details",
+        "food.title_placeholder": "Title (e.g., Birthday dinner)",
+        "food.datetime": "Date and time",
+        "food.dietary_restrictions": "Dietary restrictions",
+        "food.diet": "Diet",
+        "food.cuisine_type": "Cuisine type",
+        "food.cuisine": "Cuisine",
+        "food.menu_notes": "Menu notes",
+        "food.menu_notes_placeholder": "E.g., Light menu, not spicy, traditional dishes...",
+        "food.new_convivio": "New Convivio",
+        "food.confirm_dinner": "Confirm Dinner",
+        "food.dinner_confirmed": "Dinner confirmed",
+        "food.dinner_completed": "Dinner completed",
+        "food.wines_confirmed_note": "Wines confirmed - confirm dinner to lock the menu",
+        "food.delete_dish_confirm": "Do you want to remove this dish from the menu?",
+        "food.delete_wine_confirm": "Do you want to remove this wine from the pairings?",
+        "food.delete_wine": "Delete wine",
+        "food.unload_bottles": "Bottle Unload",
+        "food.to_complete": "To complete - unload bottles",
+        "food.proposals": "proposals",
+        "food.propose_dish": "Propose a dish",
+        "food.participants_proposals": "Participants' proposals",
+        "food.ai_will_create": "AI will create a personalized menu with recipes and wine pairings from your cellar",
+        "food.configure_api": "Configure OpenAI API key in Profile",
+        "food.etiquette": "Etiquette",
+        "food.confirm_unload": "Confirm Unload",
+        "food.open_unload": "Open Bottle Unload",
+        "food.wine_notifications": "Wine Notifications",
+        "food.no_notifications": "No scheduled notifications",
+        "food.put_fridge_minutes": "min before - Put in fridge",
+        "food.take_out_minutes": "min before - Take out of fridge",
+        "food.serving_temp": "Serving temperature",
 
         // Courses
         "course.appetizers": "Appetizers",
@@ -571,6 +784,19 @@ class LanguageManager: ObservableObject {
         "common.bottles": "Flaschen",
         "common.wine": "Wein",
         "common.wines": "Weine",
+        "common.confirm": "Bestätigen",
+        "common.retry": "Erneut versuchen",
+        "common.details": "Details",
+        "common.create": "Erstellen",
+        "common.generating": "Wird generiert...",
+        "common.people": "Personen",
+        "common.name": "Name",
+        "common.type": "Typ",
+        "common.country": "Land",
+        "common.alcohol": "Alkohol",
+        "common.value": "Wert",
+        "common.history": "Verlauf",
+        "common.none": "Keine",
 
         // Cellar
         "cellar.title": "Mein Weinkeller",
@@ -589,6 +815,24 @@ class LanguageManager: ObservableObject {
         "cellar.notes": "Notizen",
         "cellar.location": "Standort",
         "cellar.position": "Position im Behälter",
+        "cellar.no_bottles": "Keine Flaschen",
+        "cellar.add_first_bottle": "Fügen Sie Ihre erste Flasche hinzu, indem Sie ein Etikett scannen oder manuell eingeben",
+        "cellar.no_matching": "Keine Weine entsprechen den ausgewählten Filtern",
+        "cellar.vintages": "Jahrgänge",
+        "cellar.sort_by": "Sortieren nach",
+        "cellar.configure_areas": "Bereiche konfigurieren",
+        "cellar.view": "Ansicht",
+        "cellar.list": "Liste",
+        "cellar.mark_drunk": "Als getrunken markieren",
+        "cellar.mark_drunk_confirm": "Möchten Sie diese Flasche als getrunken markieren?",
+        "cellar.add_bottle": "Flasche hinzufügen",
+        "cellar.not_assigned": "Nicht zugewiesen",
+        "cellar.add_rating": "Bewertung hinzufügen",
+        "cellar.no_rating_yet": "Sie haben diesen Wein noch nicht bewertet",
+        "cellar.average_rating": "Durchschnittliche Bewertung",
+        "cellar.rating": "Bewertung",
+        "cellar.ratings": "Bewertungen",
+        "cellar.would_buy_again": "Würde wieder kaufen",
 
         // Wine Types
         "wine.type.red": "Rotwein",
@@ -604,6 +848,12 @@ class LanguageManager: ObservableObject {
         "scan.processing": "Verarbeitung...",
         "scan.take_photo": "Foto aufnehmen",
         "scan.choose_photo": "Aus Bibliothek wählen",
+        "scan.scan_label": "Ein Etikett scannen",
+        "scan.scan_label_desc": "Fotografieren Sie ein Weinetikett, um es automatisch zum Keller hinzuzufügen",
+        "scan.analyzing": "Etikett wird analysiert...",
+        "scan.detected_info": "Erkannte Informationen",
+        "scan.edit_save": "Bearbeiten und Speichern",
+        "scan.confidence": "Erkennungssicherheit",
 
         // Food/Dinner
         "food.dinners": "Meine Abendessen",
@@ -624,6 +874,40 @@ class LanguageManager: ObservableObject {
         "food.confirm_wines": "Weine bestätigen",
         "food.generate_invite": "Einladung erstellen",
         "food.share_invite": "Einladung teilen",
+        "food.no_planned": "Keine geplanten Mahlzeiten",
+        "food.add_to_start": "Fügen Sie ein Abendessen hinzu, um zu beginnen",
+        "food.convivio_details": "Convivio-Details",
+        "food.title_placeholder": "Titel (z.B. Geburtstagsessen)",
+        "food.datetime": "Datum und Uhrzeit",
+        "food.dietary_restrictions": "Ernährungseinschränkungen",
+        "food.diet": "Diät",
+        "food.cuisine_type": "Küchenart",
+        "food.cuisine": "Küche",
+        "food.menu_notes": "Menü-Notizen",
+        "food.menu_notes_placeholder": "Z.B. Leichtes Menü, nicht scharf, traditionelle Gerichte...",
+        "food.new_convivio": "Neues Convivio",
+        "food.confirm_dinner": "Abendessen bestätigen",
+        "food.dinner_confirmed": "Abendessen bestätigt",
+        "food.dinner_completed": "Abendessen abgeschlossen",
+        "food.wines_confirmed_note": "Weine bestätigt - Abendessen bestätigen, um das Menü zu sperren",
+        "food.delete_dish_confirm": "Möchten Sie dieses Gericht aus dem Menü entfernen?",
+        "food.delete_wine_confirm": "Möchten Sie diesen Wein aus den Empfehlungen entfernen?",
+        "food.delete_wine": "Wein löschen",
+        "food.unload_bottles": "Flaschen entladen",
+        "food.to_complete": "Abzuschließen - Flaschen entladen",
+        "food.proposals": "Vorschläge",
+        "food.propose_dish": "Ein Gericht vorschlagen",
+        "food.participants_proposals": "Vorschläge der Teilnehmer",
+        "food.ai_will_create": "KI erstellt ein personalisiertes Menü mit Rezepten und Weinempfehlungen aus Ihrem Keller",
+        "food.configure_api": "OpenAI API-Schlüssel im Profil konfigurieren",
+        "food.etiquette": "Etikette",
+        "food.confirm_unload": "Entladen bestätigen",
+        "food.open_unload": "Flaschenentladung öffnen",
+        "food.wine_notifications": "Weinbenachrichtigungen",
+        "food.no_notifications": "Keine geplanten Benachrichtigungen",
+        "food.put_fridge_minutes": "Min. vorher - In den Kühlschrank stellen",
+        "food.take_out_minutes": "Min. vorher - Aus dem Kühlschrank nehmen",
+        "food.serving_temp": "Serviertemperatur",
 
         // Courses
         "course.appetizers": "Vorspeisen",
@@ -728,6 +1012,19 @@ class LanguageManager: ObservableObject {
         "common.bottles": "bouteilles",
         "common.wine": "vin",
         "common.wines": "vins",
+        "common.confirm": "Confirmer",
+        "common.retry": "Réessayer",
+        "common.details": "Détails",
+        "common.create": "Créer",
+        "common.generating": "Génération...",
+        "common.people": "personnes",
+        "common.name": "Nom",
+        "common.type": "Type",
+        "common.country": "Pays",
+        "common.alcohol": "Alcool",
+        "common.value": "Valeur",
+        "common.history": "Historique",
+        "common.none": "Aucun",
 
         // Cellar
         "cellar.title": "Ma Cave",
@@ -746,6 +1043,24 @@ class LanguageManager: ObservableObject {
         "cellar.notes": "Notes",
         "cellar.location": "Emplacement",
         "cellar.position": "Position dans le contenant",
+        "cellar.no_bottles": "Aucune bouteille",
+        "cellar.add_first_bottle": "Ajoutez votre première bouteille en scannant une étiquette ou manuellement",
+        "cellar.no_matching": "Aucun vin ne correspond aux filtres sélectionnés",
+        "cellar.vintages": "millésimes",
+        "cellar.sort_by": "Trier par",
+        "cellar.configure_areas": "Configurer les zones",
+        "cellar.view": "Vue",
+        "cellar.list": "Liste",
+        "cellar.mark_drunk": "Marquer comme bu",
+        "cellar.mark_drunk_confirm": "Voulez-vous marquer cette bouteille comme bue?",
+        "cellar.add_bottle": "Ajouter une bouteille",
+        "cellar.not_assigned": "Non attribué",
+        "cellar.add_rating": "Ajouter une évaluation",
+        "cellar.no_rating_yet": "Vous n'avez pas encore évalué ce vin",
+        "cellar.average_rating": "Évaluation moyenne",
+        "cellar.rating": "évaluation",
+        "cellar.ratings": "évaluations",
+        "cellar.would_buy_again": "Achèterais à nouveau",
 
         // Wine Types
         "wine.type.red": "Rouge",
@@ -761,6 +1076,12 @@ class LanguageManager: ObservableObject {
         "scan.processing": "Traitement en cours...",
         "scan.take_photo": "Prendre une photo",
         "scan.choose_photo": "Choisir de la bibliothèque",
+        "scan.scan_label": "Scanner une étiquette",
+        "scan.scan_label_desc": "Photographiez une étiquette de vin pour l'ajouter automatiquement à votre cave",
+        "scan.analyzing": "Analyse de l'étiquette...",
+        "scan.detected_info": "Informations détectées",
+        "scan.edit_save": "Modifier et enregistrer",
+        "scan.confidence": "Confiance de reconnaissance",
 
         // Food/Dinner
         "food.dinners": "Mes dîners",
@@ -781,6 +1102,40 @@ class LanguageManager: ObservableObject {
         "food.confirm_wines": "Confirmer les vins",
         "food.generate_invite": "Générer l'invitation",
         "food.share_invite": "Partager l'invitation",
+        "food.no_planned": "Aucun repas prévu",
+        "food.add_to_start": "Ajoutez un dîner pour commencer",
+        "food.convivio_details": "Détails Convivio",
+        "food.title_placeholder": "Titre (ex: Dîner d'anniversaire)",
+        "food.datetime": "Date et heure",
+        "food.dietary_restrictions": "Restrictions alimentaires",
+        "food.diet": "Régime",
+        "food.cuisine_type": "Type de cuisine",
+        "food.cuisine": "Cuisine",
+        "food.menu_notes": "Notes du menu",
+        "food.menu_notes_placeholder": "Ex: Menu léger, pas épicé, plats traditionnels...",
+        "food.new_convivio": "Nouveau Convivio",
+        "food.confirm_dinner": "Confirmer le dîner",
+        "food.dinner_confirmed": "Dîner confirmé",
+        "food.dinner_completed": "Dîner terminé",
+        "food.wines_confirmed_note": "Vins confirmés - confirmez le dîner pour verrouiller le menu",
+        "food.delete_dish_confirm": "Voulez-vous supprimer ce plat du menu?",
+        "food.delete_wine_confirm": "Voulez-vous supprimer ce vin des accords?",
+        "food.delete_wine": "Supprimer le vin",
+        "food.unload_bottles": "Décharger les bouteilles",
+        "food.to_complete": "À terminer - décharger les bouteilles",
+        "food.proposals": "propositions",
+        "food.propose_dish": "Proposer un plat",
+        "food.participants_proposals": "Propositions des participants",
+        "food.ai_will_create": "L'IA créera un menu personnalisé avec des recettes et des accords de votre cave",
+        "food.configure_api": "Configurez la clé API OpenAI dans le Profil",
+        "food.etiquette": "Étiquette",
+        "food.confirm_unload": "Confirmer le déchargement",
+        "food.open_unload": "Ouvrir le déchargement",
+        "food.wine_notifications": "Notifications de vin",
+        "food.no_notifications": "Aucune notification programmée",
+        "food.put_fridge_minutes": "min avant - Mettre au frigo",
+        "food.take_out_minutes": "min avant - Sortir du frigo",
+        "food.serving_temp": "Température de service",
 
         // Courses
         "course.appetizers": "Entrées",

@@ -14,9 +14,9 @@ struct FoodView: View {
             Group {
                 if dinners.isEmpty {
                     ContentUnavailableView(
-                        "Nessun pasto pianificato",
+                        L10n.noPlannedMeals,
                         systemImage: "fork.knife",
-                        description: Text("Aggiungi una cena o un pranzo per iniziare")
+                        description: Text(L10n.addDinnerToStart)
                     )
                 } else {
                     List {
