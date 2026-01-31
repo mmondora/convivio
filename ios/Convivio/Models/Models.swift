@@ -262,6 +262,19 @@ final class DinnerEvent {
     // Detailed menu data (recipes, timeline, shopping list, etc.)
     var detailedMenuData: Data?
 
+    // Stable UUID for linking with notes
+    var dinnerUUID: UUID?
+
+    /// Returns or generates a stable UUID for this dinner
+    var stableUUID: UUID {
+        if let existing = dinnerUUID {
+            return existing
+        }
+        let newUUID = UUID()
+        dinnerUUID = newUUID
+        return newUUID
+    }
+
     // Collaboration data
     var collaborationStateRaw: String = "draft"
     @Relationship(deleteRule: .cascade, inverse: \DishProposal.dinner)
@@ -392,35 +405,80 @@ enum DinnerStatus: String, Codable, CaseIterable {
         }
     }
 
-    /// Can edit menu (regenerate, modify dishes)
-    var canEditMenu: Bool {
+    // MARK: - Edit Capabilities
+
+    /// Can edit individual dishes (regenerate, delete single dish)
+    var canEditDishes: Bool {
         switch self {
         case .planning, .winesConfirmed: return true
         case .confirmed, .completed, .cancelled: return false
         }
     }
 
-    /// Can confirm wines
+    /// Can regenerate entire menu (only in planning, NOT in winesConfirmed)
+    var canRegenerateMenu: Bool {
+        self == .planning
+    }
+
+    /// Can edit wines (remove from list) - only in planning
+    var canEditWines: Bool {
+        self == .planning
+    }
+
+    // MARK: - Transition Capabilities
+
+    /// Can confirm wines (transition planning → winesConfirmed)
     var canConfirmWines: Bool {
         self == .planning
     }
 
-    /// Can confirm dinner (after wines confirmed)
+    /// Can confirm dinner (transition winesConfirmed → confirmed)
     var canConfirmDinner: Bool {
         self == .winesConfirmed
     }
 
-    /// Can generate invite
-    var canGenerateInvite: Bool {
-        switch self {
-        case .winesConfirmed, .confirmed, .completed: return true
-        default: return false
-        }
+    /// Can complete dinner (transition confirmed → completed)
+    var canCompleteDinner: Bool {
+        self == .confirmed
     }
 
     /// Can unload bottles (only when completed)
     var canUnloadBottles: Bool {
         self == .completed
+    }
+
+    // MARK: - Feature Visibility
+
+    /// Show notification bell (scheduled wine notifications)
+    var showNotifications: Bool {
+        switch self {
+        case .winesConfirmed, .confirmed: return true
+        default: return false
+        }
+    }
+
+    /// Show note generation buttons (Cucina, Vino, Accoglienza)
+    var showNotes: Bool {
+        switch self {
+        case .confirmed, .completed: return true
+        default: return false
+        }
+    }
+
+    /// Can generate invite
+    var canGenerateInvite: Bool {
+        switch self {
+        case .confirmed, .completed: return true
+        default: return false
+        }
+    }
+
+    /// Show detailed menu button
+    var showDetailedMenu: Bool {
+        switch self {
+        case .winesConfirmed, .confirmed, .completed: return true
+        default: return false
+        }
     }
 }
 
