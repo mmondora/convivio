@@ -1,374 +1,227 @@
 # CONTEXT.md — Convivio Project Handoff
 
-> Questo file contiene tutto il contesto necessario per continuare lo sviluppo del progetto Convivio. Generato da una sessione claude.ai il 25 gennaio 2026.
+> This file contains all the context needed to continue development on the Convivio project.
 
 ---
 
-## 🎯 Project Vision
+## Project Vision
 
-**Convivio** è un'app personale per la gestione della cantina vini con AI integrata. Risponde a tre domande:
+**Convivio** is a personal app for wine cellar management with integrated AI. It answers three questions:
 
-1. **Che vino ho?** → Inventario con posizione fisica (scaffale/riga/slot)
-2. **Quale servo?** → Suggerimenti AI basati su ospiti, menu, preferenze
-3. **Come lo servo?** → Istruzioni temperatura, decantazione, bicchieri
+1. **What wine do I have?** → Inventory with physical location (shelf/row/slot)
+2. **Which should I serve?** → AI suggestions based on guests, menu, preferences
+3. **How do I serve it?** → Temperature, decanting, glass instructions
 
-**Target user**: Wine enthusiast che organizza cene, gestisce 50-500 bottiglie, vuole tenere traccia di rating personali e preferenze alimentari degli ospiti.
+**Target user**: Wine enthusiast who organizes dinners, manages 50-500 bottles, wants to track personal ratings and guest food preferences.
 
-**Anti-pattern**: NON è un clone di Vivino, NON è un social network del vino, NON è un database enciclopedico.
+**Anti-pattern**: NOT a Vivino clone, NOT a wine social network, NOT an encyclopedic wine database.
 
 ---
 
-## 🏗️ Architecture Decisions (ADR Summary)
+## Architecture Decisions (ADR Summary)
 
 ### ADR-001: Wine vs Bottle Separation
-- **Decision**: `Wine` è il master record (nome, produttore, annata), `Bottle` è l'istanza fisica con location
-- **Rationale**: Permette tracking posizione, movimenti, multiple bottiglie stesso vino
+- **Decision**: `Wine` is the master record (name, producer, vintage), `Bottle` is the physical instance with location
+- **Rationale**: Enables position tracking, movements, multiple bottles of same wine
 - **Status**: Implemented
 
 ### ADR-002: No Vivino API
-- **Decision**: Nessuna integrazione automatica con database esterni vini
-- **Rationale**: Vivino non ha API pubblica, altri servizi sono a pagamento o inaffidabili
-- **Status**: MVP senza, valutare in v2
+- **Decision**: No automatic integration with external wine databases
+- **Rationale**: Vivino has no public API, other services are paid or unreliable
+- **Status**: MVP without, evaluate in v2
 
-### ADR-003: Fuzzy Matching Manuale
-- **Decision**: LLM suggerisce match durante inserimento, utente conferma manualmente
-- **Rationale**: Deduplicazione automatica troppo rischiosa per data quality
-- **Status**: Implemented in extract.ts
+### ADR-003: Manual Fuzzy Matching
+- **Decision**: AI suggests matches during entry, user confirms manually
+- **Rationale**: Automatic deduplication too risky for data quality
+- **Status**: Implemented in OpenAIService
 
 ### ADR-004: Guest Access Deferred
-- **Decision**: In MVP gli ospiti non hanno accesso all'app, host inserisce preferenze manualmente
-- **Rationale**: Complessità auth per voting remoto non giustificata in MVP
+- **Decision**: In MVP guests don't have app access, host enters preferences manually
+- **Rationale**: Auth complexity for remote voting not justified in MVP
 - **Status**: Deferred to v2
 
-### ADR-005: GCP Free Tier First
-- **Decision**: Stack interamente su Firebase/GCP free tier
-- **Rationale**: Costo MVP stimato ~€5/mese (principalmente Claude API)
+### ADR-005: Local-First Architecture
+- **Decision**: SwiftData for local storage, CloudKit for sync
+- **Rationale**: Works offline, fast, no backend costs
 - **Status**: Implemented
 
-### ADR-006: Claude over OpenAI
-- **Decision**: Anthropic Claude API per tutte le funzioni AI
-- **Rationale**: Migliore reasoning, tool calling più affidabile, preferenza personale
-- **Status**: Implemented (claude-sonnet-4-20250514)
+### ADR-006: OpenAI over Claude
+- **Decision**: OpenAI API for all AI functions (was Claude initially)
+- **Rationale**: GPT-4o Vision for label scanning, consistent API
+- **Status**: Implemented (gpt-4o)
+
+### ADR-007: Direct API Calls
+- **Decision**: Call OpenAI API directly from iOS app, no backend
+- **Rationale**: Simpler architecture, no server costs, API key stored securely
+- **Status**: Implemented
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-convivio/
-├── firebase/
-│   ├── firebase.json           # Firebase config
-│   ├── firestore.rules         # Security rules (RBAC owner/family)
-│   ├── firestore.indexes.json  # Query indexes
-│   ├── storage.rules           # Storage security
-│   └── functions/
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── .env.example
-│       └── src/
-│           ├── index.ts        # Entry point, exports
-│           ├── types/
-│           │   └── index.ts    # Complete TypeScript types
-│           ├── api/
-│           │   ├── health.ts   # Health check endpoint
-│           │   ├── extract.ts  # OCR + LLM wine extraction
-│           │   ├── propose.ts  # Dinner menu + wine pairing
-│           │   └── chat.ts     # Conversational sommelier
-│           └── triggers/
-│               └── users.ts    # onCreate/onDelete triggers
+personal_sommelier/
 ├── ios/
 │   └── Convivio/
-│       ├── ConvivioApp.swift   # Entry point, tab navigation
+│       ├── ConvivioApp.swift     # Entry point, tab navigation
 │       ├── Models/
-│       │   └── Models.swift    # Data models (mirror Firestore)
+│       │   ├── Models.swift      # Core SwiftData models
+│       │   ├── MenuModels.swift  # Menu generation models
+│       │   └── ...               # Additional models
 │       ├── Services/
-│       │   ├── AuthManager.swift    # Firebase Auth wrapper
-│       │   └── FirebaseService.swift # Firestore & Functions API
+│       │   ├── OpenAIService.swift     # Direct OpenAI API
+│       │   ├── CloudKitService.swift   # Multi-device sync
+│       │   ├── LanguageManager.swift   # Localization (4 languages)
+│       │   ├── MenuGeneratorService.swift
+│       │   └── ...                     # Additional services
 │       └── Views/
-│           ├── AuthenticationView.swift
-│           ├── CellarView.swift      # Main inventory
-│           ├── ScanView.swift        # Camera + OCR
-│           ├── DinnerListView.swift  # Dinner planning
-│           ├── ChatView.swift        # AI sommelier
-│           └── ProfileView.swift     # Settings, friends
-├── web/                        # [NOT STARTED] Next.js app
-├── docs/                       # [NOT STARTED] Documentation
+│           ├── CellarView.swift        # Wine inventory
+│           ├── ScanView.swift          # Label scanning
+│           ├── FoodView.swift          # Dinner planning
+│           ├── ChatView.swift          # AI Sommelier
+│           └── ProfileView.swift       # Settings
 ├── README.md
-├── LICENSE                     # MIT
-├── .gitignore
-├── setup.sh                    # Project setup script
-├── git-setup.sh                # Git init + GitHub push
-└── CONTEXT.md                  # This file
+├── CONTEXT.md                  # This file
+└── CLAUDE.md                   # Instructions for Claude Code
 ```
 
 ---
 
-## 🔧 Tech Stack
+## Tech Stack
 
 | Layer | Technology | Notes |
 |-------|------------|-------|
 | **iOS** | SwiftUI, Swift Concurrency | Target iOS 17+ |
-| **Backend** | Cloud Functions Gen2 | TypeScript, Node 20 |
-| **Database** | Firestore | NoSQL, real-time sync |
-| **Storage** | Firebase Storage | Wine label photos |
-| **Auth** | Firebase Auth | Apple, Google, Email |
-| **OCR** | Google Vision API | Label text extraction |
-| **AI** | Claude API | Interpretation, chat, proposals |
-| **Web** | Next.js 14 | [Not started] |
+| **Database** | SwiftData | Local persistence |
+| **Sync** | CloudKit | Multi-device, family sharing |
+| **AI** | OpenAI API (GPT-4o) | Chat, vision, menu generation |
+| **Localization** | Custom (LanguageManager) | IT, EN, DE, FR |
 
 ---
 
-## 📊 Data Model (Key Entities)
+## Data Model (Key Entities)
 
 ### Core
 - `Wine` — Master: name, producer, vintage, type, region, grapes
 - `Bottle` — Instance: wineId, locationId, status, acquiredAt, price
-- `Location` — Hierarchy: cellarId > shelf > row > slot
-- `Cellar` — Container: name, members (userId → role)
-- `Movement` — Audit: bottleId, type (in/out/move), timestamp
+- `StorageArea` — Location: cellarId, name, position (shelf/row/slot)
+- `AppSettings` — User preferences, language, API key
 
 ### User Data
-- `Rating` — 1-5 stars + isFavorite + notes
-- `TasteProfile` — Sensory: acidity, tannin, body, sweetness, effervescence
-- `Friend` — Contact with foodieLevel
-- `FoodPreference` — Type (allergy/intolerance/dislike/diet) + category
+- `WineRating` — Stars, tasting notes (AIS-style), isFavorite
 
 ### Dinner Planning
-- `DinnerEvent` — Date, style, cookingTime, budget, status
-- `DinnerGuest` — Link to Friend
-- `WineProposal` — Type (available/suggested), wineId, course, reasoning
-- `MenuProposal` — Generated menu with courses
-
-### AI/Processing
-- `PhotoAsset` — Storage URL, type, linked wine
-- `ExtractionResult` — OCR text, extracted fields with confidence
-- `Conversation` — Chat session
-- `ChatMessage` — Role, content, tool calls/results
+- `DinnerEvent` — Date, style, cuisine, budget, status
+- `MenuResponse` — Generated menu with courses and wine pairings
+- `ConfirmedWine` — Wines selected for the dinner
+- `DinnerNotes` — Kitchen, wine, hospitality notes
 
 ---
 
-## 🚀 Current Implementation Status
+## Current Implementation Status
 
-### ✅ Completed (Phase 1: Foundation)
-
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Firestore rules | ✅ Done | RBAC owner/family, full validation |
-| Firestore indexes | ✅ Done | Optimized for common queries |
-| Storage rules | ✅ Done | User-scoped photos |
-| TypeScript types | ✅ Done | Complete, shared |
-| User triggers | ✅ Done | onCreate (default cellar), onDelete (cascade) |
-| Health endpoint | ✅ Done | /api/health |
-
-### ✅ Completed (Phase 2: Intelligence)
+### Completed
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| /api/extract | ✅ Done | Vision OCR → Claude interpretation → fuzzy match |
-| /api/propose | ✅ Done | Load context → Claude menu + wine pairing |
-| /api/chat | ✅ Done | Tool calling: search, details, location, stats, preferences |
+| SwiftData models | Done | Complete, with relationships |
+| CloudKit sync | Done | Multi-device, collaborative cellars |
+| OpenAI integration | Done | Chat, vision, menu generation |
+| CellarView | Done | List, filter, search, ratings |
+| ScanView | Done | Camera, photo picker, AI extraction |
+| FoodView | Done | Dinners, menu generation, wine confirmation |
+| ChatView | Done | AI Sommelier with context |
+| ProfileView | Done | Settings, language picker |
+| Localization | Done | 4 languages (IT, EN, DE, FR) |
+| AI language support | Done | Sommelier responds in user's language |
 
-### ✅ Completed (iOS App Structure)
-
-| View | Status | Notes |
-|------|--------|-------|
-| ConvivioApp | ✅ Done | Entry, tabs, auth state |
-| AuthManager | ✅ Done | Firebase Auth, Apple Sign In |
-| FirebaseService | ✅ Done | Centralized Firestore & Functions API |
-| Models | ✅ Done | All entities, Codable |
-| AuthenticationView | ✅ Done | Apple, Email login/signup |
-| CellarView | ✅ Done | List, filter, search, swipe-to-consume |
-| ScanView | ✅ Done | Camera, photo picker, confirmation UI |
-| ChatView | ✅ Done | Messages, quick suggestions, typing indicator |
-| DinnerListView | ✅ Done | List, new dinner, detail with proposal |
-| ProfileView | ✅ Done | Stats, friends, settings, GDPR |
-
-### ⏳ Pending / TODO
+### Pending / TODO
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| GoogleService-Info.plist | P0 | Download from Firebase Console |
-| Firebase project setup | P0 | Create project, enable services |
-| Location picker in ScanView | P1 | After wine confirmation, select shelf/slot |
-| Rating flow after consume | P1 | Prompt to rate after marking consumed |
-| Web app (Next.js) | P2 | Management interface, not MVP-critical |
-| Push notifications | P2 | Deferred from MVP |
-| Statistics view | P2 | Nice-to-have |
+| Detailed menu PDF | P1 | Recipes, shopping list, timeline |
+| Debug prompt editor | P2 | For testing AI prompts |
+| Wine consumption tracking | P2 | Statistics and history |
+| Web app | P3 | Management interface |
 
 ---
 
-## 🔌 API Contracts
-
-### POST /api/extract
-```typescript
-// Request
-{ photoUrl: string, userId: string }
-
-// Response
-{
-  success: boolean,
-  extraction: {
-    id: string,
-    extractedFields: {
-      name?: { value: string, confidence: number },
-      producer?: { value: string, confidence: number },
-      vintage?: { value: string, confidence: number },
-      type?: { value: WineType, confidence: number },
-      region?: { value: string, confidence: number },
-      country?: { value: string, confidence: number },
-      alcoholContent?: { value: string, confidence: number },
-      grapes?: { value: string, confidence: number }
-    },
-    overallConfidence: number
-  },
-  suggestedMatches: Wine[] // Similar wines in user's cellar
-}
-```
-
-### POST /api/propose
-```typescript
-// Request
-{ dinnerId: string, userId: string }
-
-// Response
-{
-  success: boolean,
-  menu: {
-    courses: MenuCourse[],
-    reasoning: string,
-    seasonContext: string,
-    guestConsiderations: string[],
-    totalPrepTime: number
-  },
-  wineProposals: {
-    available: WineProposal[],  // From cellar
-    suggested: WineProposal[]   // To purchase
-  }
-}
-```
-
-### POST /api/chat
-```typescript
-// Request
-{ message: string, conversationId?: string, userId: string, context?: { cellarId?, dinnerId? } }
-
-// Response
-{
-  success: boolean,
-  response: string,
-  conversationId: string,
-  wineReferences: Wine[]
-}
-
-// Available tools for Claude:
-// - search_wines(type?, region?, minRating?, query?, limit?)
-// - get_wine_details(wineId | wineName)
-// - get_bottle_location(wineId | wineName)
-// - get_cellar_stats()
-// - get_friend_preferences(friendName)
-```
-
----
-
-## 🎨 UX Patterns & Conventions
+## UX Patterns & Conventions
 
 ### iOS
-- **Navigation**: Tab bar (Cantina, Scan, Cena, AI, Profilo)
+- **Navigation**: Tab bar (Cellar, Scan, Dinner, AI, Profile)
 - **Lists**: Grouped by type, swipe actions for quick operations
 - **Sheets**: Modal for create/edit, dismiss via button or swipe
-- **Colors**: Wine type colors defined in Models.swift (WineRed, WineWhite, etc.)
+- **Colors**: Wine type colors defined in Models.swift
 - **Loading**: ProgressView with descriptive text
 - **Empty states**: ContentUnavailableView with action button
+- **Language change**: UI refreshes automatically via .id() modifier
 
 ### Code Style
 - **Swift**: SwiftUI, async/await, @MainActor for ViewModels
-- **TypeScript**: Strict mode, Zod validation, explicit types
-- **Naming**: Italian for user-facing strings, English for code
+- **Naming**: English for code, localized strings via L10n
+- **Localization**: All UI strings through L10n enum
 
 ---
 
-## ⚠️ Known Issues & Gotchas
+## Localization System
 
-1. **Firebase Functions secrets**: ANTHROPIC_API_KEY must be set via `firebase functions:secrets:set` for production.
+The app uses a custom localization system:
 
-2. **Firestore indexes**: Some compound queries may need additional indexes not yet defined. Deploy will fail with clear error message → add index.
+```swift
+// LanguageManager.swift
+enum L10n {
+    static var cellar: String { "tab.cellar".localized }
+    static var scan: String { "tab.scan".localized }
+    // ... 100+ localized keys
+}
 
-3. **Vision API quota**: Free tier = 1000 units/month. For heavy testing, may need billing.
-
----
-
-## 🚦 Next Steps (Recommended Order)
-
-### Immediate (to get running)
-1. Create Firebase project on console.firebase.google.com
-2. Enable: Auth, Firestore, Storage, Functions
-3. Enable Vision API in GCP Console
-4. `cd firebase/functions && npm install`
-5. `firebase functions:secrets:set ANTHROPIC_API_KEY`
-6. `cd firebase && firebase deploy`
-7. Download GoogleService-Info.plist, add to Xcode project
-8. Build and run on simulator
-
-### Then (polish)
-1. Add location picker after scan confirmation
-2. Add rating prompt after consume
-3. Test full flow: scan → save → find → consume → rate
-
-### Later (extend)
-1. Web app for desktop management
-2. Statistics and analytics
-3. Export/import functionality
-4. Widget for iOS home screen
-
----
-
-## 💬 Session Notes
-
-Questa sessione ha prodotto:
-- PRD completo con mockup UX
-- Schema dati Firestore con relationships
-- Security rules production-ready
-- 4 Cloud Functions complete
-- App iOS funzionale con Firebase integration
-- Backlog stimato ~55 giorni di lavoro part-time
-
-Il progetto è strutturato per essere esteso. Le convenzioni sono coerenti. Il data model supporta features future (multi-cellar, family sharing, detailed movements).
-
----
-
-## 📎 Useful Commands
-
-```bash
-# Firebase
-cd firebase
-firebase login
-firebase use --add
-firebase deploy
-firebase emulators:start
-
-# Functions dev
-cd firebase/functions
-npm run build
-npm run serve  # local with emulators
-
-# iOS
-open ios/Convivio.xcodeproj
+extension String {
+    var localized: String {
+        LanguageManager.shared.translations[self] ?? self
+    }
+}
 ```
 
+Supported languages:
+- Italian (default)
+- English
+- German
+- French
+
 ---
 
-## 🤖 For Claude Code
+## Next Steps (Recommended Order)
 
-Quando lavori su questo progetto:
+### Immediate
+1. Complete remaining L10n string updates in all views
+2. Test all features in each language
+3. Implement detailed menu PDF generation
 
-1. **Leggi prima**: README.md per overview, questo file per contesto dettagliato
-2. **Codice esistente**: È tutto funzionante e coerente, estendi non riscrivere
-3. **Convenzioni**: Segui i pattern già presenti (ViewModels, Zod validation, etc.)
-4. **Lingua**: Codice in inglese, UI strings in italiano
+### Then
+1. Add debug prompt editor for AI testing
+2. Wine consumption statistics
+3. Export/import functionality
+
+### Later
+1. Web app for desktop management
+2. Widget for iOS home screen
+3. Apple Watch companion app
+
+---
+
+## For Claude Code
+
+When working on this project:
+
+1. **Read first**: README.md for overview, this file for detailed context
+2. **Existing code**: It's all functional and coherent, extend don't rewrite
+3. **Conventions**: Follow existing patterns (ViewModels, SwiftData, etc.)
+4. **Language**: Code in English, UI strings via L10n localization
 5. **Commit style**: Emoji prefix (🍷 feature, 🐛 fix, 📝 docs, ♻️ refactor)
 
-Se devi fare scelte architetturali significative, documentale come ADR in questo file.
+If you need to make significant architectural choices, document them as ADRs in this file.
 
 ---
 
-*Last updated: 2026-01-25 | Session: claude.ai web + Claude Code*
+*Last updated: 2026-01-31 | Architecture: SwiftData + CloudKit + OpenAI*
