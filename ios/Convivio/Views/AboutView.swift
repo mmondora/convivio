@@ -162,24 +162,24 @@ struct AboutView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 ReleaseNoteItem(
-                    icon: "📋",
-                    text: "Menu Dettagliato con ricette, timeline e lista spesa"
+                    icon: "🚀",
+                    text: "Performance ottimizzate con paginazione liste"
                 )
                 ReleaseNoteItem(
-                    icon: "📄",
-                    text: "Esportazione PDF del menu completo"
+                    icon: "🤖",
+                    text: "Selezione modello AI intelligente per risposte veloci"
                 )
                 ReleaseNoteItem(
-                    icon: "🧪",
-                    text: "Debug Prompt Editor per modificare prompt AI"
+                    icon: "💾",
+                    text: "Cache risposte API per evitare chiamate ridondanti"
                 )
                 ReleaseNoteItem(
-                    icon: "🍂",
-                    text: "Contesto stagionale nella rigenerazione piatti"
+                    icon: "📊",
+                    text: "Monitor performance nel pannello Debug"
                 )
                 ReleaseNoteItem(
-                    icon: "🍷",
-                    text: "Servizio vini con temperature e decantazione"
+                    icon: "⏳",
+                    text: "Nuovi componenti UX per stati di caricamento"
                 )
             }
 

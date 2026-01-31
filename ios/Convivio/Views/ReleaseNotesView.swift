@@ -10,9 +10,26 @@ struct ReleaseNotesView: View {
 
                 // Current version
                 releaseSection(
-                    version: "1.3.0",
+                    version: "1.4.0",
                     date: "Gennaio 2025",
                     isCurrent: true,
+                    features: [
+                        "Ottimizzazione performance: liste con paginazione (20 elementi)",
+                        "Selezione modello AI intelligente: GPT-4o-mini per task semplici",
+                        "Cache risposte API: evita chiamate ridondanti",
+                        "Monitor performance in pannello Debug",
+                        "Nuovi componenti UX per stati di caricamento"
+                    ],
+                    fixes: [
+                        "Migliorata gestione memoria con @MainActor",
+                        "Rimossi frame height forzati per rendering ottimale",
+                        "Thread safety per LanguageManager"
+                    ]
+                )
+
+                releaseSection(
+                    version: "1.3.0",
+                    date: "Gennaio 2025",
                     features: [
                         "Menu Dettagliato: ricette complete, timeline preparazione, lista spesa",
                         "Esportazione PDF del menu completo per condivisione",
